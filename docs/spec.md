@@ -52,7 +52,7 @@ v0.1 · 2026-11-06 상태 머신 리뷰와 에뮬레이터 확인 반영 · 담�
 | speedKph | Double | 속도 (km/h) | CarPropertyManager `PERF_VEHICLE_SPEED` (m/s) × 3.6 | 직전 값 유지 |
 | gear | enum | 기어 | Vehicle SDK Gear | 직전 값 유지 |
 | steeringDeg | Double? | 핸들 각도. 좌우 부호는 미정(5장) | Vehicle SDK SteeringWheel | SDK에서 안 나오면 null |
-| turnSignal | enum | 방향지시등 상태 | Vehicle SDK TurnSignal. HAZARD는 Light SDK | 직전 값 유지 |
+| turnSignal | enum | 방향지시등 상태 | Vehicle SDK TurnSignal. 앱은 당분간 HAZARD를 보내지 않는다(5장) | 직전 값 유지 |
 | brake | Boolean | 브레이크 페달 밟음 | Vehicle SDK Brake | 직전 값 유지 |
 | lat, lon | Double | 위치 | Fused Location | 직전 값 유지 |
 | headingDeg | Double | 진행 방향 (북쪽 0°, 시계 방향, 0~360) | Fused Location | 직전 값 유지 |
@@ -355,7 +355,7 @@ S2와 같고, turnSignal만 모든 프레임에서 OFF.
 - [ ] 회전 완료를 진행 방향 변화 대신 TBT 변화로 볼지
 - [ ] 실제 headingDeg 기준(북쪽 0°, 시계 방향)이 Fused Location과 같은가. 에뮬레이터에서는 위치를 움직여도 0.0으로만 나와 측정 불가, 실주행 필요
 - [ ] TBT 남은 거리의 기준점이 무엇인가. 에뮬레이터에서 측정 불가, 실주행 필요. 법령의 30m 기준점은 교차로 가장자리(시행령 별표 2)라서 기준점이 교차로 중심이면 판정이 늦어진다
-- [ ] HAZARD를 Light SDK에서 어떻게 읽는가. 아직 측정하지 않음
+- [ ] 비상등 입력원. Vehicle SDK에서 찾지 못했다. R1은 HAZARD와 OFF를 똑같이 처리하므로 영향 없음
 
 ---
 

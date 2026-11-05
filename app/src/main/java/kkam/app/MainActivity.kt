@@ -1,6 +1,7 @@
 package kkam.app
 
 import android.app.Activity
+import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -21,6 +22,8 @@ import kotlin.math.roundToInt
 class MainActivity : Activity() {
     private lateinit var player: ScenarioPlayer
     private lateinit var speaker: Speaker
+    private lateinit var collector: SignalCollector
+    private var live = false
     private var engine = Engine()
     private var state = CoachState()
 
@@ -33,25 +36,63 @@ class MainActivity : Activity() {
         setContentView(R.layout.activity_main)
         player = ScenarioPlayer(this)
         speaker = Speaker(this).apply { start() }
+        collector = SignalCollector(this)
 
         TILE_LABELS.forEach(::addTile)
+        addLiveButton()
         player.fileNames().forEach(::addScenarioButton)
         render()
     }
 
     override fun onDestroy() {
         player.stop()
+        stopLive()
         speaker.release()
         super.onDestroy()
     }
 
     private fun play(fileName: String) {
+        stopLive()
         speaker.stop()
         engine = Engine()
         state = state.resetDrive(fileName.substringBefore('_'))
         render()
         highlight(fileName)
         player.play(fileName, onFrame = ::onFrame, onEnd = { highlight(null) })
+    }
+
+    /** 실제 차량 신호로 주행을 시작한다. 위치와 속도는 런타임 권한이 필요하다. */
+    private fun toggleLive() {
+        if (live) {
+            stopLive()
+            highlight(null)
+            return
+        }
+        val missing = LIVE_PERMISSIONS.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
+        if (missing.isEmpty()) startLive() else requestPermissions(missing.toTypedArray(), REQUEST_LIVE)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_LIVE && grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+            startLive()
+        }
+    }
+
+    private fun startLive() {
+        player.stop()
+        speaker.stop()
+        engine = Engine()
+        state = state.resetDrive(LIVE_LABEL)
+        render()
+        highlight(LIVE_LABEL)
+        live = true
+        collector.start(::onFrame)
+    }
+
+    private fun stopLive() {
+        if (live) collector.stop()
+        live = false
     }
 
     private fun onFrame(frame: SignalFrame) {
@@ -104,11 +145,16 @@ class MainActivity : Activity() {
         view.tiles.addView(tile)
     }
 
-    private fun addScenarioButton(fileName: String) {
+    private fun addLiveButton() = addButton(LIVE_LABEL, "실제 차량 신호") { toggleLive() }
+
+    private fun addScenarioButton(fileName: String) =
+        addButton(fileName, fileName.removeSuffix(".json").replace('_', ' ')) { play(fileName) }
+
+    private fun addButton(key: String, label: String, onClick: () -> Unit) {
         val button = layoutInflater.inflate(R.layout.scenario_button, view.scenarios, false) as Button
-        button.text = fileName.removeSuffix(".json").replace('_', ' ')
-        button.setOnClickListener { play(fileName) }
-        buttons[fileName] = button
+        button.text = label
+        button.setOnClickListener { onClick() }
+        buttons[key] = button
         view.scenarios.addView(button)
         highlight(null)
     }
@@ -153,6 +199,9 @@ class MainActivity : Activity() {
     private companion object {
         const val TAG = "KkamCoach"
         const val MAX_LOGS = 6
+        const val LIVE_LABEL = "실차"
+        const val REQUEST_LIVE = 1
+        val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")
         val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호")
     }
 }

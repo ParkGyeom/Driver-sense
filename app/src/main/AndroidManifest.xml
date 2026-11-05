@@ -3,11 +3,21 @@
     <uses-feature android:name="android.hardware.type.automotive" android:required="true" />
 
     <uses-permission android:name="pleos.car.permission.TTS_SERVICE" />
+    <uses-permission android:name="pleos.car.permission.CAR_LIGHTS" />
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
+    <uses-permission android:name="pleos.car.permission.CAR_INFO" />
+    <uses-permission android:name="pleos.car.permission.FUSED_LOCATION" />
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
+    <uses-permission android:name="android.car.permission.CAR_SPEED" />
 
     <application
         android:label="@string/app_name"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+        <uses-library android:name="android.car" android:required="false" />
+
         <activity android:name=".MainActivity" android:exported="true">
+            <!-- 주행 중에도 코치 카드를 보여주므로 DO를 선언한다. 터치 조작은 D단에서 쓰지 않는다. -->
+            <meta-data android:name="distractionOptimized" android:value="true" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

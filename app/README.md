@@ -10,7 +10,11 @@ Pleos Connect 차량 앱입니다. 공모전 개발 환경은 Android API 28 이
 - 코치 카드, 차량 신호, 오늘 지킨 횟수, 판정 기록을 화면에 보여줍니다.
 - GUIDE가 나오면 Pleos TTS로 읽습니다.
 
-실제 차량 신호 수집, 서버 저장, 리포트 화면은 아직 없습니다. 오늘 지킨 횟수는 앱을 끄면 사라집니다.
+- "실제 차량 신호" 버튼을 누르면 SDK 신호를 1초마다 `SignalFrame`으로 묶어 엔진에 넣습니다.
+
+서버 저장, 리포트 화면은 아직 없습니다. 오늘 지킨 횟수는 앱을 끄면 사라집니다.
+
+에뮬레이터는 내비 위치와 진행 방향이 움직이지 않습니다. 그래서 실제 신호 모드에서 30m 판정과 회전 완료는 확인할 수 없습니다. 속도를 약 45km/h 이상으로 올리면 80m 안내에서 GUIDE는 확인할 수 있습니다.
 
 ## 실행
 
@@ -28,6 +32,8 @@ Android SDK가 필요합니다. `ANDROID_HOME`을 지정하거나 루트에 `loc
 | `CoachState.kt` | 프레임과 엔진 출력을 화면 값으로 변환. JVM 테스트 대상 |
 | `ScenarioPlayer.kt` | `scenarios/`의 JSON을 시간대로 재생 |
 | `Speaker.kt` | Pleos TTS 호출 |
+| `SignalCollector.kt` | 차량 신호 수집과 프레임 생성 |
+| `SdkMapping.kt` | SDK 값을 엔진 값으로 변환. JVM 테스트 대상 |
 
 시나리오 파일은 복사하지 않습니다. 루트 `scenarios/`를 앱 assets로 바로 씁니다.
 

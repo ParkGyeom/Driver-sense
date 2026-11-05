@@ -1,6 +1,6 @@
 # 깜빡코치 판정 엔진 명세
 
-v0.1 · 2026-11-05 초안, 상태 머신 리뷰 반영 · 담당 박겸
+v0.1 · 2026-11-06 상태 머신 리뷰와 에뮬레이터 확인 반영 · 담당 박겸
 
 이 문서가 기준이다. 코드와 다르면 이 문서를 먼저 고친다.
 
@@ -49,14 +49,14 @@ v0.1 · 2026-11-05 초안, 상태 머신 리뷰 반영 · 담당 박겸
 | 필드 | 타입 | 뜻 | 앱에서 가져오는 곳 | 없을 때 |
 | --- | --- | --- | --- | --- |
 | t | Long | 시각 (ms). 시나리오는 0부터 | 앱 | 항상 있음 |
-| speedKph | Double | 속도 (km/h) | 차량 속성 | 항상 있음 |
-| gear | enum | 기어 | 차량 속성 | 항상 있음 |
-| steeringDeg | Double? | 핸들 각도. 왼쪽이 음수 | Vehicle SDK Steeringwheel | SDK에서 안 나오면 null |
-| turnSignal | enum | 방향지시등 상태 | Vehicle SDK TurnSignal | 항상 있음 |
-| brake | Boolean | 브레이크 페달 밟음 | Vehicle SDK Brake | 항상 있음 |
-| lat, lon | Double | 위치 | Fused Location | 항상 있음 |
-| headingDeg | Double | 진행 방향 (북쪽 0°, 시계 방향, 0~360) | Fused Location | 항상 있음 |
-| tbt | Tbt? | 내비의 다음 안내와 남은 거리 | NaviHelper getTBTInfo | 경로 안내 중이 아니면 null |
+| speedKph | Double | 속도 (km/h) | CarPropertyManager `PERF_VEHICLE_SPEED` (m/s) × 3.6 | 직전 값 유지 |
+| gear | enum | 기어 | Vehicle SDK Gear | 직전 값 유지 |
+| steeringDeg | Double? | 핸들 각도. 좌우 부호는 미정(5장) | Vehicle SDK SteeringWheel | SDK에서 안 나오면 null |
+| turnSignal | enum | 방향지시등 상태 | Vehicle SDK TurnSignal. HAZARD는 Light SDK | 직전 값 유지 |
+| brake | Boolean | 브레이크 페달 밟음 | Vehicle SDK Brake | 직전 값 유지 |
+| lat, lon | Double | 위치 | Fused Location | 직전 값 유지 |
+| headingDeg | Double | 진행 방향 (북쪽 0°, 시계 방향, 0~360) | Fused Location | 직전 값 유지 |
+| tbt | Tbt? | 내비의 다음 안내와 남은 거리 | NaviHelper getTBTInfo 목록의 첫 항목 | 목록이 비면 null |
 | light | TrafficLight? | 전방 차량 신호 | 서버(공공 신호 API) → 앱 | 정보 없으면 null. R3에서만 사용 |
 
 enum 값
@@ -66,7 +66,22 @@ enum 값
 - tbt.turn: `LEFT`, `RIGHT`, `STRAIGHT`, `UTURN`, `OTHER`
 - light.phase: `RED`, `YELLOW`, `GREEN`, `UNKNOWN`
 
-Tbt: `{ "turn": "LEFT", "distanceM": 48 }` (distanceM은 Int, 미터)
+Tbt: `{ "turn": "LEFT", "distanceM": 48 }` (distanceM은 Int, 미터. SDK의 distance를 반올림)
+
+앱이 SDK 값을 엔진 값으로 바꾸는 규칙
+
+| 필드 | SDK 값 | 엔진 값 |
+| --- | --- | --- |
+| speedKph | `PERF_VEHICLE_SPEED` (m/s) | 3.6을 곱한 값 |
+| gear | `GEAR_PARK`, `GEAR_REVERSE`, `GEAR_NEUTRAL`, `GEAR_DRIVE` | `P`, `R`, `N`, `D` |
+| gear | `GEAR_1`~`GEAR_9` | `D` |
+| gear | `GEAR_UNKNOWN` | 직전 값 유지 |
+| turnSignal | `OFF`, `LEFT`, `RIGHT` | 같은 이름. 콘솔의 Blink와 Flash는 둘 다 `LEFT`/`RIGHT`로 나온다 |
+| tbt.turn | `TURN_LEFT`, `TURN_SHARP_L` | `LEFT` |
+| tbt.turn | `TURN_RIGHT`, `TURN_SHARP_R` | `RIGHT` |
+| tbt.turn | `TURN_UTURN` | `UTURN` |
+| tbt.turn | `TURN_STRAIGHT` | `STRAIGHT` |
+| tbt.turn | 그 밖의 값 (`TURN_KEEP_*`, 나들목, 고가, 지하차도, 회전교차로 등) | `OTHER` |
 
 TrafficLight: `{ "phase": "RED", "remainSec": 12 }` (remainSec는 Int?, 모르면 null)
 
@@ -334,11 +349,13 @@ S2와 같고, turnSignal만 모든 프레임에서 OFF.
 ## 5. 아직 정하지 않은 것
 
 - [ ] 30m 단순화(30m 지점 한 번만 판정)를 팀이 받아들이는가
-- [ ] 핸들 각도가 SDK에서 숫자로 나오는가 (정현우 에뮬레이터 확인 중). R1은 진행 방향만 쓰므로 영향 없음. R2 설계에 영향
-- [ ] TBT 남은 거리가 몇 초마다 갱신되는가. 너무 드물면 50m·30m 지점을 건너뛸 수 있음
+- [x] 핸들 각도가 SDK에서 숫자로 나오는가: 에뮬레이터에서 Float로 나온다
+- [ ] 핸들 각도의 좌우 부호. 콘솔에 -90을 넣으면 SDK는 +90을 준다. 실제 왼쪽이 어느 쪽인지 확인 필요. R1은 진행 방향만 쓰므로 영향 없음. R2 설계 전에 정한다
+- [ ] TBT 남은 거리가 몇 초마다 갱신되는가. 에뮬레이터 내비는 위치가 움직이지 않아 측정 불가, 실주행 필요. 너무 드물면 50m·30m 지점을 건너뛸 수 있음
 - [ ] 회전 완료를 진행 방향 변화 대신 TBT 변화로 볼지
-- [ ] 실제 headingDeg 기준(북쪽 0°, 시계 방향)이 Fused Location과 같은가
-- [ ] TBT 남은 거리의 기준점이 무엇인가. 법령의 30m 기준점은 교차로 가장자리(시행령 별표 2)라서 기준점이 교차로 중심이면 판정이 늦어진다
+- [ ] 실제 headingDeg 기준(북쪽 0°, 시계 방향)이 Fused Location과 같은가. 에뮬레이터에서는 위치를 움직여도 0.0으로만 나와 측정 불가, 실주행 필요
+- [ ] TBT 남은 거리의 기준점이 무엇인가. 에뮬레이터에서 측정 불가, 실주행 필요. 법령의 30m 기준점은 교차로 가장자리(시행령 별표 2)라서 기준점이 교차로 중심이면 판정이 늦어진다
+- [ ] HAZARD를 Light SDK에서 어떻게 읽는가. 아직 측정하지 않음
 
 ---
 

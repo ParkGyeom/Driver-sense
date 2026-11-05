@@ -2,13 +2,14 @@
 
 ## 이 프로젝트는
 
+- 저장소는 모노레포다. `engine/`(박겸), `app/`(정현우), `server/`(김종범)를 함께 둔다. 이 문서는 `engine/` 작업 기준이고, 담당자 동의 없이 다른 폴더를 고치지 않는다.
 - 현대차·기아 차량용 앱 공모전(Pleos Playground) 출품작 "깜빡코치"(가칭)의 **판정 엔진**이다.
 - 깜빡코치는 차량 중앙 화면에서 돌아가는 운전 법규 습관 코치 앱이다. 깜빡이, 진행 방향, 속도, 내비의 다음 회전 정보 같은 차량 신호로 운전 습관을 진단하고, 단속되기 전에 음성으로 미리 알려준다.
 - 이 엔진은 차량 신호를 한 프레임씩 받아서 두 가지를 내보낸다.
   1. 안내 요청 (GUIDE): 지금 운전자에게 음성으로 말할 문구
   2. 판정 이벤트 (EVENT): 법규를 지켰는지(KEPT), 놓쳤는지(MISSED)
 - 팀 구성
-  - 박겸 (AI): 이 엔진 담당. 이 저장소의 주인.
+  - 박겸 (AI): 이 엔진 담당.
   - 정현우 (프론트·팀장): 차량 앱(Android Automotive, Kotlin). 이 엔진을 앱에 붙인다.
   - 김종범 (백엔드): Spring 서버. 판정 이벤트를 저장하고 리포트를 집계한다.
   - 송대현 (PM): 기획서와 PT.
@@ -24,7 +25,7 @@
 
 ## 기술 제약
 
-- **순수 Kotlin JVM 라이브러리**. Android 의존성 금지. 에뮬레이터 없이 개발·테스트하기 위해서다. 나중에 앱에서 `implementation(project(":engine"))`로 가져다 쓴다.
+- `engine/`은 **순수 Kotlin JVM 라이브러리**. Android 의존성 금지. 에뮬레이터 없이 개발·테스트하기 위해서다. 나중에 앱에서 `implementation(project(":engine"))`로 가져다 쓴다.
 - Gradle Kotlin DSL, `jvmToolchain(17)`.
 - 의존성은 `kotlinx-serialization-json`과 `kotlin-test`(JUnit 5)만 쓴다. 다른 라이브러리가 필요하면 추가하기 전에 먼저 물어본다.
 - 엔진은 현재 시각, 랜덤, 파일, 네트워크에 의존하지 않는다. 같은 프레임을 넣으면 항상 같은 출력이 나와야 한다. (시나리오 테스트와 PT 데모 재현을 위해)
@@ -47,6 +48,9 @@ engine/
     ScenarioTest.kt
 scenarios/      시나리오 JSON (테스트와 PT 데모 공용)
 data/           법규 룰 테이블, Q&A 평가셋
+app/            차량 앱 (정현우)
+server/         Spring 서버 (김종범)
+apk/            제출용 APK
 docs/
   proposal.md
   spec.md

@@ -82,11 +82,25 @@ class CoachStateTest {
     fun `새 주행은 카드만 비우고 횟수와 기록은 남긴다`() {
         val state = CoachState(tone = Tone.WARN, message = "안내", kept = 1, total = 2, logs = listOf("기록"))
 
-        val reset = state.resetDrive()
+        val reset = state.resetDrive("S2")
 
         assertEquals(Tone.IDLE, reset.tone)
         assertEquals("", reset.message)
         assertEquals(1 to 2, reset.kept to reset.total)
         assertEquals(listOf("기록"), reset.logs)
+    }
+
+    @Test
+    fun `깜빡이를 켜면 안내 문구가 바뀌고 켜둔 채 시작한 주행에는 문구가 없다`() {
+        val guide = Guide(4000, RuleId.R1, "좌회전 곧이에요, 깜빡이 켜세요")
+        val near = Tbt(TurnType.LEFT, 48)
+
+        val guided = CoachState().resetDrive("S2").next(frame(TurnSignal.OFF, near), listOf(guide))
+        val answered = guided.next(frame(TurnSignal.LEFT, near), emptyList())
+        assertEquals("깜빡이를 켰어요", answered.message)
+        assertEquals(listOf("S2 4초 음성 안내"), answered.logs)
+
+        val quiet = CoachState().resetDrive("S1").next(frame(TurnSignal.LEFT, near), emptyList())
+        assertEquals("", quiet.message)
     }
 }

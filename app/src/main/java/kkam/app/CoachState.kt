@@ -18,7 +18,11 @@ data class CoachState(
     val distanceLabel: String = "",
     val signalLabel: String = "",
     val badge: String = "",
-    val message: String = "",
+    val message: String = "시나리오를 고르면 재생을 시작해요",
+    /** 지금 보이는 문구가 음성 안내이면 true. 깜빡이를 켜면 문구를 바꾼다. */
+    val guideShowing: Boolean = false,
+    /** 기록 앞에 붙는 주행 이름. 예: S2 */
+    val driveLabel: String = "",
     val kept: Int = 0,
     val total: Int = 0,
     val logs: List<String> = emptyList(),
@@ -31,7 +35,10 @@ fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>): CoachState
         copy(tone = Tone.IDLE, turnLabel = "다음 회전 대기", distanceLabel = "", signalLabel = "", badge = "")
     } else {
         val signalOk = frame.turnSignal.matches(turn)
+        val guideAnswered = signalOk && guideShowing
         copy(
+            message = if (guideAnswered) "깜빡이를 켰어요" else message,
+            guideShowing = guideShowing && !guideAnswered,
             tone = if (signalOk) Tone.OK else Tone.WARN,
             turnLabel = turn.label(),
             distanceLabel = "${frame.tbt?.distanceM} m",
@@ -43,13 +50,15 @@ fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>): CoachState
         state = when (output) {
             is Guide -> state.copy(
                 message = output.text,
-                logs = state.logs + "${output.t.seconds()} 음성 안내",
+                guideShowing = true,
+                logs = state.logs + state.logLine(output.t, "음성 안내"),
             )
             is Event -> state.copy(
                 message = output.message(),
+                guideShowing = false,
                 kept = state.kept + if (output.result == Result.KEPT) 1 else 0,
                 total = state.total + 1,
-                logs = state.logs + "${output.t.seconds()} ${output.turn.label()} ${output.result.label()}",
+                logs = state.logs + state.logLine(output.t, "${output.turn.label()} ${output.result.label()}"),
             )
         }
     }
@@ -57,7 +66,11 @@ fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>): CoachState
 }
 
 /** 새 시나리오를 시작할 때 쓴다. 오늘 횟수와 기록은 남긴다. */
-fun CoachState.resetDrive(): CoachState = CoachState(kept = kept, total = total, logs = logs)
+fun CoachState.resetDrive(label: String): CoachState =
+    CoachState(message = "", driveLabel = label, kept = kept, total = total, logs = logs)
+
+private fun CoachState.logLine(t: Long, text: String): String =
+    listOf(driveLabel, t.seconds(), text).filter { it.isNotEmpty() }.joinToString(" ")
 
 private fun TurnSignal.matches(turn: TurnType): Boolean =
     (turn == TurnType.LEFT && this == TurnSignal.LEFT) || (turn == TurnType.RIGHT && this == TurnSignal.RIGHT)

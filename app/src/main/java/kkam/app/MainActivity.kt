@@ -48,7 +48,7 @@ class MainActivity : Activity() {
     private fun play(fileName: String) {
         speaker.stop()
         engine = Engine()
-        state = state.resetDrive()
+        state = state.resetDrive(fileName.substringBefore('_'))
         render()
         highlight(fileName)
         player.play(fileName, onFrame = ::onFrame, onEnd = { highlight(null) })
@@ -85,7 +85,7 @@ class MainActivity : Activity() {
         badge.text = state.badge
         badge.visibility = if (state.badge.isEmpty()) android.view.View.INVISIBLE else android.view.View.VISIBLE
         badge.background = rounded(accent, radiusDp = 999)
-        message.text = state.message.ifEmpty { "시나리오를 고르면 재생을 시작해요" }
+        message.text = state.message
         today.text = "${state.kept} / ${state.total}"
         progress.max = state.total.coerceAtLeast(1)
         progress.progress = state.kept

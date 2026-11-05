@@ -20,8 +20,8 @@
 필요 환경: JDK 17
 
 ```bash
-git clone https://github.com/ParkGyeom/kkam-coach.git
-cd kkam-coach
+git clone https://github.com/ParkGyeom/Driver-sense.git
+cd Driver-sense
 ./gradlew test
 ```
 

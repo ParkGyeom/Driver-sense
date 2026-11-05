@@ -1,8 +1,8 @@
 {
   "name": "S2_좌회전_안내후_켬",
-  "description": "50m 안내를 듣고 왼쪽 깜빡이를 켠 뒤 좌회전. 안내 후 지킴.",
+  "description": "안내를 듣고 왼쪽 깜빡이를 켠 뒤 좌회전. 안내 후 지킴.",
   "expect": [
-    {"type": "GUIDE", "t": 5000, "rule": "R1"},
+    {"type": "GUIDE", "t": 4000, "rule": "R1"},
     {"type": "EVENT", "t": 11000, "rule": "R1", "result": "KEPT", "guided": true}
   ],
   "frames": [

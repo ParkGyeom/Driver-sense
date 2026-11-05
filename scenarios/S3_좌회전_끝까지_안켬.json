@@ -2,7 +2,7 @@
   "name": "S3_좌회전_끝까지_안켬",
   "description": "안내를 듣고도 깜빡이를 켜지 않고 좌회전. 안내 후 놓침.",
   "expect": [
-    {"type": "GUIDE", "t": 5000, "rule": "R1"},
+    {"type": "GUIDE", "t": 4000, "rule": "R1"},
     {"type": "EVENT", "t": 11000, "rule": "R1", "result": "MISSED", "guided": true}
   ],
   "frames": [

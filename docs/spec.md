@@ -1,6 +1,6 @@
 # 깜빡코치 판정 엔진 명세
 
-v0.1 · 2026-11-05 초안 · 담당 박겸
+v0.1 · 2026-11-05 초안, 상태 머신 리뷰 반영 · 담당 박겸
 
 이 문서가 기준이다. 코드와 다르면 이 문서를 먼저 고친다.
 
@@ -136,35 +136,51 @@ for (out in outputs) {
 | 이름 | 값 | 뜻 |
 | --- | --- | --- |
 | APPROACH_START_M | 100 | 다음 회전까지 이 거리 안이면 감시를 시작한다 |
-| GUIDE_AT_M | 50 | 이 거리 안인데 깜빡이가 꺼져 있으면 안내한다 |
+| GUIDE_LEAD_MS | 4000 | 판정 지점에 도착하기 이만큼 전에 안내한다. 음성 재생과 반응 시간을 합한 초기값이며 TTS 실측 후 조정한다 |
+| GUIDE_MIN_M | 50 | 안내 거리의 최솟값 |
+| GUIDE_MAX_M | 100 | 안내 거리의 최댓값 |
 | CHECK_AT_M | 30 | 판정 지점 |
 | TURN_DONE_DEG | 60 | 진행 방향이 이만큼 바뀌면 회전이 끝난 것으로 본다 |
-| TURN_TIMEOUT_MS | 30000 | 판정 후 이 시간 안에 회전이 안 끝나면 기록 없이 취소한다 |
+| TURN_TIMEOUT_MS | 30000 | 판정 후 주행 시간(speedKph > 0)이 이만큼 쌓여도 회전이 안 끝나면 기록 없이 취소한다 |
+
+안내 거리: guideDistance(speedKph) = CHECK_AT_M + speedKph ÷ 3.6 × GUIDE_LEAD_MS ÷ 1000 을 GUIDE_MIN_M 이상 GUIDE_MAX_M 이하로 자른 값.
+
+| 속도 | 안내 거리 |
+| --- | --- |
+| 15km/h | 50m (최솟값) |
+| 30km/h | 약 63m |
+| 40km/h | 약 74m |
+| 60km/h | 약 97m |
+| 80km/h | 100m (최댓값) |
 
 ### 3.2 상태
 
 | 상태 | 뜻 | 기억하는 값 |
 | --- | --- | --- |
 | IDLE | 대기 | 없음 |
-| APPROACHING | 회전 지점에 다가가는 중 | targetTurn(LEFT/RIGHT), guided, startHeading |
-| TURNING | 판정을 마치고 회전이 끝나길 기다리는 중 | targetTurn, guided, signalOk, startHeading, checkedAt |
+| APPROACHING | 회전 지점에 다가가는 중 | targetTurn(LEFT/RIGHT), guided |
+| TURNING | 판정을 마치고 회전이 끝나길 기다리는 중 | targetTurn, guided, signalOk, startHeading, movingMs, lastT |
 
-- startHeading: APPROACHING에 들어갈 때의 headingDeg
 - signalOk: 30m 지점에서 해당 방향 깜빡이가 켜져 있었는가
-- checkedAt: 30m 판정을 한 프레임의 t
+- startHeading: 30m 판정을 한 프레임의 headingDeg. 회전 전 곡선 구간의 영향을 줄이기 위해 판정 시점 값을 쓴다
+- movingMs: 판정 후 쌓인 주행 시간. 신호 대기 시간은 세지 않는다
+- lastT: 직전 프레임의 t
+
+TURNING에서는 전이표를 검사하기 전에 프레임마다 시간을 먼저 갱신한다. speedKph > 0이면 movingMs에 (t − lastT)를 더하고, 속도와 상관없이 lastT = t로 바꾼다.
 
 ### 3.3 전이표
 
-한 프레임마다 현재 상태의 행을 **위에서부터** 검사하고, **처음 맞는 행 하나만** 적용한다.
+한 프레임마다 현재 상태의 행을 **위에서부터** 검사하고, **처음 맞는 행 하나만** 적용한다. 맞는 행이 없으면 상태를 유지하고 출력도 없다.
 
 | # | 현재 | 조건 | 다음 | 출력 |
 | --- | --- | --- | --- | --- |
-| 1 | IDLE | tbt.turn이 LEFT 또는 RIGHT이고 tbt.distanceM ≤ 100 | APPROACHING (targetTurn = tbt.turn, guided = false, startHeading = headingDeg) | 없음 |
+| 0 | 모든 상태 | gear가 P 또는 R | IDLE | 없음 (주차·후진으로 보고 취소) |
+| 1 | IDLE | tbt.turn이 LEFT 또는 RIGHT이고 tbt.distanceM ≤ 100 | APPROACHING (targetTurn = tbt.turn, guided = false) | 없음 |
 | 2 | APPROACHING | tbt가 null이거나 tbt.turn ≠ targetTurn | IDLE | 없음 (경로 재탐색으로 보고 취소) |
-| 3 | APPROACHING | tbt.distanceM ≤ 30 | TURNING (signalOk = turnSignal가 targetTurn과 같은 방향, checkedAt = t) | 없음 |
-| 4 | APPROACHING | 30 < tbt.distanceM ≤ 50 이고 turnSignal이 targetTurn과 다르고 guided == false | APPROACHING (guided = true) | GUIDE |
+| 3 | APPROACHING | tbt.distanceM ≤ 30 | TURNING (signalOk = turnSignal가 targetTurn과 같은 방향, startHeading = headingDeg, movingMs = 0, lastT = t) | 없음 |
+| 4 | APPROACHING | 30 < tbt.distanceM ≤ guideDistance(speedKph) 이고 turnSignal이 targetTurn과 다르고 guided == false | APPROACHING (guided = true) | GUIDE |
 | 5 | TURNING | headingDiff(startHeading, headingDeg) ≥ 60 | IDLE | EVENT (result = signalOk면 KEPT 아니면 MISSED, guided 그대로) |
-| 6 | TURNING | t − checkedAt > 30000 | IDLE | 없음 (회전하지 않은 것으로 보고 취소) |
+| 6 | TURNING | movingMs > 30000 | IDLE | 없음 (회전하지 않은 것으로 보고 취소) |
 
 - "turnSignal이 targetTurn과 같은 방향": targetTurn이 LEFT면 turnSignal == LEFT, RIGHT면 turnSignal == RIGHT. HAZARD(비상등)는 같은 방향으로 치지 않는다.
 - TURNING에서는 tbt를 보지 않는다. 회전 지점을 지나면 내비가 다음 안내로 바뀌기 때문이다.
@@ -173,10 +189,10 @@ for (out in outputs) {
 
 ### 3.4 예시 흐름 (시나리오 S2)
 
-1. t=2000: 좌회전 90m → APPROACHING
-2. t=5000: 48m인데 깜빡이 꺼짐 → GUIDE (guided = true)
+1. t=2000: 좌회전 90m → APPROACHING (38km/h의 안내 거리는 약 72m라 아직 안내하지 않음)
+2. t=4000: 60m, 32km/h의 안내 거리는 약 66m, 깜빡이 꺼짐 → GUIDE (guided = true)
 3. t=6000: 운전자가 왼쪽 깜빡이를 켬
-4. t=7000: 28m, 깜빡이 켜짐 → TURNING (signalOk = true)
+4. t=7000: 28m, 깜빡이 켜짐 → TURNING (signalOk = true, startHeading = 90)
 5. t=11000: 진행 방향 90° → 30°, 60° 바뀜 → EVENT (KEPT, guided = true) → IDLE
 
 ---
@@ -216,7 +232,7 @@ for (out in outputs) {
 
 기대 출력: EVENT t=11000, R1, KEPT, guided = false
 
-### 4.3 S2: 좌회전, 50m 안내 듣고 켬
+### 4.3 S2: 좌회전, 안내 듣고 켬
 
 | t (ms) | tbt | speedKph | turnSignal | headingDeg |
 | --- | --- | --- | --- | --- |
@@ -232,7 +248,7 @@ for (out in outputs) {
 
 기대 출력
 
-1. GUIDE t=5000, R1
+1. GUIDE t=4000, R1
 2. EVENT t=11000, R1, KEPT, guided = true
 
 ### 4.4 S3: 좌회전, 끝까지 안 켬
@@ -241,7 +257,7 @@ S2와 같고, turnSignal만 모든 프레임에서 OFF.
 
 기대 출력
 
-1. GUIDE t=5000, R1
+1. GUIDE t=4000, R1
 2. EVENT t=11000, R1, MISSED, guided = true
 
 ### 4.5 추가 시나리오 (tasks 단계 6)
@@ -249,8 +265,39 @@ S2와 같고, turnSignal만 모든 프레임에서 OFF.
 | 이름 | 내용 | 기대 출력 |
 | --- | --- | --- |
 | S4_우회전_처음부터_켬 | S1과 같되 tbt는 RIGHT, turnSignal은 RIGHT, headingDeg는 90 → 100 → 150 → 180 (우회전이라 커짐) | EVENT R1 KEPT guided=false (진행 방향이 60° 바뀌는 프레임에서) |
-| S5_좌회전_반대쪽_깜빡이 | S2와 같되 깜빡이를 LEFT가 아니라 RIGHT로 켬 | GUIDE t=5000, EVENT R1 MISSED guided=true |
+| S5_좌회전_반대쪽_깜빡이 | S2와 같되 깜빡이를 LEFT가 아니라 RIGHT로 켬 | GUIDE t=4000, EVENT R1 MISSED guided=true |
 | S6_접근중_재탐색 | S1처럼 다가가다 t=4000(60m) 다음 프레임에서 tbt가 null이 되고, 이후 직진 | 출력 없음 |
+| S7_신호대기_후_좌회전 | 4.6 표 | GUIDE t=4000, EVENT t=72000 R1 MISSED guided=true |
+| S8_판정후_주차 | 4.7 표 | 출력 없음 |
+
+### 4.6 S7: 판정 후 신호 대기
+
+30m에서 깜빡이가 꺼져 있었으므로, 대기 중에 켜도 MISSED다. 대기 시간은 타임아웃에 세지 않고 guided도 유지된다.
+
+| t (ms) | tbt | speedKph | turnSignal | headingDeg |
+| --- | --- | --- | --- | --- |
+| 0 | LEFT 120m | 40 | OFF | 90 |
+| 2000 | LEFT 90m | 38 | OFF | 90 |
+| 4000 | LEFT 60m | 32 | OFF | 90 |
+| 7000 | LEFT 28m | 22 | OFF | 90 |
+| 8000 | LEFT 20m | 0 | OFF | 90 |
+| 38000 | LEFT 20m | 0 | LEFT | 90 |
+| 68000 | LEFT 20m | 0 | LEFT | 90 |
+| 70000 | LEFT 10m | 15 | LEFT | 80 |
+| 72000 | 다음 안내 | 15 | LEFT | 30 |
+
+### 4.7 S8: 판정 후 주차
+
+회전 지점 앞에서 주차하면 기록 없이 취소한다. 다시 출발해 방향이 달라져도 EVENT가 나오지 않아야 한다.
+
+| t (ms) | tbt | speedKph | gear | turnSignal | headingDeg |
+| --- | --- | --- | --- | --- | --- |
+| 0 | LEFT 120m | 40 | D | OFF | 90 |
+| 2000 | LEFT 90m | 38 | D | LEFT | 90 |
+| 4000 | LEFT 60m | 32 | D | LEFT | 90 |
+| 7000 | LEFT 28m | 22 | D | LEFT | 90 |
+| 9000 | LEFT 25m | 0 | P | LEFT | 90 |
+| 60000 | 다음 안내 | 10 | D | OFF | 30 |
 
 ---
 

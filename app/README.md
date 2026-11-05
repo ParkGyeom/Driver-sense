@@ -13,9 +13,26 @@ Pleos Connect 차량 앱을 이 폴더에 만듭니다. 공모전 개발 환경�
 3. 루트 `build.gradle.kts`의 `plugins`에 Android 플러그인을 `apply false`로 선언합니다.
 4. `app/build.gradle.kts`의 `dependencies`에 `implementation(project(":engine"))`을 추가합니다.
 
-엔진은 AGP 9.5.0, Gradle 9.7.1, compileSdk 36, minSdk 28, Java 17 조합의 임시 앱에서 빌드를 확인했습니다. 에뮬레이터 실행과 Pleos SDK 연동은 아직 확인하지 않았습니다.
+엔진은 AGP 9.5.0, Gradle 9.7.1, compileSdk 36, minSdk 28, Java 17 조합의 임시 앱에서 빌드를 확인했습니다. 같은 조합의 확인용 앱에 Pleos SDK를 넣어 에뮬레이터에서 실행했습니다. 엔진과 Pleos SDK를 함께 연결하는 것은 아직 확인하지 않았습니다.
 
 버전을 바꿔야 하면 루트의 Gradle·Kotlin 버전을 앱에 맞춰 조정합니다.
+
+## Pleos SDK 연동
+
+Maven 저장소 `https://nexus-playground.pleos.ai/repository/maven-releases/`를 추가합니다. 확인용 앱에서 쓴 버전은 아래와 같습니다.
+
+| 입력 | 가져오는 방법 | 권한 |
+| --- | --- | --- |
+| 방향지시등, 핸들, 기어, 브레이크 | `ai.pleos.playground:Vehicle:2.3.2` | `pleos.car.permission.CAR_LIGHTS`, `CAR_DRIVE`, `CAR_INFO` |
+| 속도 | `android.car`의 `CarPropertyManager`, `PERF_VEHICLE_SPEED` | `android.car.permission.CAR_SPEED` |
+| 위치, 진행 방향 | `ai.pleos.playground:FusedLocation:1.1.3` | `pleos.car.permission.FUSED_LOCATION` |
+| TBT | `ai.pleos.playground:NaviHelper:3.0.5` | `pleos.car.permission.NAVI_ROUTE` |
+
+속도는 Vehicle SDK에 없습니다. 앱에서 `useLibrary("android.car")`를 선언합니다.
+
+SDK 값을 엔진 값으로 바꾸는 규칙은 [spec 2.1](../docs/spec.md)을 따릅니다.
+
+Virtual Console은 `adb forward tcp:8088 tcp:8088` 뒤 `http://127.0.0.1:8088/`을 브라우저로 열어 둔 동안만 값을 바꿀 수 있습니다.
 
 ## 엔진 사용법
 

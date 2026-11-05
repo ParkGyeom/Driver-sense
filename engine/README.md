@@ -1,0 +1,121 @@
+# 깜빡코치 판정 엔진
+
+차량 신호를 한 프레임씩 받아 안내 요청(GUIDE)과 판정 이벤트(EVENT)를 돌려주는 순수 Kotlin 라이브러리입니다. Android에 의존하지 않아서 에뮬레이터 없이 테스트할 수 있습니다.
+
+**현재 범위 (v0.1)**: R1(회전 전 깜빡이)만 동작합니다. R2, R3, 모드는 이후 버전에서 추가합니다. 입출력 형식의 기준은 [docs/spec.md](../docs/spec.md)입니다.
+
+## 앱에서 쓰기
+
+앱 모듈의 의존성에 추가합니다. 프로젝트 설정은 [app/README.md](../app/README.md)를 참고합니다.
+
+```kotlin
+dependencies {
+    implementation(project(":engine"))
+}
+```
+
+필요 환경: JDK 17 (`jvmToolchain(17)`). `kotlinx-serialization-json`은 엔진을 통해 함께 들어옵니다.
+
+## 사용법
+
+프레임을 넣고, 나온 출력을 `when`으로 나누면 됩니다.
+
+```kotlin
+import kkam.engine.Engine
+import kkam.engine.model.Event
+import kkam.engine.model.Gear
+import kkam.engine.model.Guide
+import kkam.engine.model.SignalFrame
+import kkam.engine.model.Tbt
+import kkam.engine.model.TurnSignal
+import kkam.engine.model.TurnType
+
+val engine = Engine()
+
+// 차량 신호가 들어올 때마다 호출합니다.
+val frame = SignalFrame(
+    t = System.currentTimeMillis(),
+    speedKph = 28.0,
+    gear = Gear.D,
+    steeringDeg = null,        // SDK에서 안 나오면 null
+    turnSignal = TurnSignal.OFF,
+    brake = false,
+    lat = 37.5501,
+    lon = 127.0732,
+    headingDeg = 90.0,
+    tbt = Tbt(TurnType.LEFT, 48), // 경로 안내 중이 아니면 null
+    light = null,              // 신호 정보가 없으면 null
+)
+
+for (output in engine.onFrame(frame)) {
+    when (output) {
+        is Guide -> speak(output.text)    // TTS + 코치 카드
+        is Event -> saveAndShow(output)   // 리포트 + 서버 저장
+    }
+}
+```
+
+주의할 점
+
+- 엔진 객체 하나를 주행 내내 유지합니다. 프레임마다 새로 만들면 상태가 사라져 아무것도 판정하지 못합니다.
+- `onFrame`은 항상 같은 스레드에서 호출합니다.
+- 한 프레임의 출력은 0개, 1개 또는 여러 개일 수 있습니다.
+- 프레임은 1초에 1번 이상 넣습니다. 시나리오의 프레임 간격과 비슷한 값이며, 실제 주기는 에뮬레이터 확인 후 확정합니다.
+- 숫자 필드의 값이 잠시 없으면 임의로 0을 넣지 않습니다. `headingDeg`는 마지막 유효값을 유지합니다.
+- `Event.id`는 엔진 객체마다 `evt-1`부터 다시 시작합니다. 서버 저장 키로 쓸 수 없습니다.
+
+## 시나리오로 데모 재생하기
+
+시나리오는 녹화된 주행 신호입니다. 앱의 PT 데모(F9)는 실제 신호 대신 이 파일을 재생합니다.
+
+1. 루트의 `scenarios/*.json`을 `app/src/main/assets/scenarios/`로 복사합니다.
+2. 파일을 읽어 프레임을 시간 순서대로 넣습니다.
+
+```kotlin
+import kkam.engine.Engine
+import kkam.engine.model.Scenario
+import kotlinx.coroutines.delay
+import kotlinx.serialization.json.Json
+
+suspend fun replay(context: Context, fileName: String) {
+    val text = context.assets.open("scenarios/$fileName").bufferedReader().use { it.readText() }
+    val scenario = Json.decodeFromString(Scenario.serializer(), text)
+
+    val engine = Engine()
+    var previousT = 0L
+    for (frame in scenario.frames) {
+        delay(frame.t - previousT) // 녹화된 간격만큼 기다립니다.
+        previousT = frame.t
+
+        showVehicleSignals(frame)  // 데모 화면 왼쪽: 차량 신호 값
+        handleOutputs(engine.onFrame(frame)) // 위의 when 처리와 같습니다.
+    }
+}
+```
+
+`delay`는 앱의 `kotlinx-coroutines-android` 의존성을 사용합니다. 엔진에는 포함되어 있지 않습니다. `expect` 필드는 테스트용이라 재생에는 쓰지 않습니다.
+
+| 시나리오 | 내용 | 나와야 하는 출력 |
+| --- | --- | --- |
+| S1 | 좌회전, 처음부터 깜빡이 켬 | KEPT |
+| S2 | 좌회전, 안내 듣고 켬 | GUIDE, KEPT |
+| S3 | 좌회전, 끝까지 안 켬 | GUIDE, MISSED |
+| S4 | 우회전, 처음부터 켬 | KEPT |
+| S5 | 좌회전, 반대쪽 깜빡이 | GUIDE, MISSED |
+| S6 | 접근 중 재탐색 | 없음 |
+| S7 | 판정 후 신호 대기 | GUIDE, MISSED |
+| S8 | 판정 후 주차 | 없음 |
+| S9 | 재탐색 후 우회전 | KEPT |
+| S10 | 판정 후 회전 없이 주행 | 없음 |
+
+## 개발
+
+```bash
+./gradlew test
+```
+
+시나리오 테스트만 실행합니다.
+
+```bash
+./gradlew test --tests "*ScenarioTest*"
+```

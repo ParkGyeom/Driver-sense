@@ -15,4 +15,9 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+
+    // 시나리오 폴더 위치를 테스트에 알려주고, JSON이 바뀌면 테스트를 다시 실행한다.
+    val scenariosDir = rootProject.file("scenarios")
+    systemProperty("scenarios.dir", scenariosDir.path)
+    inputs.dir(scenariosDir)
 }

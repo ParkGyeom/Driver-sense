@@ -1,0 +1,221 @@
+package kkam.app
+
+import ai.pleos.playground.location.fused.FusedLocation
+import ai.pleos.playground.location.fused.listener.FusedLocationListener
+import ai.pleos.playground.location.fused.model.LocationData
+import ai.pleos.playground.navi.constants.NaviErrorCode
+import ai.pleos.playground.navi.data.TBTInfo
+import ai.pleos.playground.navi.helper.NaviHelper
+import ai.pleos.playground.navi.helper.listener.NaviHelperEventListener
+import ai.pleos.playground.vehicle.Vehicle
+import ai.pleos.playground.vehicle.constant.area.TurnSignalValue
+import ai.pleos.playground.vehicle.constant.control.VehicleGear
+import ai.pleos.playground.vehicle.listener.BrakePedalStatusListener
+import ai.pleos.playground.vehicle.listener.GearSelectionListener
+import ai.pleos.playground.vehicle.listener.SteeringWheelAngleListener
+import ai.pleos.playground.vehicle.listener.TurnSignalStateListener
+import android.car.Car
+import android.car.VehiclePropertyIds
+import android.car.hardware.CarPropertyValue
+import android.car.hardware.property.CarPropertyManager
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import kkam.engine.model.Gear
+import kkam.engine.model.SignalFrame
+import kkam.engine.model.Tbt
+import kkam.engine.model.TurnSignal
+
+/**
+ * 차량 신호를 모아 1초에 한 번 [SignalFrame]을 만든다.
+ *
+ * SDK 콜백은 다른 스레드에서 올 수 있어서 모두 메인 스레드로 넘긴다. Java의 synchronized 대신
+ * 값을 만지는 스레드를 하나로 고정한 것이다. 값이 잠시 없으면 직전 값을 유지하고(spec 2.1),
+ * 필수 값이 한 번도 안 들어왔으면 프레임을 만들지 않는다.
+ */
+class SignalCollector(context: Context) {
+    private val appContext = context.applicationContext
+    private val main = Handler(Looper.getMainLooper())
+    private var onFrame: ((SignalFrame) -> Unit)? = null
+
+    private var speedKph: Double? = null
+    private var gear: Gear? = null
+    private var steeringDeg: Double? = null
+    private var turnSignal: TurnSignal? = null
+    private var brake: Boolean? = null
+    private var position: LocationData? = null
+    private var tbt: Tbt? = null
+
+    private var vehicle: Vehicle? = null
+    private var navi: NaviHelper? = null
+    private var fused: FusedLocation? = null
+    private var car: Car? = null
+    private var propertyManager: CarPropertyManager? = null
+
+    private val tick = object : Runnable {
+        override fun run() {
+            navi?.getTBTInfo()
+            snapshot()?.let { frame -> onFrame?.invoke(frame) }
+            main.postDelayed(this, FRAME_INTERVAL_MS)
+        }
+    }
+
+    fun start(onFrame: (SignalFrame) -> Unit) {
+        this.onFrame = onFrame
+        startSpeed()
+        startNavi()
+        startVehicleAndLocation()
+        main.post(tick)
+    }
+
+    fun stop() {
+        main.removeCallbacksAndMessages(null)
+        onFrame = null
+        propertyManager?.unregisterCallback(speedListener)
+        car?.disconnect()
+        navi?.let {
+            it.removeListener(naviListener)
+            it.release()
+        }
+        fused?.let {
+            it.unregisterFusedLocationCallback(locationListener)
+            it.release()
+        }
+        vehicle?.let {
+            it.getTurnSignal().unregisterTurnSignalState(turnSignalListener)
+            it.getSteeringWheel().unregisterSteeringWheelAngle(steeringListener)
+            it.getGear().unregisterGearSelection(gearListener)
+            it.getBrake().unregisterBrakePedalStatus(brakeListener)
+            it.release()
+        }
+        propertyManager = null
+        car = null
+        navi = null
+        fused = null
+        vehicle = null
+    }
+
+    private fun snapshot(): SignalFrame? {
+        val frame = SignalFrame(
+            t = System.currentTimeMillis(),
+            speedKph = speedKph ?: return null,
+            gear = gear ?: return null,
+            steeringDeg = steeringDeg,
+            turnSignal = turnSignal ?: return null,
+            brake = brake ?: return null,
+            lat = position?.latitude ?: return null,
+            lon = position?.longitude ?: return null,
+            headingDeg = position?.heading?.toDouble() ?: return null,
+            tbt = tbt,
+            light = null, // 신호 정보는 서버가 붙으면 채운다 (R3)
+        )
+        return frame
+    }
+
+    /** 속도는 Vehicle SDK에 없어서 CarPropertyManager로 읽는다. */
+    private fun startSpeed() {
+        val connected = Car.createCar(appContext) ?: return Log.w(TAG, "car service unavailable").let {}
+        car = connected
+        val manager = connected.getCarManager(Car.PROPERTY_SERVICE) as CarPropertyManager
+        propertyManager = manager
+        manager.registerCallback(speedListener, VehiclePropertyIds.PERF_VEHICLE_SPEED, SPEED_RATE_HZ)
+    }
+
+    private fun startNavi() {
+        val helper = NaviHelper(appContext)
+        navi = helper
+        helper.initialize(
+            { main.post { navi?.addListener(naviListener) } },
+            { error -> Log.w(TAG, "navi connect failed ${error.message}") },
+        )
+    }
+
+    /** 두 SDK의 initialize()는 완료 콜백이 없어서 연결될 시간을 두고 등록한다. */
+    private fun startVehicleAndLocation() {
+        val car = Vehicle(appContext).also { it.initialize() }
+        val location = FusedLocation(appContext).also { it.initialize() }
+        vehicle = car
+        fused = location
+        main.postDelayed({ registerVehicle(car); location.registerFusedLocationCallback(locationListener) }, SDK_CONNECT_DELAY_MS)
+    }
+
+    private fun registerVehicle(car: Vehicle) {
+        val onFailed = { error: Exception -> Log.w(TAG, "vehicle read failed ${error.message}").let {} }
+        car.getTurnSignal().getCurrentTurnSignalState({ value -> onMain { turnSignal = value?.toEngineTurnSignal() ?: turnSignal } }, onFailed)
+        car.getSteeringWheel().getCurrentSteeringWheelAngle({ value -> onMain { steeringDeg = value?.toDouble() ?: steeringDeg } }, onFailed)
+        car.getGear().getCurrentGearSelectionState({ value -> onMain { gear = value?.toEngineGear() ?: gear } }, onFailed)
+        car.getBrake().getCurrentBrakePedalStatus({ value -> onMain { brake = value ?: brake } }, onFailed)
+        car.getTurnSignal().registerTurnSignalState(turnSignalListener)
+        car.getSteeringWheel().registerSteeringWheelAngle(steeringListener)
+        car.getGear().registerGearSelection(gearListener)
+        car.getBrake().registerBrakePedalStatus(brakeListener)
+    }
+
+    private fun onMain(block: () -> Unit) {
+        main.post(block)
+    }
+
+    private val speedListener = object : CarPropertyManager.CarPropertyEventCallback {
+        override fun onChangeEvent(value: CarPropertyValue<*>) {
+            (value.value as? Float)?.let { mps -> onMain { speedKph = mpsToKph(mps) } }
+        }
+
+        override fun onErrorEvent(propertyId: Int, areaId: Int) {
+            Log.w(TAG, "speed read failed")
+        }
+    }
+
+    private val turnSignalListener = object : TurnSignalStateListener {
+        override fun onTurnSignalStateUpdated(value: TurnSignalValue?) =
+            onMain { turnSignal = value?.toEngineTurnSignal() ?: turnSignal }
+
+        override fun onFailed(e: Exception) = logFailure("turn signal", e)
+    }
+
+    private val steeringListener = object : SteeringWheelAngleListener {
+        override fun onSteeringWheelAngleUpdated(value: Float?) =
+            onMain { steeringDeg = value?.toDouble() ?: steeringDeg }
+
+        override fun onFailed(e: Exception) = logFailure("steering", e)
+    }
+
+    private val gearListener = object : GearSelectionListener {
+        override fun onSelected(value: VehicleGear?) = onMain { gear = value?.toEngineGear() ?: gear }
+
+        override fun onFailed(e: Exception) = logFailure("gear", e)
+    }
+
+    private val brakeListener = object : BrakePedalStatusListener {
+        override fun onBrakePedalStatusUpdated(value: Boolean?) = onMain { brake = value ?: brake }
+
+        override fun onFailed(e: Exception) = logFailure("brake", e)
+    }
+
+    private val locationListener = object : FusedLocationListener {
+        override fun onChanged(location: LocationData?) {
+            location?.let { onMain { position = it } }
+        }
+
+        override fun onError(exception: Exception) = logFailure("location", exception)
+    }
+
+    private val naviListener = object : NaviHelperEventListener {
+        override fun onTBTInfo(tbtInfoList: List<TBTInfo>) = onMain { tbt = tbtInfoList.toEngineTbt() }
+
+        override fun onError(errorCode: NaviErrorCode) {
+            Log.w(TAG, "navi error $errorCode")
+        }
+    }
+
+    private fun logFailure(name: String, error: Exception) {
+        Log.w(TAG, "$name failed ${error.message}")
+    }
+
+    private companion object {
+        const val TAG = "KkamCollector"
+        const val FRAME_INTERVAL_MS = 1000L
+        const val SDK_CONNECT_DELAY_MS = 2000L
+        const val SPEED_RATE_HZ = 1f
+    }
+}

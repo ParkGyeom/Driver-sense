@@ -7,6 +7,9 @@ import kkam.engine.model.Result
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnSignal
 import kkam.engine.model.TurnType
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /** 코치 카드 색. 주황은 켜세요, 파랑은 좋아요 (proposal UI-1). */
 enum class Tone { IDLE, WARN, OK }
@@ -70,7 +73,7 @@ fun CoachState.resetDrive(label: String): CoachState =
     CoachState(message = "", driveLabel = label, kept = kept, total = total, logs = logs)
 
 private fun CoachState.logLine(t: Long, text: String): String =
-    listOf(driveLabel, t.seconds(), text).filter { it.isNotEmpty() }.joinToString(" ")
+    listOf(driveLabel, t.timeLabel(), text).filter { it.isNotEmpty() }.joinToString(" ")
 
 private fun TurnSignal.matches(turn: TurnType): Boolean =
     (turn == TurnType.LEFT && this == TurnSignal.LEFT) || (turn == TurnType.RIGHT && this == TurnSignal.RIGHT)
@@ -100,4 +103,13 @@ private fun Event.message(): String = when {
     else -> "안내 없이 잘 켰어요"
 }
 
-private fun Long.seconds(): String = "${this / 1000}초"
+/** 시나리오의 t는 0부터 세고, 실제 주행의 t는 현재 시각이다. */
+private fun Long.timeLabel(): String =
+    if (this < EPOCH_START_MS) {
+        "${this / 1000}초"
+    } else {
+        CLOCK.format(Instant.ofEpochMilli(this))
+    }
+
+private const val EPOCH_START_MS = 1_000_000_000_000L
+private val CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.of("Asia/Seoul"))

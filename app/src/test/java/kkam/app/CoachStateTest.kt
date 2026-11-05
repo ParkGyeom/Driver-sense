@@ -79,6 +79,15 @@ class CoachStateTest {
     }
 
     @Test
+    fun `실제 주행의 기록은 한국 시각으로 표시한다`() {
+        val guide = Guide(1_793_897_400_000, RuleId.R1, "안내")
+
+        val state = CoachState().resetDrive("실차").next(frame(TurnSignal.OFF, null), listOf(guide))
+
+        assertEquals(listOf("실차 01:50:00 음성 안내"), state.logs)
+    }
+
+    @Test
     fun `새 주행은 카드만 비우고 횟수와 기록은 남긴다`() {
         val state = CoachState(tone = Tone.WARN, message = "안내", kept = 1, total = 2, logs = listOf("기록"))
 

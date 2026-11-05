@@ -71,6 +71,23 @@ class R1RuleTest {
         assertEquals(Result.MISSED, event.result)
     }
 
+    @Test
+    fun timeoutStartsOnlyAfterExactlyThirtySecondsOfDriving() {
+        val engine = Engine()
+        engine.onFrame(frame(t = 0, turn = TurnType.LEFT, distanceM = 90, signal = TurnSignal.LEFT))
+        engine.onFrame(frame(t = 1000, turn = TurnType.LEFT, distanceM = 20, signal = TurnSignal.LEFT))
+
+        // 주행 시간이 정확히 30000ms다. 초과가 아니므로 아직 취소되지 않는다.
+        val atLimit = engine.onFrame(frame(t = 31000, turn = TurnType.LEFT, distanceM = 15))
+        // 정차 중이라 주행 시간은 그대로이고, 여기서 회전이 끝난다.
+        val finished = engine.onFrame(
+            frame(t = 32000, turn = TurnType.LEFT, distanceM = 15, headingDeg = 30.0, speedKph = 0.0),
+        )
+
+        assertEquals(emptyList(), atLimit)
+        assertIs<Event>(finished.single())
+    }
+
     private fun firstGuide(turn: TurnType): Guide {
         val engine = Engine()
         engine.onFrame(frame(t = 0, turn = turn, distanceM = 90))
@@ -103,9 +120,10 @@ class R1RuleTest {
         headingDeg: Double = 90.0,
         lat: Double = 37.55,
         lon: Double = 127.07,
+        speedKph: Double = 20.0,
     ) = SignalFrame(
         t = t,
-        speedKph = 20.0,
+        speedKph = speedKph,
         gear = Gear.D,
         steeringDeg = 0.0,
         turnSignal = signal,

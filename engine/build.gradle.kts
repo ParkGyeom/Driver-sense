@@ -8,7 +8,8 @@ kotlin {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
+    // 앱이 시나리오 JSON을 읽을 때도 쓰므로 api로 공개한다.
+    api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
 
     testImplementation(kotlin("test"))
 }

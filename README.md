@@ -17,7 +17,7 @@
 
 ## 시작하기
 
-필요 환경: JDK 17
+필요 환경: JDK 17, Android SDK (`local.properties`의 `sdk.dir` 또는 `ANDROID_HOME`)
 
 ```bash
 git clone https://github.com/ParkGyeom/Driver-sense.git

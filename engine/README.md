@@ -68,8 +68,7 @@ for (output in engine.onFrame(frame)) {
 
 시나리오는 녹화된 주행 신호입니다. 앱의 PT 데모(F9)는 실제 신호 대신 이 파일을 재생합니다.
 
-1. 루트의 `scenarios/*.json`을 `app/src/main/assets/scenarios/`로 복사합니다.
-2. 파일을 읽어 프레임을 시간 순서대로 넣습니다.
+앱의 `ScenarioPlayer.kt`가 루트 `scenarios/`를 assets로 읽어 프레임을 시간 순서대로 넣습니다. 흐름은 아래와 같습니다.
 
 ```kotlin
 import kkam.engine.Engine
@@ -78,7 +77,7 @@ import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 
 suspend fun replay(context: Context, fileName: String) {
-    val text = context.assets.open("scenarios/$fileName").bufferedReader().use { it.readText() }
+    val text = context.assets.open(fileName).bufferedReader().use { it.readText() }
     val scenario = Json.decodeFromString(Scenario.serializer(), text)
 
     val engine = Engine()

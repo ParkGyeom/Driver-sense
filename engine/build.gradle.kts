@@ -21,4 +21,8 @@ tasks.test {
     val scenariosDir = rootProject.file("scenarios")
     systemProperty("scenarios.dir", scenariosDir.path)
     inputs.dir(scenariosDir)
+
+    val lawTable = rootProject.file("data/law_table.json")
+    systemProperty("law.table.path", lawTable.path)
+    inputs.file(lawTable)
 }

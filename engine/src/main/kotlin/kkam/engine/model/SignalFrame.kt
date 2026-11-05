@@ -9,7 +9,7 @@ data class SignalFrame(
     val t: Long,
     val speedKph: Double,
     val gear: Gear,
-    /** 핸들 각도. 왼쪽이 음수. SDK에서 안 나오면 null. */
+    /** 핸들 각도. 좌우 부호는 미정 (spec 5장). SDK에서 안 나오면 null. */
     val steeringDeg: Double?,
     val turnSignal: TurnSignal,
     val brake: Boolean,

@@ -19,6 +19,9 @@ class LawTableTest {
         "https://www.heraldk.com/article/2026042323450053921",
         "https://brunch.co.kr/@raiope/27",
         "https://www.reportera.co.kr/car/left-turn-signal-legal-requirement-traffic-safety/",
+        "https://www.law.go.kr/법령/도로교통법",
+        "https://www.law.go.kr/법령/도로교통법시행령",
+        "https://www.law.go.kr/법령/도로교통법시행규칙",
     )
 
     @Test
@@ -47,7 +50,7 @@ class LawTableTest {
     }
 
     @Test
-    fun sourcesComeFromProposal() {
+    fun sourcesAreApproved() {
         for (entry in table) {
             assertTrue(entry.sourceUrl in allowedSources, "출처 확인: ${entry.id}")
         }

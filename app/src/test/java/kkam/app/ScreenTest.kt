@@ -1,0 +1,27 @@
+package kkam.app
+
+import kkam.engine.model.Gear
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class ScreenTest {
+    @Test
+    fun `기어 P가 아니면 어떤 화면이든 주행 화면으로 돌아간다`() {
+        Screen.entries.forEach { assertEquals(Screen.DRIVE, nextScreen(it, Gear.D)) }
+    }
+
+    @Test
+    fun `기어 P에서 진단이나 습관 선택을 보고 있으면 리포트로 덮지 않는다`() {
+        assertEquals(Screen.DIAGNOSE, nextScreen(Screen.DIAGNOSE, Gear.P))
+        assertEquals(Screen.HABIT, nextScreen(Screen.HABIT, Gear.P))
+        assertEquals(Screen.REPORT, nextScreen(Screen.DRIVE, Gear.P))
+    }
+
+    @Test
+    fun `진단과 습관 선택은 기어 P에서만 열린다`() {
+        assertEquals(Screen.DIAGNOSE, openScreen(Screen.DIAGNOSE, Gear.P))
+        assertEquals(Screen.DRIVE, openScreen(Screen.DIAGNOSE, Gear.D))
+        assertEquals(Screen.DRIVE, openScreen(Screen.HABIT, null)) // 아직 기어를 모름
+        assertEquals(Screen.DRIVE, openScreen(Screen.DRIVE, Gear.D))
+    }
+}

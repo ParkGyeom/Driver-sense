@@ -327,9 +327,6 @@ class MainActivity : Activity() {
         val logs: TextView = activity.findViewById(R.id.logs)
     }
 
-    /** screenSlot에 들어가는 화면. 진단 리포트, 습관 선택이 여기에 더해진다. */
-    private enum class Screen { DRIVE, REPORT }
-
     private companion object {
         const val TAG = "KkamCoach"
         const val LAW_TABLE_FILE = "law_table.json"

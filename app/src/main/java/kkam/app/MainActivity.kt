@@ -1,11 +1,13 @@
 package kkam.app
 
 import android.app.Activity
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Button
 import android.widget.GridLayout
 import android.widget.LinearLayout
@@ -18,7 +20,10 @@ import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnSignal
 import kotlin.math.roundToInt
 
-/** PT 데모 화면 (F9). 왼쪽은 재생과 차량 신호, 오른쪽은 코치 카드다. */
+/**
+ * 주행 화면(코치 카드)과 시연용 데모 패널을 띄운다.
+ * 데모 패널(F9)은 debug 빌드에서만 열리고, 주행 화면 레이아웃과 따로 있다.
+ */
 class MainActivity : Activity() {
     private lateinit var player: ScenarioPlayer
     private lateinit var speaker: Speaker
@@ -41,7 +46,22 @@ class MainActivity : Activity() {
         TILE_LABELS.forEach(::addTile)
         addLiveButton()
         player.fileNames().forEach(::addScenarioButton)
+        setUpDemoToggle()
         render()
+    }
+
+    /** 데모 패널은 debug 빌드에서만 열 수 있다. 릴리스 APK에는 여는 버튼이 없다. */
+    private fun setUpDemoToggle() {
+        val debuggable = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+        if (!debuggable) return
+        view.demoToggle.visibility = View.VISIBLE
+        view.demoToggle.background = rounded(getColor(R.color.surface), radiusDp = 999, strokeColor = getColor(R.color.line))
+        view.demoToggle.setOnClickListener { showDemoPanel(view.demoPanel.visibility != View.VISIBLE) }
+    }
+
+    private fun showDemoPanel(show: Boolean) {
+        view.demoPanel.visibility = if (show) View.VISIBLE else View.GONE
+        view.demoToggle.setText(if (show) R.string.demo_close else R.string.demo_open)
     }
 
     override fun onDestroy() {
@@ -130,7 +150,7 @@ class MainActivity : Activity() {
         today.text = "${state.kept} / ${state.total}"
         progress.max = state.total.coerceAtLeast(1)
         progress.progress = state.kept
-        logs.text = state.logs.takeLast(MAX_LOGS).reversed().joinToString("\n").ifEmpty { "아직 기록이 없어요" }
+        logs.text = state.logs.takeLast(MAX_LOGS).reversed().joinToString("\n").ifEmpty { getString(R.string.demo_no_logs) }
     }
 
     private fun addTile(label: String) {
@@ -161,7 +181,7 @@ class MainActivity : Activity() {
 
     private fun highlight(playing: String?) {
         buttons.forEach { (name, button) ->
-            val color = getColor(if (name == playing) R.color.ok else R.color.surface)
+            val color = getColor(if (name == playing) R.color.demo_active else R.color.surface)
             button.backgroundTintList = ColorStateList.valueOf(color)
         }
     }
@@ -183,6 +203,8 @@ class MainActivity : Activity() {
 
     /** 레이아웃 뷰를 한곳에 모은다. */
     private class Views(activity: Activity) {
+        val demoPanel: View = activity.findViewById(R.id.demoPanel)
+        val demoToggle: TextView = activity.findViewById(R.id.demoToggle)
         val scenarios: LinearLayout = activity.findViewById(R.id.scenarios)
         val tiles: GridLayout = activity.findViewById(R.id.tiles)
         val card: LinearLayout = activity.findViewById(R.id.card)

@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">깜빡코치</string>
+
+    <!-- 데모 패널 (debug 빌드 전용) -->
+    <string name="demo_open">데모</string>
+    <string name="demo_close">데모 닫기</string>
+    <string name="demo_title">데모 패널</string>
+    <string name="demo_subtitle">시연·개발용. 주행 화면에는 나오지 않아요</string>
+    <string name="demo_signals">차량 신호</string>
+    <string name="demo_logs">판정 기록</string>
+    <string name="demo_no_logs">아직 기록이 없어요</string>
 </resources>

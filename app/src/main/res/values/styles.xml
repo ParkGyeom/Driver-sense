@@ -1,0 +1,11 @@
+<resources>
+    <!-- 데모 패널의 구역 제목. -->
+    <style name="DemoHeader">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">20dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+        <item name="android:textColor">@color/muted</item>
+        <item name="android:textSize">20sp</item>
+    </style>
+</resources>

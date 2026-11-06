@@ -2,6 +2,15 @@
     <string name="app_name">깜빡코치</string>
     <string name="today_kept">오늘 지킨 횟수</string>
 
+    <!-- 주행 리포트 (기어 P) -->
+    <string name="report_title">오늘 주행 리포트</string>
+    <string name="report_hint">주차 중에만 보여요. 출발하면 코치 카드로 돌아가요</string>
+    <string name="report_saved">아낀 범칙금</string>
+    <string name="report_kept">지킴</string>
+    <string name="report_missed">놓침</string>
+    <string name="report_empty">오늘은 아직 판정이 없어요</string>
+    <string name="report_ask">AI에게 묻기 · 준비 중</string>
+
     <!-- 데모 패널 (debug 빌드 전용) -->
     <string name="demo_open">데모</string>
     <string name="demo_close">데모 닫기</string>

@@ -18,11 +18,15 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import kkam.engine.Engine
 import kkam.engine.model.EngineOutput
+import kkam.engine.model.Event
 import kkam.engine.model.Gear
 import kkam.engine.model.Guide
+import kkam.engine.model.LawEntry
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnSignal
 import kkam.engine.model.TurnType
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 import kotlin.math.roundToInt
 
 /**
@@ -36,6 +40,11 @@ class MainActivity : Activity() {
     private var live = false
     private var engine = Engine()
     private var state = CoachState()
+    /** 지금 screenSlot에 보이는 화면. 마지막 프레임의 기어로 정한다. */
+    private var screen = Screen.DRIVE
+    /** 리포트 카드를 마지막으로 그린 판정 목록. 같으면 다시 그리지 않는다. */
+    private var reportDrawnFor: List<Event>? = null
+    private val laws: List<LawEntry> by lazy { loadLaws() }
 
     private val tiles = mutableMapOf<String, TextView>()
     private val buttons = mutableMapOf<String, Button>()
@@ -52,7 +61,21 @@ class MainActivity : Activity() {
         addLiveButton()
         player.fileNames().forEach(::addScenarioButton)
         setUpDemoToggle()
+        setUpReport()
         render()
+    }
+
+    private fun setUpReport() = with(view) {
+        listOf(reportSavedTile, reportKeptTile, reportMissedTile).forEach {
+            it.background = rounded(getColor(R.color.surface), radiusDp = 24)
+        }
+        reportAsk.background = rounded(getColor(R.color.bg), radiusDp = 999, strokeColor = getColor(R.color.line))
+    }
+
+    /** 법규 룰 테이블은 루트 data/law_table.json을 assets로 바로 쓴다. */
+    private fun loadLaws(): List<LawEntry> {
+        val text = assets.open(LAW_TABLE_FILE).bufferedReader().use { it.readText() }
+        return Json { ignoreUnknownKeys = true }.decodeFromString(ListSerializer(LawEntry.serializer()), text)
     }
 
     /** 데모 패널은 debug 빌드에서만 열 수 있다. 릴리스 APK에는 여는 버튼이 없다. */
@@ -72,10 +95,9 @@ class MainActivity : Activity() {
     // TODO(주행 제한, 4번): CarUxRestrictions는 여기에 붙인다.
     //  - onStart에서 Car.CAR_UX_RESTRICTION_SERVICE의 CarUxRestrictionsManager에 리스너를 등록하고 onStop에서 해제.
     //  - 제한 중(isRequiresDistractionOptimization)이면 데모 패널을 닫고 demoToggle을 숨긴다.
-    //  - 제한 중에는 screenSlot을 주행 화면에서 다른 화면으로 바꾸지 않는다.
+    //  - 제한 중에는 screenSlot을 주행 화면에서 다른 화면으로 바꾸지 않는다 (onFrame의 screen 결정).
     //
-    // TODO(다음 화면, 2·3번): 주행 리포트(기어 P), 진단 리포트, 습관 선택은 각각 screen_*.xml로 만들고
-    //  activity_main의 screenSlot 안 내용을 갈아끼운다. 기어 P 전환은 onFrame의 frame.gear로 알 수 있다.
+    // TODO(다음 화면, 3번): 진단 리포트, 습관 선택도 screen_*.xml로 만들어 screenSlot에 넣고 [Screen]에 추가한다.
 
     override fun onDestroy() {
         player.stop()
@@ -89,6 +111,7 @@ class MainActivity : Activity() {
         speaker.stop()
         engine = Engine()
         state = state.resetDrive(fileName.substringBefore('_'))
+        screen = Screen.DRIVE
         render()
         highlight(fileName)
         player.play(fileName, onFrame = ::onFrame, onEnd = { highlight(null) })
@@ -117,6 +140,7 @@ class MainActivity : Activity() {
         speaker.stop()
         engine = Engine()
         state = state.resetDrive(LIVE_LABEL)
+        screen = Screen.DRIVE
         render()
         highlight(LIVE_LABEL)
         live = true
@@ -133,6 +157,8 @@ class MainActivity : Activity() {
         outputs.forEach { Log.i(TAG, "${frame.t} $it") }
         outputs.filterIsInstance<Guide>().forEach { speaker.speak(it.text) }
         state = state.next(frame, outputs)
+        // 기어 P면 리포트, 그 밖의 기어면 주행 화면 (기획서 5.4: 리포트는 기어 P에서만).
+        screen = if (frame.gear == Gear.P) Screen.REPORT else Screen.DRIVE
         showSignals(frame)
         render()
     }
@@ -146,8 +172,44 @@ class MainActivity : Activity() {
         tiles.getValue("전방 신호").text = frame.light?.phase?.name ?: "-"
     }
 
-    /** 주행 화면을 그린다. 값은 모두 [CoachState]에서 온다. */
-    private fun render() = with(view) {
+    /** 지금 화면을 그린다. 값은 모두 [CoachState]에서 온다. */
+    private fun render() {
+        view.driveScreen.visibility = if (screen == Screen.DRIVE) View.VISIBLE else View.GONE
+        view.reportScreen.visibility = if (screen == Screen.REPORT) View.VISIBLE else View.GONE
+        if (screen == Screen.REPORT) renderReport()
+        renderDrive()
+    }
+
+    /** 기어 P 주행 리포트. 판정 목록이 바뀌었을 때만 다시 그린다. */
+    private fun renderReport() {
+        if (reportDrawnFor == state.todayEvents) return
+        reportDrawnFor = state.todayEvents
+        drawReport(buildReport(state.todayEvents, laws))
+    }
+
+    private fun drawReport(report: DriveReport) = with(view) {
+        reportSaved.text = wonLabel(report.savedWon)
+        reportKept.text = report.kept.toString()
+        reportMissed.text = report.missed.toString()
+        reportEmpty.visibility = if (report.items.isEmpty()) View.VISIBLE else View.GONE
+        reportItems.removeAllViews()
+        report.items.forEach(::addReportItem)
+    }
+
+    private fun addReportItem(item: ReportItem) {
+        val card = layoutInflater.inflate(R.layout.report_item, view.reportItems, false)
+        card.background = rounded(getColor(R.color.surface), radiusDp = 20)
+        card.clipToOutline = true
+        card.findViewById<View>(R.id.itemBar).setBackgroundColor(getColor(if (item.kept) R.color.ok else R.color.warn))
+        card.findViewById<TextView>(R.id.itemTitle).text = item.title
+        card.findViewById<TextView>(R.id.itemDetail).text = item.detail
+        card.findViewById<TextView>(R.id.itemArticle).text = item.article
+        card.findViewById<TextView>(R.id.itemPenalty).text = item.penalty
+        view.reportItems.addView(card)
+    }
+
+    /** 주행 화면 (코치 카드). */
+    private fun renderDrive() = with(view) {
         // 회전 안내 중이면 카드 전체를 상태 색으로 칠하고 글자는 어둡게, 대기 중이면 어두운 카드에 흐린 글자.
         val active = state.tone != Tone.IDLE
         val fill = getColor(
@@ -240,6 +302,17 @@ class MainActivity : Activity() {
     private class Views(activity: Activity) {
         val demoPanel: View = activity.findViewById(R.id.demoPanel)
         val demoToggle: TextView = activity.findViewById(R.id.demoToggle)
+        val driveScreen: View = activity.findViewById(R.id.driveScreen)
+        val reportScreen: View = activity.findViewById(R.id.reportScreen)
+        val reportSavedTile: View = activity.findViewById(R.id.reportSavedTile)
+        val reportKeptTile: View = activity.findViewById(R.id.reportKeptTile)
+        val reportMissedTile: View = activity.findViewById(R.id.reportMissedTile)
+        val reportSaved: TextView = activity.findViewById(R.id.reportSaved)
+        val reportKept: TextView = activity.findViewById(R.id.reportKept)
+        val reportMissed: TextView = activity.findViewById(R.id.reportMissed)
+        val reportItems: LinearLayout = activity.findViewById(R.id.reportItems)
+        val reportEmpty: TextView = activity.findViewById(R.id.reportEmpty)
+        val reportAsk: TextView = activity.findViewById(R.id.reportAsk)
         val scenarios: LinearLayout = activity.findViewById(R.id.scenarios)
         val tiles: GridLayout = activity.findViewById(R.id.tiles)
         val card: LinearLayout = activity.findViewById(R.id.card)
@@ -254,8 +327,12 @@ class MainActivity : Activity() {
         val logs: TextView = activity.findViewById(R.id.logs)
     }
 
+    /** screenSlot에 들어가는 화면. 진단 리포트, 습관 선택이 여기에 더해진다. */
+    private enum class Screen { DRIVE, REPORT }
+
     private companion object {
         const val TAG = "KkamCoach"
+        const val LAW_TABLE_FILE = "law_table.json"
         const val MAX_LOGS = 12
         const val DISTANCE_UNIT_SCALE = 0.45f
         const val LIVE_LABEL = "실차"

@@ -24,6 +24,15 @@
         android:textColor="@color/muted"
         android:textSize="18sp" />
 
+    <!-- 내비가 앞에 있을 때 어떤 방식으로 안내하는지 (겹침 창 카드 / 상단 알림) -->
+    <TextView
+        android:id="@+id/demoNotifier"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:textColor="@color/text"
+        android:textSize="18sp" />
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"

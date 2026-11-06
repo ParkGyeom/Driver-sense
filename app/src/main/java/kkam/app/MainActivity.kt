@@ -1,11 +1,16 @@
 package kkam.app
 
+import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
+import android.car.Car
+import android.car.drivingstate.CarUxRestrictionsManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.ApplicationInfo
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Rect
@@ -13,6 +18,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.provider.Settings
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
@@ -69,6 +75,10 @@ class MainActivity : Activity() {
     /** 앱 칸의 화면 위치. 서비스에 붙기 전에 잴 수도 있어서 따로 들고 있다가 넘긴다. */
     private var appArea: Rect? = null
 
+    private var car: Car? = null
+    private var uxManager: CarUxRestrictionsManager? = null
+    private var permissionsAsked = false
+
     /** 데모: 시나리오를 틀면 내비를 앞으로 띄운다 (내비 위 팝업 시연용). */
     private var naviAfterPlay = false
     /** 지금 screenSlot에 보이는 화면. 마지막 프레임의 기어로 정한다. */
@@ -100,6 +110,9 @@ class MainActivity : Activity() {
         setUpReport()
         render()
 
+        watchDrivingRestriction()
+        askPermissionsWhenParked()
+
         CoachService.start(this)
         bindService(Intent(this, CoachService::class.java), connection, Context.BIND_AUTO_CREATE)
     }
@@ -115,6 +128,65 @@ class MainActivity : Activity() {
     private fun loadLaws(): List<LawEntry> {
         val text = assets.open(LAW_TABLE_FILE).bufferedReader().use { it.readText() }
         return Json { ignoreUnknownKeys = true }.decodeFromString(ListSerializer(LawEntry.serializer()), text)
+    }
+
+    /**
+     * 차량의 주행 중 제한(UX 제한)을 본다. 제한 중에는 권한 확인 화면이 막히고("주행 중에는 사용할 수 없습니다")
+     * 운전 중에 묻는 것도 방해라서, 권한은 제한이 풀렸을 때(정차) 묻는다.
+     * TODO(주행 제한, 로드맵 3단계): 같은 리스너로 데모 패널 숨기기, 화면 전환 막기를 붙인다.
+     */
+    private fun watchDrivingRestriction() {
+        val connected = Car.createCar(this) ?: return
+        car = connected
+        uxManager = (connected.getCarManager(Car.CAR_UX_RESTRICTION_SERVICE) as? CarUxRestrictionsManager)?.also {
+            it.registerListener { restrictions ->
+                if (!restrictions.isRequiresDistractionOptimization) askPermissionsWhenParked()
+            }
+        }
+    }
+
+    private fun drivingRestricted(): Boolean =
+        uxManager?.currentCarUxRestrictions?.isRequiresDistractionOptimization ?: false
+
+    /** 권한은 앱을 켠 뒤 처음으로 정차 상태일 때 한 번 묻는다. */
+    private fun askPermissionsWhenParked() {
+        if (permissionsAsked || drivingRestricted()) return
+        permissionsAsked = true
+        askNotificationPermission()
+        askOverlayPermission()
+    }
+
+    /** 상단 알림(겹침 창을 못 쓸 때)에 필요한 알림 권한. Android 13부터 런타임에 묻는다. */
+    private fun askNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_NOTIFY)
+    }
+
+    /**
+     * "다른 앱 위에 표시" 권한 안내. 차량에 그 설정 화면이 있을 때만, 한 번만 묻는다.
+     * Pleos 에뮬레이터에는 설정 화면이 없어서 묻지 않고 상단 알림을 쓴다.
+     */
+    private fun askOverlayPermission() {
+        if (Settings.canDrawOverlays(this)) return
+        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+        if (intent.resolveActivity(packageManager) == null) return
+        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_OVERLAY_ASKED, false)) return
+        prefs.edit().putBoolean(KEY_OVERLAY_ASKED, true).apply()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.overlay_ask_title)
+            .setMessage(R.string.overlay_ask_body)
+            .setPositiveButton(R.string.overlay_ask_open) { _, _ -> startActivity(intent) }
+            .setNegativeButton(R.string.overlay_ask_later, null)
+            .show()
+    }
+
+    /** 데모 패널에 지금 쓰는 안내 방식을 보여준다. 권한은 설정에서 바뀔 수 있어서 화면이 보일 때마다 확인한다. */
+    private fun showNotifierStatus() {
+        view.demoNotifier.setText(
+            if (Settings.canDrawOverlays(this)) R.string.demo_notifier_popup else R.string.demo_notifier_headsup,
+        )
     }
 
     /** 데모 패널은 debug 빌드에서만 열 수 있다. 릴리스 APK에는 여는 버튼이 없다. */
@@ -172,6 +244,7 @@ class MainActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
+        showNotifierStatus()
         started = true
         session?.appVisible = true
         // 앱 칸의 크기를 재 둔다. 내비도 같은 칸에 뜨므로 팝업을 이 칸 가운데에 띄운다 (CoachPopup 참고).
@@ -192,6 +265,8 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         session?.removeListener(sessionListener)
         unbindService(connection)
+        uxManager?.unregisterListener()
+        car?.disconnect()
         session = null
         super.onDestroy()
     }
@@ -389,6 +464,7 @@ class MainActivity : Activity() {
     private class Views(activity: Activity) {
         val demoPanel: View = activity.findViewById(R.id.demoPanel)
         val demoToggle: TextView = activity.findViewById(R.id.demoToggle)
+        val demoNotifier: TextView = activity.findViewById(R.id.demoNotifier)
         val driveScreen: View = activity.findViewById(R.id.driveScreen)
         val reportScreen: View = activity.findViewById(R.id.reportScreen)
         val reportSavedTile: View = activity.findViewById(R.id.reportSavedTile)
@@ -421,6 +497,9 @@ class MainActivity : Activity() {
         const val NAVI_LABEL = "내비"
         const val DIAGNOSE_LABEL = "진단"
         const val REQUEST_LIVE = 1
+        const val REQUEST_NOTIFY = 2
+        const val PREFS = "kkam"
+        const val KEY_OVERLAY_ASKED = "overlay_asked"
         val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")
         val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호")
     }

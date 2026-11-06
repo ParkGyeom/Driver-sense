@@ -42,6 +42,11 @@ class MainActivity : Activity() {
     private var state = CoachState()
     /** 지금 screenSlot에 보이는 화면. 마지막 프레임의 기어로 정한다. */
     private var screen = Screen.DRIVE
+    /** 마지막 프레임의 기어. 아직 프레임이 없으면 null. 진단·습관 선택은 P일 때만 연다. */
+    private var gear: Gear? = null
+    private lateinit var habitScreens: HabitScreens
+    /** 진단 값. TODO(박겸 습관 인사이트, 12/1): 실제 계산 구현으로 바꾼다. */
+    private val diagnosisSource: DiagnosisSource = DemoDiagnosisSource
     /** 리포트 카드를 마지막으로 그린 판정 목록. 같으면 다시 그리지 않는다. */
     private var reportDrawnFor: List<Event>? = null
     private val laws: List<LawEntry> by lazy { loadLaws() }
@@ -58,6 +63,8 @@ class MainActivity : Activity() {
         collector = SignalCollector(this)
 
         TILE_LABELS.forEach(::addTile)
+        setUpHabitScreens()
+        addButton(DIAGNOSE_LABEL, getString(R.string.demo_open_diagnose)) { openDiagnoseParked() }
         addLiveButton()
         player.fileNames().forEach(::addScenarioButton)
         setUpDemoToggle()
@@ -96,8 +103,42 @@ class MainActivity : Activity() {
     //  - onStart에서 Car.CAR_UX_RESTRICTION_SERVICE의 CarUxRestrictionsManager에 리스너를 등록하고 onStop에서 해제.
     //  - 제한 중(isRequiresDistractionOptimization)이면 데모 패널을 닫고 demoToggle을 숨긴다.
     //  - 제한 중에는 screenSlot을 주행 화면에서 다른 화면으로 바꾸지 않는다 (onFrame의 screen 결정).
-    //
-    // TODO(다음 화면, 3번): 진단 리포트, 습관 선택도 screen_*.xml로 만들어 screenSlot에 넣고 [Screen]에 추가한다.
+
+    /** 진단 리포트 → 습관 선택 → 주행 화면 (기획서 5.5 PT 흐름 1~2). */
+    private fun setUpHabitScreens() {
+        habitScreens = HabitScreens(
+            activity = this,
+            diagnosis = diagnosisSource.load(),
+            onOpenHabit = { showParked(Screen.HABIT) },
+            onBackToDiagnose = { showParked(Screen.DIAGNOSE) },
+            onFinish = ::finishHabits,
+        )
+    }
+
+    /** 데모 패널 버튼. 재생을 멈추고 기어 P로 세운 뒤 진단 리포트를 연다. */
+    private fun openDiagnoseParked() {
+        player.stop()
+        stopLive()
+        speaker.stop()
+        highlight(null)
+        gear = Gear.P
+        tiles.getValue("기어").text = Gear.P.name
+        showParked(Screen.DIAGNOSE)
+    }
+
+    /** 기어 P가 아니면 열지 않고 주행 화면에 머문다 (기획서 5.4). */
+    private fun showParked(target: Screen) {
+        screen = openScreen(target, gear)
+        render()
+    }
+
+    private fun finishHabits(selection: HabitSelection) {
+        // TODO(엔진 모드 입력, spec v0.2 · 박겸 11/16): 교정(CORRECT) 모드와 고른 습관을 엔진에 넘긴다.
+        //  지금은 엔진에 넘기지 않고, 주행 화면 한 줄 문구에만 보여준다.
+        state = state.copy(message = selection.summary())
+        screen = Screen.DRIVE
+        render()
+    }
 
     override fun onDestroy() {
         player.stop()
@@ -157,8 +198,9 @@ class MainActivity : Activity() {
         outputs.forEach { Log.i(TAG, "${frame.t} $it") }
         outputs.filterIsInstance<Guide>().forEach { speaker.speak(it.text) }
         state = state.next(frame, outputs)
-        // 기어 P면 리포트, 그 밖의 기어면 주행 화면 (기획서 5.4: 리포트는 기어 P에서만).
-        screen = if (frame.gear == Gear.P) Screen.REPORT else Screen.DRIVE
+        // 기어 P면 리포트(진단·습관 선택 중이면 그대로), 그 밖의 기어면 주행 화면 (기획서 5.4).
+        gear = frame.gear
+        screen = nextScreen(screen, frame.gear)
         showSignals(frame)
         render()
     }
@@ -176,6 +218,7 @@ class MainActivity : Activity() {
     private fun render() {
         view.driveScreen.visibility = if (screen == Screen.DRIVE) View.VISIBLE else View.GONE
         view.reportScreen.visibility = if (screen == Screen.REPORT) View.VISIBLE else View.GONE
+        habitScreens.show(screen)
         if (screen == Screen.REPORT) renderReport()
         renderDrive()
     }
@@ -333,6 +376,7 @@ class MainActivity : Activity() {
         const val MAX_LOGS = 12
         const val DISTANCE_UNIT_SCALE = 0.45f
         const val LIVE_LABEL = "실차"
+        const val DIAGNOSE_LABEL = "진단"
         const val REQUEST_LIVE = 1
         val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")
         val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호")

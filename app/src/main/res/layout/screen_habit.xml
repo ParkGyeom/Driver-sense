@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  습관 선택 (기획서 UI-3 뒷부분). 기어 P일 때만 연다.
+  습관 카드를 최대 2개까지 고른다. 카드는 habit_card.xml을 코드에서 넣는다.
+  선택 규칙은 HabitSelection.kt (JVM 테스트 대상).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/habitScreen"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingHorizontal="32dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="32dp"
+    android:visibility="gone">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="56dp"
+        android:gravity="center_vertical"
+        android:text="@string/app_name"
+        android:textColor="@color/muted"
+        android:textSize="28sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/habit_title"
+        android:textColor="@color/text"
+        android:textSize="48sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/habit_hint"
+        android:textColor="@color/muted"
+        android:textSize="24sp" />
+
+    <LinearLayout
+        android:id="@+id/habitCards"
+        android:layout_width="match_parent"
+        android:layout_height="420dp"
+        android:layout_marginTop="36dp"
+        android:orientation="horizontal" />
+
+    <!-- "1 / 2개 골랐어요" 또는 "2개까지만 고를 수 있어요" -->
+    <TextView
+        android:id="@+id/habitNotice"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:textColor="@color/muted"
+        android:textSize="30sp" />
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/habitBack"
+            android:layout_width="wrap_content"
+            android:layout_height="88dp"
+            android:layout_marginEnd="20dp"
+            android:gravity="center"
+            android:paddingHorizontal="40dp"
+            android:text="@string/habit_back"
+            android:textColor="@color/muted"
+            android:textSize="30sp" />
+
+        <TextView
+            android:id="@+id/habitDone"
+            android:layout_width="wrap_content"
+            android:layout_height="88dp"
+            android:gravity="center"
+            android:paddingHorizontal="48dp"
+            android:text="@string/habit_done"
+            android:textColor="@color/on_accent"
+            android:textSize="32sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</LinearLayout>

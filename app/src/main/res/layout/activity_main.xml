@@ -34,6 +34,10 @@
                 layout="@layout/screen_drive" />
 
             <include layout="@layout/screen_report" />
+
+            <include layout="@layout/screen_diagnose" />
+
+            <include layout="@layout/screen_habit" />
         </FrameLayout>
     </LinearLayout>
 

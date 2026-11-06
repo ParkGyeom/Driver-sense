@@ -1,26 +1,27 @@
 package kkam.app
 
 import android.app.Activity
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.IBinder
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
-import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import kkam.engine.Engine
-import kkam.engine.model.EngineOutput
 import kkam.engine.model.Event
 import kkam.engine.model.Gear
-import kkam.engine.model.Guide
 import kkam.engine.model.LawEntry
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnSignal
@@ -32,14 +33,35 @@ import kotlin.math.roundToInt
 /**
  * 주행 화면(코치 카드)과 시연용 데모 패널을 띄운다.
  * 데모 패널(F9)은 debug 빌드에서만 열리고, 주행 화면 레이아웃과 따로 있다.
+ * 재생, 신호 수집, 엔진, 음성은 [CoachService]의 [CoachSession]이 맡는다. 이 화면은 세션 상태를 그리기만 한다.
+ * 그래서 내비가 앞에 와서 이 화면이 숨겨져도 안내는 계속된다.
  */
 class MainActivity : Activity() {
-    private lateinit var player: ScenarioPlayer
-    private lateinit var speaker: Speaker
-    private lateinit var collector: SignalCollector
-    private var live = false
-    private var engine = Engine()
-    private var state = CoachState()
+    /** 서비스에 붙기 전에는 null. 붙으면 [onSessionChanged]로 상태를 받는다. */
+    private var session: CoachSession? = null
+    private val state: CoachState get() = session?.state ?: CoachState()
+    private val sessionListener = CoachSession.Listener(::onSessionChanged)
+    private val connection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            val connected = (binder as CoachService.LocalBinder).session
+            session = connected
+            connected.addListener(sessionListener)
+            // 서비스가 먼저 돌고 있었으면 (내비를 보다가 돌아온 경우) 마지막 프레임으로 화면을 맞춘다.
+            connected.lastFrame?.let { frame ->
+                gear = frame.gear
+                screen = nextScreen(screen, frame.gear)
+                showSignals(frame)
+            }
+            highlight(connected.running)
+            render()
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            session = null
+        }
+    }
+    /** 데모: 시나리오를 틀면 내비를 앞으로 띄운다 (내비 위 팝업 시연용). */
+    private var naviAfterPlay = false
     /** 지금 screenSlot에 보이는 화면. 마지막 프레임의 기어로 정한다. */
     private var screen = Screen.DRIVE
     /** 마지막 프레임의 기어. 아직 프레임이 없으면 null. 진단·습관 선택은 P일 때만 연다. */
@@ -58,18 +80,19 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        player = ScenarioPlayer(this)
-        speaker = Speaker(this).apply { start() }
-        collector = SignalCollector(this)
 
         TILE_LABELS.forEach(::addTile)
         setUpHabitScreens()
         addButton(DIAGNOSE_LABEL, getString(R.string.demo_open_diagnose)) { openDiagnoseParked() }
+        addNaviButton()
         addLiveButton()
-        player.fileNames().forEach(::addScenarioButton)
+        ScenarioPlayer(this).fileNames().forEach(::addScenarioButton)
         setUpDemoToggle()
         setUpReport()
         render()
+
+        CoachService.start(this)
+        bindService(Intent(this, CoachService::class.java), connection, Context.BIND_AUTO_CREATE)
     }
 
     private fun setUpReport() = with(view) {
@@ -117,9 +140,7 @@ class MainActivity : Activity() {
 
     /** 데모 패널 버튼. 재생을 멈추고 기어 P로 세운 뒤 진단 리포트를 연다. */
     private fun openDiagnoseParked() {
-        player.stop()
-        stopLive()
-        speaker.stop()
+        session?.stopAll()
         highlight(null)
         gear = Gear.P
         tiles.getValue("기어").text = Gear.P.name
@@ -135,34 +156,31 @@ class MainActivity : Activity() {
     private fun finishHabits(selection: HabitSelection) {
         // TODO(엔진 모드 입력, spec v0.2 · 박겸 11/16): 교정(CORRECT) 모드와 고른 습관을 엔진에 넘긴다.
         //  지금은 엔진에 넘기지 않고, 주행 화면 한 줄 문구에만 보여준다.
-        state = state.copy(message = selection.summary())
+        session?.showMessage(selection.summary())
         screen = Screen.DRIVE
         render()
     }
 
+    /** 화면만 닫는다. 주행 중이면 서비스가 계속 돌고, 멈춰 있으면 서비스도 끝난다. */
     override fun onDestroy() {
-        player.stop()
-        stopLive()
-        speaker.release()
+        session?.removeListener(sessionListener)
+        unbindService(connection)
+        session = null
         super.onDestroy()
     }
 
     private fun play(fileName: String) {
-        stopLive()
-        speaker.stop()
-        engine = Engine()
-        state = state.resetDrive(fileName.substringBefore('_'))
+        val current = session ?: return
         screen = Screen.DRIVE
-        render()
-        highlight(fileName)
-        player.play(fileName, onFrame = ::onFrame, onEnd = { highlight(null) })
+        current.play(fileName)
+        if (naviAfterPlay) NaviLauncher.open(this)
     }
 
     /** 실제 차량 신호로 주행을 시작한다. 위치와 속도는 런타임 권한이 필요하다. */
     private fun toggleLive() {
-        if (live) {
-            stopLive()
-            highlight(null)
+        val current = session ?: return
+        if (current.running == CoachSession.LIVE) {
+            current.stopAll()
             return
         }
         val missing = LIVE_PERMISSIONS.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
@@ -177,31 +195,19 @@ class MainActivity : Activity() {
     }
 
     private fun startLive() {
-        player.stop()
-        speaker.stop()
-        engine = Engine()
-        state = state.resetDrive(LIVE_LABEL)
         screen = Screen.DRIVE
-        render()
-        highlight(LIVE_LABEL)
-        live = true
-        collector.start(::onFrame)
+        session?.startLive()
     }
 
-    private fun stopLive() {
-        if (live) collector.stop()
-        live = false
-    }
-
-    private fun onFrame(frame: SignalFrame) {
-        val outputs = engine.onFrame(frame)
-        outputs.forEach { Log.i(TAG, "${frame.t} $it") }
-        outputs.filterIsInstance<Guide>().forEach { speaker.speak(it.text) }
-        state = state.next(frame, outputs)
-        // 기어 P면 리포트(진단·습관 선택 중이면 그대로), 그 밖의 기어면 주행 화면 (기획서 5.4).
-        gear = frame.gear
-        screen = nextScreen(screen, frame.gear)
-        showSignals(frame)
+    /** 세션 상태가 바뀌었을 때. 새 프레임이면 기어로 화면을 정하고 신호 칸을 갱신한다. */
+    private fun onSessionChanged(frame: SignalFrame?) {
+        if (frame != null) {
+            // 기어 P면 리포트(진단·습관 선택 중이면 그대로), 그 밖의 기어면 주행 화면 (기획서 5.4).
+            gear = frame.gear
+            screen = nextScreen(screen, frame.gear)
+            showSignals(frame)
+        }
+        highlight(session?.running)
         render()
     }
 
@@ -305,7 +311,18 @@ class MainActivity : Activity() {
         view.tiles.addView(tile)
     }
 
-    private fun addLiveButton() = addButton(LIVE_LABEL, "실제 차량 신호") { toggleLive() }
+    private fun addLiveButton() = addButton(CoachSession.LIVE, "실제 차량 신호") { toggleLive() }
+
+    /** 데모 패널 토글: 켜면 시나리오를 틀 때 내비를 앞으로 띄운다. */
+    private fun addNaviButton() {
+        addButton(NAVI_LABEL, naviButtonText()) {
+            naviAfterPlay = !naviAfterPlay
+            buttons.getValue(NAVI_LABEL).text = naviButtonText()
+        }
+    }
+
+    private fun naviButtonText() =
+        getString(if (naviAfterPlay) R.string.demo_navi_after_play_on else R.string.demo_navi_after_play_off)
 
     private fun addScenarioButton(fileName: String) =
         addButton(fileName, fileName.removeSuffix(".json").replace('_', ' ')) { play(fileName) }
@@ -371,11 +388,10 @@ class MainActivity : Activity() {
     }
 
     private companion object {
-        const val TAG = "KkamCoach"
         const val LAW_TABLE_FILE = "law_table.json"
         const val MAX_LOGS = 12
         const val DISTANCE_UNIT_SCALE = 0.45f
-        const val LIVE_LABEL = "실차"
+        const val NAVI_LABEL = "내비"
         const val DIAGNOSE_LABEL = "진단"
         const val REQUEST_LIVE = 1
         val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")

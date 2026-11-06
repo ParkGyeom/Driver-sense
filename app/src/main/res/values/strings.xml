@@ -35,4 +35,10 @@
     <string name="demo_signals">차량 신호</string>
     <string name="demo_logs">판정 기록</string>
     <string name="demo_no_logs">아직 기록이 없어요</string>
+    <string name="demo_navi_after_play_off">재생하면 내비 띄우기: 끔</string>
+    <string name="demo_navi_after_play_on">재생하면 내비 띄우기: 켬</string>
+
+    <!-- 주행 코치 서비스 알림 -->
+    <string name="service_channel">주행 코치</string>
+    <string name="service_running">주행 안내를 준비하고 있어요</string>
 </resources>

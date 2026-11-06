@@ -29,6 +29,8 @@ data class CoachState(
     val kept: Int = 0,
     val total: Int = 0,
     val logs: List<String> = emptyList(),
+    /** 오늘 나온 판정 전체. 기어 P 주행 리포트에 쓴다. kept, total처럼 새 주행을 시작해도 남긴다. */
+    val todayEvents: List<Event> = emptyList(),
 )
 
 /** 프레임 하나와 엔진 출력을 반영한 다음 상태를 돌려준다. */
@@ -62,6 +64,7 @@ fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>): CoachState
                 kept = state.kept + if (output.result == Result.KEPT) 1 else 0,
                 total = state.total + 1,
                 logs = state.logs + state.logLine(output.t, "${output.turn.label()} ${output.result.label()}"),
+                todayEvents = state.todayEvents + output,
             )
         }
     }
@@ -70,7 +73,7 @@ fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>): CoachState
 
 /** 새 시나리오를 시작할 때 쓴다. 오늘 횟수와 기록은 남긴다. */
 fun CoachState.resetDrive(label: String): CoachState =
-    CoachState(message = "", driveLabel = label, kept = kept, total = total, logs = logs)
+    CoachState(message = "", driveLabel = label, kept = kept, total = total, logs = logs, todayEvents = todayEvents)
 
 private fun CoachState.logLine(t: Long, text: String): String =
     listOf(driveLabel, t.timeLabel(), text).filter { it.isNotEmpty() }.joinToString(" ")
@@ -92,7 +95,7 @@ fun TurnType.label(): String = when (this) {
     TurnType.OTHER -> "기타"
 }
 
-private fun Result.label(): String = when (this) {
+fun Result.label(): String = when (this) {
     Result.KEPT -> "지킴"
     Result.MISSED -> "놓침"
 }

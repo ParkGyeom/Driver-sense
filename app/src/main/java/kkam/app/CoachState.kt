@@ -16,6 +16,8 @@ enum class Tone { IDLE, WARN, OK }
 
 /** 화면에 그릴 값 전체. Android에 의존하지 않아서 JVM 테스트로 확인한다. */
 data class CoachState(
+    /** 지금 안내의 종류. 음성 안내(GUIDE)의 룰로 정한다. 그림과 제목을 고르는 데 쓴다. */
+    val guideKind: GuideKind = GuideKind.TURN_SIGNAL,
     val tone: Tone = Tone.IDLE,
     val turnLabel: String = "다음 회전 대기",
     val distanceLabel: String = "",
@@ -54,6 +56,7 @@ fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>): CoachState
     for (output in outputs) {
         state = when (output) {
             is Guide -> state.copy(
+                guideKind = output.rule.guideKind() ?: state.guideKind,
                 message = output.text,
                 guideShowing = true,
                 logs = state.logs + state.logLine(output.t, "음성 안내"),

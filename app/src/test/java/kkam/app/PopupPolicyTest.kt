@@ -37,10 +37,10 @@ class PopupPolicyTest {
     @Test
     fun `음성 안내가 나오면 주황, 깜빡이를 켜면 파랑으로 바뀐다`() {
         val (guided, warn) = step(CoachState(), null, frame(TurnSignal.OFF, near), listOf(guide))
-        assertEquals(Popup(PopupTone.WARN, "좌회전", "60 m", "지금 켜세요"), warn)
+        assertEquals(Popup(PopupTone.WARN, GuideKind.TURN_SIGNAL, "좌회전", "60 m", "지금 켜세요"), warn)
 
         val (_, ok) = step(guided, warn, frame(TurnSignal.LEFT, Tbt(TurnType.LEFT, 40)), emptyList())
-        assertEquals(Popup(PopupTone.OK, "좌회전", "40 m", "좋아요"), ok)
+        assertEquals(Popup(PopupTone.OK, GuideKind.TURN_SIGNAL, "좌회전", "40 m", "좋아요"), ok)
     }
 
     @Test

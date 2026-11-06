@@ -11,6 +11,8 @@ enum class PopupTone { WARN, OK }
 /** 내비 위에 띄울 작은 안내 카드. 값은 모두 [CoachState]에서 온다. */
 data class Popup(
     val tone: PopupTone,
+    /** 그림을 고르는 데 쓴다. */
+    val kind: GuideKind,
     /** 예: "좌회전" */
     val turnLabel: String,
     /** 예: "60 m" */
@@ -39,6 +41,7 @@ fun nextPopup(current: Popup?, state: CoachState, outputs: List<EngineOutput>, g
     current == null && outputs.none { it is Guide } -> null
     else -> Popup(
         tone = if (state.tone == Tone.OK) PopupTone.OK else PopupTone.WARN,
+        kind = state.guideKind,
         turnLabel = state.turnLabel,
         distanceLabel = state.distanceLabel,
         headline = state.badge,

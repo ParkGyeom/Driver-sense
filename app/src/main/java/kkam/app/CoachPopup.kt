@@ -17,9 +17,9 @@ import kkam.engine.model.TurnType
 
 /**
  * 내비 위에 뜨는 작은 안내 카드 (겹침 창). 서비스가 하나만 갖고 [show]로 갱신한다.
- * "다른 앱 위에 표시" 권한이 없으면 아무것도 띄우지 않는다. 대비책(상단 알림)은 다음 단계에서 붙인다.
+ * "다른 앱 위에 표시" 권한이 없으면 아무것도 띄우지 않는다. 그때는 서비스가 [CoachHeadsUp]으로 바꾼다.
  */
-class CoachPopup(context: Context) {
+class CoachPopup(context: Context) : CoachNotifier {
     private val context = context.applicationContext
     private val windowManager = context.getSystemService(WindowManager::class.java)
     private val density = context.resources.displayMetrics.density
@@ -31,7 +31,7 @@ class CoachPopup(context: Context) {
     private var shown: Popup? = null
 
     /** popup이 null이면 숨긴다. area는 앱 칸(내비 자리)의 크기. 모르면 화면 가운데. */
-    fun show(popup: Popup?, area: Rect?) {
+    override fun show(popup: Popup?, area: Rect?) {
         if (popup == shown) return
         shown = popup
         if (popup == null) {
@@ -52,7 +52,7 @@ class CoachPopup(context: Context) {
         }
     }
 
-    fun release() {
+    override fun release() {
         shown = null
         hide()
     }

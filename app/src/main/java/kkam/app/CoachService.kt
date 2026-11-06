@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.provider.Settings
 import kkam.engine.model.Gear
 
 /**
@@ -25,12 +26,17 @@ class CoachService : Service() {
 
     private lateinit var session: CoachSession
     private lateinit var popup: CoachPopup
+    private lateinit var headsUp: CoachHeadsUp
     private val binder = LocalBinder()
     private var bound = false
     private var lastGear: Gear? = null
     private val onSessionChanged = CoachSession.Listener { frame ->
         // 앱 화면이 보이면 코치 카드가 같은 내용을 보여주므로 팝업은 숨긴다.
-        popup.show(if (session.appVisible) null else session.popup, session.appArea)
+        val shown = if (session.appVisible) null else session.popup
+        // 권한이 있으면 겹침 창 카드, 없으면 상단 알림. 권한이 바뀌면 다른 쪽은 숨긴다.
+        val (use, other) = if (Settings.canDrawOverlays(this)) popup to headsUp else headsUp to popup
+        other.show(null, null)
+        use.show(shown, session.appArea)
         frame?.let { openAppWhenParked(it.gear) }
         stopIfIdle()
     }
@@ -40,6 +46,7 @@ class CoachService : Service() {
         startForegroundWithNotice()
         session = CoachSession(this)
         popup = CoachPopup(this)
+        headsUp = CoachHeadsUp(this)
         session.addListener(onSessionChanged)
     }
 
@@ -62,6 +69,7 @@ class CoachService : Service() {
 
     override fun onDestroy() {
         popup.release()
+        headsUp.release()
         session.release()
         super.onDestroy()
     }

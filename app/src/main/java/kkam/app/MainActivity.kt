@@ -69,6 +69,14 @@ class MainActivity : Activity() {
         view.demoToggle.setText(if (show) R.string.demo_close else R.string.demo_open)
     }
 
+    // TODO(주행 제한, 4번): CarUxRestrictions는 여기에 붙인다.
+    //  - onStart에서 Car.CAR_UX_RESTRICTION_SERVICE의 CarUxRestrictionsManager에 리스너를 등록하고 onStop에서 해제.
+    //  - 제한 중(isRequiresDistractionOptimization)이면 데모 패널을 닫고 demoToggle을 숨긴다.
+    //  - 제한 중에는 screenSlot을 주행 화면에서 다른 화면으로 바꾸지 않는다.
+    //
+    // TODO(다음 화면, 2·3번): 주행 리포트(기어 P), 진단 리포트, 습관 선택은 각각 screen_*.xml로 만들고
+    //  activity_main의 screenSlot 안 내용을 갈아끼운다. 기어 P 전환은 onFrame의 frame.gear로 알 수 있다.
+
     override fun onDestroy() {
         player.stop()
         stopLive()

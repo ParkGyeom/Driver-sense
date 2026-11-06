@@ -1,8 +1,12 @@
 package kkam.app
 
 import android.content.Context
+import android.graphics.Rect
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import kkam.engine.Engine
+import kkam.engine.model.Gear
 import kkam.engine.model.Guide
 import kkam.engine.model.SignalFrame
 
@@ -22,6 +26,13 @@ class CoachSession(context: Context) {
     private val speaker = Speaker(context).apply { start() }
     private var engine = Engine()
     private val listeners = mutableSetOf<Listener>()
+    private val handler = Handler(Looper.getMainLooper())
+    private val hideOkPopup = Runnable {
+        if (popup?.tone == PopupTone.OK) {
+            popup = null
+            notifyChanged(null)
+        }
+    }
 
     var state = CoachState()
         private set
@@ -29,6 +40,20 @@ class CoachSession(context: Context) {
     /** 마지막 프레임. 화면이 새로 붙을 때 신호 칸과 기어를 맞추는 데 쓴다. */
     var lastFrame: SignalFrame? = null
         private set
+
+    /** 내비 위에 띄울 팝업. null이면 숨김. 규칙은 [nextPopup]. */
+    var popup: Popup? = null
+        private set
+
+    /** 우리 앱 화면이 지금 보이는지. 보이면 팝업 대신 앱 화면의 코치 카드를 쓴다. */
+    var appVisible = false
+        set(value) {
+            field = value
+            notifyChanged(null)
+        }
+
+    /** 앱 칸의 크기. 앱 화면이 보일 때 잰다. 팝업을 이 칸(내비 자리) 가운데에 띄운다. */
+    var appArea: Rect? = null
 
     /** 지금 도는 것: 시나리오 파일 이름, 실제 주행이면 [LIVE], 멈춰 있으면 null. */
     var running: String? = null
@@ -67,6 +92,8 @@ class CoachSession(context: Context) {
         speaker.stop()
         val wasRunning = running != null
         running = null
+        popup = null
+        handler.removeCallbacks(hideOkPopup)
         if (wasRunning) notifyChanged(null)
     }
 
@@ -78,6 +105,7 @@ class CoachSession(context: Context) {
 
     fun release() {
         stopAll()
+        handler.removeCallbacksAndMessages(null)
         speaker.release()
         listeners.clear()
     }
@@ -85,6 +113,7 @@ class CoachSession(context: Context) {
     private fun startDrive(label: String, key: String) {
         engine = Engine()
         state = state.resetDrive(label)
+        popup = null
         running = key
         notifyChanged(null)
     }
@@ -94,8 +123,19 @@ class CoachSession(context: Context) {
         outputs.forEach { Log.i(TAG, "${frame.t} $it") }
         outputs.filterIsInstance<Guide>().forEach { speaker.speak(it.text) }
         state = state.next(frame, outputs)
+        updatePopup(outputs, frame.gear)
         lastFrame = frame
         notifyChanged(frame)
+    }
+
+    /** 파랑("좋아요")으로 바뀌면 [OK_POPUP_MS] 뒤에 숨긴다. 그 사이 주황으로 돌아가면 숨기지 않는다. */
+    private fun updatePopup(outputs: List<kkam.engine.model.EngineOutput>, gear: Gear) {
+        val before = popup
+        popup = nextPopup(before, state, outputs, gear)
+        if (popup?.tone == PopupTone.OK && before?.tone != PopupTone.OK) {
+            handler.removeCallbacks(hideOkPopup)
+            handler.postDelayed(hideOkPopup, OK_POPUP_MS)
+        }
     }
 
     private fun notifyChanged(frame: SignalFrame?) {
@@ -104,6 +144,7 @@ class CoachSession(context: Context) {
 
     companion object {
         const val LIVE = "실차"
+        private const val OK_POPUP_MS = 3000L
         private const val TAG = "KkamCoach"
     }
 }

@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import kkam.engine.model.Gear
 
 /**
  * [CoachSession]을 갖는 포그라운드 서비스.
@@ -23,15 +24,23 @@ class CoachService : Service() {
     }
 
     private lateinit var session: CoachSession
+    private lateinit var popup: CoachPopup
     private val binder = LocalBinder()
     private var bound = false
-    private val stopWhenIdle = CoachSession.Listener { stopIfIdle() }
+    private var lastGear: Gear? = null
+    private val onSessionChanged = CoachSession.Listener { frame ->
+        // 앱 화면이 보이면 코치 카드가 같은 내용을 보여주므로 팝업은 숨긴다.
+        popup.show(if (session.appVisible) null else session.popup, session.appArea)
+        frame?.let { openAppWhenParked(it.gear) }
+        stopIfIdle()
+    }
 
     override fun onCreate() {
         super.onCreate()
         startForegroundWithNotice()
         session = CoachSession(this)
-        session.addListener(stopWhenIdle)
+        popup = CoachPopup(this)
+        session.addListener(onSessionChanged)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_NOT_STICKY
@@ -52,8 +61,18 @@ class CoachService : Service() {
     }
 
     override fun onDestroy() {
+        popup.release()
         session.release()
         super.onDestroy()
+    }
+
+    /** 주행 중 내비를 보다가 기어를 P로 바꾸면 우리 앱을 앞으로 띄워 리포트를 보여준다 (기획서 4.2의 5번). */
+    private fun openAppWhenParked(gear: Gear) {
+        val parkedNow = gear == Gear.P && lastGear != null && lastGear != Gear.P
+        lastGear = gear
+        if (parkedNow && !session.appVisible) {
+            startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+        }
     }
 
     private fun stopIfIdle() {

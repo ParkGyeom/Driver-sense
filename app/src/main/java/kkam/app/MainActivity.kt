@@ -8,7 +8,9 @@ import android.content.ServiceConnection
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.text.SpannableString
@@ -46,6 +48,8 @@ class MainActivity : Activity() {
             val connected = (binder as CoachService.LocalBinder).session
             session = connected
             connected.addListener(sessionListener)
+            connected.appVisible = started
+            appArea?.let { connected.appArea = it }
             // 서비스가 먼저 돌고 있었으면 (내비를 보다가 돌아온 경우) 마지막 프레임으로 화면을 맞춘다.
             connected.lastFrame?.let { frame ->
                 gear = frame.gear
@@ -60,6 +64,11 @@ class MainActivity : Activity() {
             session = null
         }
     }
+    /** onStart~onStop 사이. 세션에 알려서 이 화면이 보이는 동안은 내비 위 팝업을 숨긴다. */
+    private var started = false
+    /** 앱 칸의 화면 위치. 서비스에 붙기 전에 잴 수도 있어서 따로 들고 있다가 넘긴다. */
+    private var appArea: Rect? = null
+
     /** 데모: 시나리오를 틀면 내비를 앞으로 띄운다 (내비 위 팝업 시연용). */
     private var naviAfterPlay = false
     /** 지금 screenSlot에 보이는 화면. 마지막 프레임의 기어로 정한다. */
@@ -159,6 +168,24 @@ class MainActivity : Activity() {
         session?.showMessage(selection.summary())
         screen = Screen.DRIVE
         render()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        started = true
+        session?.appVisible = true
+        // 앱 칸의 크기를 재 둔다. 내비도 같은 칸에 뜨므로 팝업을 이 칸 가운데에 띄운다 (CoachPopup 참고).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val area = windowManager.currentWindowMetrics.bounds
+            appArea = area
+            session?.appArea = area
+        }
+    }
+
+    override fun onStop() {
+        started = false
+        session?.appVisible = false
+        super.onStop()
     }
 
     /** 화면만 닫는다. 주행 중이면 서비스가 계속 돌고, 멈춰 있으면 서비스도 끝난다. */

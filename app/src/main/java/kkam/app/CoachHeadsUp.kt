@@ -45,9 +45,10 @@ class CoachHeadsUp(context: Context) : CoachNotifier {
 
     private fun build(popup: Popup): Notification {
         val accent = context.getColor(if (popup.tone == PopupTone.OK) R.color.ok else R.color.warn)
-        val arrow = Icon.createWithResource(context, R.drawable.ic_turn_left).setTint(accent)
+        val iconRes = guideIconRes(popup.kind, popup.turnLabel)
+        val arrow = Icon.createWithResource(context, iconRes).setTint(accent)
         return Notification.Builder(context, CHANNEL)
-            .setSmallIcon(R.drawable.ic_turn_left)
+            .setSmallIcon(iconRes)
             .setLargeIcon(arrow)
             .setColor(accent)
             .setColorized(true)

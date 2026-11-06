@@ -13,7 +13,6 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.TextView
-import kkam.engine.model.TurnType
 
 /**
  * 내비 위에 뜨는 작은 안내 카드 (겹침 창). 서비스가 하나만 갖고 [show]로 갱신한다.
@@ -69,8 +68,7 @@ class CoachPopup(context: Context) : CoachNotifier {
             setColor(fill)
             cornerRadius = 32 * density
         }
-        // 화살표는 좌회전 모양 하나를 뒤집어 쓴다. 코치 카드와 같은 규칙.
-        icon.scaleX = if (popup.turnLabel == TurnType.RIGHT.label()) -1f else 1f
+        icon.setImageResource(guideIconRes(popup.kind, popup.turnLabel))
         icon.setColorFilter(context.getColor(R.color.on_accent))
         turn.text = listOf(popup.turnLabel, popup.distanceLabel).filter { it.isNotEmpty() }.joinToString(" ")
         headline.text = popup.headline

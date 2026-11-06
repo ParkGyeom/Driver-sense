@@ -37,6 +37,8 @@
     <string name="demo_no_logs">아직 기록이 없어요</string>
     <string name="demo_navi_after_play_off">재생하면 내비 띄우기: 끔</string>
     <string name="demo_navi_after_play_on">재생하면 내비 띄우기: 켬</string>
+    <string name="demo_preview_start">안내 종류 미리보기</string>
+    <string name="demo_preview_now">미리보기: %s (누르면 다음)</string>
 
     <!-- 주행 안내 상단 알림 (겹침 창 권한이 없을 때) -->
     <string name="headsup_channel">주행 안내</string>

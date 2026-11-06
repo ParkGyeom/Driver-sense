@@ -33,7 +33,6 @@ import kkam.engine.model.Gear
 import kkam.engine.model.LawEntry
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnSignal
-import kkam.engine.model.TurnType
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlin.math.roundToInt
@@ -78,6 +77,8 @@ class MainActivity : Activity() {
     private var car: Car? = null
     private var uxManager: CarUxRestrictionsManager? = null
     private var permissionsAsked = false
+    /** 안내 종류 미리보기에서 다음에 보여줄 종류. */
+    private var previewIndex = 0
 
     /** 데모: 시나리오를 틀면 내비를 앞으로 띄운다 (내비 위 팝업 시연용). */
     private var naviAfterPlay = false
@@ -104,6 +105,7 @@ class MainActivity : Activity() {
         setUpHabitScreens()
         addButton(DIAGNOSE_LABEL, getString(R.string.demo_open_diagnose)) { openDiagnoseParked() }
         addNaviButton()
+        addPreviewButton()
         addLiveButton()
         ScenarioPlayer(this).fileNames().forEach(::addScenarioButton)
         setUpDemoToggle()
@@ -374,8 +376,8 @@ class MainActivity : Activity() {
         card.background = rounded(fill, radiusDp = 32, strokeColor = if (active) null else getColor(R.color.line))
 
         turnIcon.visibility = if (active) View.VISIBLE else View.GONE
-        // 화살표는 좌회전 모양 하나를 뒤집어 쓴다. 방향은 turnLabel로 판단한다.
-        turnIcon.scaleX = if (state.turnLabel == TurnType.RIGHT.label()) -1f else 1f
+        // 안내 종류에 맞는 그림. 회전 깜빡이면 방향(turnLabel)에 맞는 화살표.
+        turnIcon.setImageResource(guideIconRes(state.guideKind, state.turnLabel))
         turnIcon.imageTintList = ColorStateList.valueOf(ink)
 
         turn.text = state.turnLabel
@@ -414,6 +416,18 @@ class MainActivity : Activity() {
     }
 
     private fun addLiveButton() = addButton(CoachSession.LIVE, "실제 차량 신호") { toggleLive() }
+
+    /** 데모 패널: 누를 때마다 다음 안내 종류를 예시 값으로 보여준다. 내비 띄우기를 켜 두면 내비 위 팝업으로 본다. */
+    private fun addPreviewButton() {
+        addButton(PREVIEW_LABEL, getString(R.string.demo_preview_start)) {
+            val kind = GuideKind.entries[previewIndex % GuideKind.entries.size]
+            previewIndex++
+            buttons.getValue(PREVIEW_LABEL).text = getString(R.string.demo_preview_now, kind.label)
+            screen = Screen.DRIVE
+            session?.preview(kind)
+            if (naviAfterPlay) NaviLauncher.open(this)
+        }
+    }
 
     /** 데모 패널 토글: 켜면 시나리오를 틀 때 내비를 앞으로 띄운다. */
     private fun addNaviButton() {
@@ -495,6 +509,7 @@ class MainActivity : Activity() {
         const val MAX_LOGS = 12
         const val DISTANCE_UNIT_SCALE = 0.45f
         const val NAVI_LABEL = "내비"
+        const val PREVIEW_LABEL = "미리보기"
         const val DIAGNOSE_LABEL = "진단"
         const val REQUEST_LIVE = 1
         const val REQUEST_NOTIFY = 2

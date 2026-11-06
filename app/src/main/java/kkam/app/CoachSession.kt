@@ -97,6 +97,14 @@ class CoachSession(context: Context) {
         if (wasRunning) notifyChanged(null)
     }
 
+    /** 데모: 안내 종류를 예시 값으로 보여준다. 재생은 멈춘다. 내비가 앞에 있으면 팝업으로 뜬다. */
+    fun preview(kind: GuideKind) {
+        stopAll()
+        state = state.preview(kind)
+        popup = state.previewPopup()
+        notifyChanged(null)
+    }
+
     /** 주행 화면 한 줄 문구를 바꾼다. 습관 선택을 마쳤을 때 쓴다. */
     fun showMessage(message: String) {
         state = state.copy(message = message)

@@ -1,85 +1,120 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 주행 화면 (기획서 UI-1). 터치할 것을 두지 않는다. -->
+<!--
+  주행 화면 (기획서 UI-1). 운전 중에 힐끗 보는 화면이라 정보는 셋만 둔다.
+  1. 코치 카드: 다음 회전, 남은 거리, 깜빡이 상태. 카드 전체를 상태 색으로 칠한다 (주황 = 켜세요, 파랑 = 좋아요).
+  2. 한 줄 문구: 음성 안내나 판정 결과.
+  3. 오늘 지킨 횟수.
+  터치할 것은 두지 않는다 (주행 중 터치 조작 없음).
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:paddingHorizontal="32dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="32dp">
 
     <TextView
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_height="56dp"
+        android:gravity="center_vertical"
         android:text="@string/app_name"
-        android:textColor="@color/text"
-        android:textSize="32sp"
+        android:textColor="@color/muted"
+        android:textSize="28sp"
         android:textStyle="bold" />
 
+    <!-- 코치 카드. 높이를 고정해서 상태가 바뀌어도 화면이 출렁이지 않게 한다. -->
     <LinearLayout
         android:id="@+id/card"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_marginTop="16dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
         android:orientation="vertical"
-        android:padding="24dp">
-
-        <TextView
-            android:id="@+id/turn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="@color/text"
-            android:textSize="34sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/distance"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minHeight="88dp"
-            android:textColor="@color/text"
-            android:textSize="68sp"
-            android:textStyle="bold" />
+        android:paddingHorizontal="48dp"
+        android:paddingVertical="40dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
             android:gravity="center_vertical"
-            android:minHeight="48dp"
             android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/signal"
+            <ImageView
+                android:id="@+id/turnIcon"
+                android:layout_width="200dp"
+                android:layout_height="200dp"
+                android:layout_marginEnd="32dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_turn_left" />
+
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textColor="@color/text"
-                android:textSize="28sp" />
+                android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/badge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="8dp"
-                android:textColor="@color/on_accent"
-                android:textSize="24sp"
-                android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/turn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:textColor="@color/text"
+                    android:textSize="52sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/distance"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:textColor="@color/text"
+                    android:textSize="160sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
         </LinearLayout>
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="64dp" />
+
+        <!-- 한눈에 읽는 상태 한 마디: "지금 켜세요" / "좋아요" -->
+        <TextView
+            android:id="@+id/badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:textColor="@color/on_accent"
+            android:textSize="80sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/signal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:maxLines="1"
+            android:textColor="@color/text"
+            android:textSize="36sp" />
     </LinearLayout>
 
     <TextView
         android:id="@+id/message"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:minHeight="80dp"
+        android:layout_marginTop="24dp"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:minLines="2"
         android:textColor="@color/text"
-        android:textSize="28sp" />
+        android:textSize="38sp" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="16dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
@@ -87,16 +122,16 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="오늘 지킨 횟수"
+            android:text="@string/today_kept"
             android:textColor="@color/muted"
-            android:textSize="22sp" />
+            android:textSize="30sp" />
 
         <TextView
             android:id="@+id/today"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@color/text"
-            android:textSize="34sp"
+            android:textSize="56sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -104,6 +139,8 @@
         android:id="@+id/progress"
         style="@android:style/Widget.Material.ProgressBar.Horizontal"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="12dp"
+        android:layout_marginTop="12dp"
+        android:progressBackgroundTint="@color/line"
         android:progressTint="@color/ok" />
 </LinearLayout>

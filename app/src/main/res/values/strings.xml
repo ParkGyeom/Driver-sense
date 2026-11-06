@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">깜빡코치</string>
+    <string name="today_kept">오늘 지킨 횟수</string>
 
     <!-- 데모 패널 (debug 빌드 전용) -->
     <string name="demo_open">데모</string>

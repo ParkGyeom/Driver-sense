@@ -6,10 +6,14 @@ import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
 import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.GridLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import kkam.engine.Engine
@@ -18,6 +22,7 @@ import kkam.engine.model.Gear
 import kkam.engine.model.Guide
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnSignal
+import kkam.engine.model.TurnType
 import kotlin.math.roundToInt
 
 /**
@@ -133,24 +138,46 @@ class MainActivity : Activity() {
         tiles.getValue("전방 신호").text = frame.light?.phase?.name ?: "-"
     }
 
+    /** 주행 화면을 그린다. 값은 모두 [CoachState]에서 온다. */
     private fun render() = with(view) {
-        val accent = when (state.tone) {
-            Tone.IDLE -> getColor(R.color.line)
-            Tone.WARN -> getColor(R.color.warn)
-            Tone.OK -> getColor(R.color.ok)
-        }
-        card.background = rounded(getColor(R.color.surface), radiusDp = 20, strokeColor = accent)
+        // 회전 안내 중이면 카드 전체를 상태 색으로 칠하고 글자는 어둡게, 대기 중이면 어두운 카드에 흐린 글자.
+        val active = state.tone != Tone.IDLE
+        val fill = getColor(
+            when (state.tone) {
+                Tone.IDLE -> R.color.surface
+                Tone.WARN -> R.color.warn
+                Tone.OK -> R.color.ok
+            },
+        )
+        val ink = getColor(if (active) R.color.on_accent else R.color.muted)
+        card.background = rounded(fill, radiusDp = 32, strokeColor = if (active) null else getColor(R.color.line))
+
+        turnIcon.visibility = if (active) View.VISIBLE else View.GONE
+        // 화살표는 좌회전 모양 하나를 뒤집어 쓴다. 방향은 turnLabel로 판단한다.
+        turnIcon.scaleX = if (state.turnLabel == TurnType.RIGHT.label()) -1f else 1f
+        turnIcon.imageTintList = ColorStateList.valueOf(ink)
+
         turn.text = state.turnLabel
-        distance.text = state.distanceLabel
-        signal.text = state.signalLabel
+        distance.text = distanceText(state.distanceLabel)
         badge.text = state.badge
-        badge.visibility = if (state.badge.isEmpty()) android.view.View.INVISIBLE else android.view.View.VISIBLE
-        badge.background = rounded(accent, radiusDp = 999)
+        signal.text = state.signalLabel
+        listOf(turn, distance, badge, signal).forEach { it.setTextColor(ink) }
+        listOf(distance, badge, signal).forEach { it.visibility = if (active) View.VISIBLE else View.GONE }
+
         message.text = state.message
         today.text = "${state.kept} / ${state.total}"
         progress.max = state.total.coerceAtLeast(1)
         progress.progress = state.kept
         logs.text = state.logs.takeLast(MAX_LOGS).reversed().joinToString("\n").ifEmpty { getString(R.string.demo_no_logs) }
+    }
+
+    /** "60 m"에서 단위만 작게 줄여 숫자가 먼저 읽히게 한다. */
+    private fun distanceText(label: String): CharSequence {
+        val unitStart = label.lastIndexOf(' ')
+        if (unitStart < 0) return label
+        return SpannableString(label).apply {
+            setSpan(RelativeSizeSpan(DISTANCE_UNIT_SCALE), unitStart, label.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
     }
 
     private fun addTile(label: String) {
@@ -208,6 +235,7 @@ class MainActivity : Activity() {
         val scenarios: LinearLayout = activity.findViewById(R.id.scenarios)
         val tiles: GridLayout = activity.findViewById(R.id.tiles)
         val card: LinearLayout = activity.findViewById(R.id.card)
+        val turnIcon: ImageView = activity.findViewById(R.id.turnIcon)
         val turn: TextView = activity.findViewById(R.id.turn)
         val distance: TextView = activity.findViewById(R.id.distance)
         val signal: TextView = activity.findViewById(R.id.signal)
@@ -220,7 +248,8 @@ class MainActivity : Activity() {
 
     private companion object {
         const val TAG = "KkamCoach"
-        const val MAX_LOGS = 6
+        const val MAX_LOGS = 12
+        const val DISTANCE_UNIT_SCALE = 0.45f
         const val LIVE_LABEL = "실차"
         const val REQUEST_LIVE = 1
         val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")

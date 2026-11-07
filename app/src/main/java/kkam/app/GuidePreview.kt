@@ -19,9 +19,13 @@ fun CoachState.preview(kind: GuideKind): CoachState {
         distanceLabel = distance,
         signalLabel = status,
         badge = headline,
-        message = "미리보기: ${kind.label}",
+        message = previewHowTo(kind, title),
     )
 }
+
+/** 미리보기 한 줄 문구이자 음성. 레버를 쓰는 안내는 레버 동작, 아니면 해야 할 일. */
+fun previewHowTo(kind: GuideKind, title: String): String =
+    leverMotion(kind, title)?.howTo ?: "정지선에서 완전히 멈췄다가 우회전하세요"
 
 /** 미리보기 상태를 팝업으로 그대로 옮긴다. */
 fun CoachState.previewPopup(): Popup = Popup(PopupTone.WARN, guideKind, turnLabel, distanceLabel, badge)

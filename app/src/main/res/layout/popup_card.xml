@@ -48,4 +48,12 @@
             android:textSize="56sp"
             android:textStyle="bold" />
     </LinearLayout>
+
+    <!-- "어떻게 켜는지" 레버 그림. 초보 기능 안내일 때만 보인다. -->
+    <kkam.app.LeverGuideView
+        android:id="@+id/popupLever"
+        android:layout_width="220dp"
+        android:layout_height="160dp"
+        android:layout_marginStart="24dp"
+        android:visibility="gone" />
 </LinearLayout>

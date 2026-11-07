@@ -385,7 +385,10 @@ class MainActivity : Activity() {
         badge.text = state.badge
         signal.text = state.signalLabel
         listOf(turn, distance, badge, signal).forEach { it.setTextColor(ink) }
-        listOf(distance, badge, signal).forEach { it.visibility = if (active) View.VISIBLE else View.GONE }
+        listOf(badge, signal).forEach { it.visibility = if (active) View.VISIBLE else View.GONE }
+        // 거리가 없는 안내(예: 와이퍼)는 거리 줄을 비워 두지 않고 접어서 제목이 그림 옆 가운데에 오게 한다.
+        distance.visibility = if (active && state.distanceLabel.isNotEmpty()) View.VISIBLE else View.GONE
+        lever.show(leverFor(state.guideKind, state.turnLabel, state.tone == Tone.WARN), ink)
 
         message.text = state.message
         today.text = "${state.kept} / ${state.total}"
@@ -494,6 +497,7 @@ class MainActivity : Activity() {
         val tiles: GridLayout = activity.findViewById(R.id.tiles)
         val card: LinearLayout = activity.findViewById(R.id.card)
         val turnIcon: ImageView = activity.findViewById(R.id.turnIcon)
+        val lever: LeverGuideView = activity.findViewById(R.id.lever)
         val turn: TextView = activity.findViewById(R.id.turn)
         val distance: TextView = activity.findViewById(R.id.distance)
         val signal: TextView = activity.findViewById(R.id.signal)

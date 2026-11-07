@@ -97,11 +97,13 @@ class CoachSession(context: Context) {
         if (wasRunning) notifyChanged(null)
     }
 
-    /** 데모: 안내 종류를 예시 값으로 보여준다. 재생은 멈춘다. 내비가 앞에 있으면 팝업으로 뜬다. */
+    /** 데모: 안내 종류를 예시 값으로 보여주고 어떻게 하는지 읽는다. 재생은 멈춘다. 내비가 앞에 있으면 팝업으로 뜬다. */
     fun preview(kind: GuideKind) {
         stopAll()
         state = state.preview(kind)
         popup = state.previewPopup()
+        // 어떻게 하는지(레버 동작)를 음성으로도 읽는다. 실제 주행에서는 엔진 GUIDE 문구를 읽는다.
+        speaker.speak(state.message)
         notifyChanged(null)
     }
 

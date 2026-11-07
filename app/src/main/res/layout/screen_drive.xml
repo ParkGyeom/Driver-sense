@@ -74,6 +74,13 @@
                     android:textSize="160sp"
                     android:textStyle="bold" />
             </LinearLayout>
+
+            <!-- "어떻게 켜는지" 레버 그림. 초보 기능 안내(차선 변경, 전조등, 와이퍼)를 켜야 할 때만 보인다. -->
+            <kkam.app.LeverGuideView
+                android:id="@+id/lever"
+                android:layout_width="380dp"
+                android:layout_height="280dp"
+                android:visibility="gone" />
         </LinearLayout>
 
         <Space

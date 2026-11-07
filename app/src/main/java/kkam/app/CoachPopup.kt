@@ -26,6 +26,7 @@ class CoachPopup(context: Context) : CoachNotifier {
     private val icon: ImageView = card.findViewById(R.id.popupIcon)
     private val turn: TextView = card.findViewById(R.id.popupTurn)
     private val headline: TextView = card.findViewById(R.id.popupHeadline)
+    private val lever: LeverGuideView = card.findViewById(R.id.popupLever)
     private var attached = false
     private var shown: Popup? = null
 
@@ -72,6 +73,7 @@ class CoachPopup(context: Context) : CoachNotifier {
         icon.setColorFilter(context.getColor(R.color.on_accent))
         turn.text = listOf(popup.turnLabel, popup.distanceLabel).filter { it.isNotEmpty() }.joinToString(" ")
         headline.text = popup.headline
+        lever.show(leverFor(popup.kind, popup.turnLabel, popup.tone == PopupTone.WARN), context.getColor(R.color.on_accent))
     }
 
     /**

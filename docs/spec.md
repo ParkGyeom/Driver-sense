@@ -1,6 +1,11 @@
 # 깜빡코치 판정 엔진 명세
 
-v0.1 · 2026-11-06 상태 머신 리뷰와 에뮬레이터 확인 반영 · 담당 박겸
+v0.2 · 2026-11-09 시연용 R4(나들목 깜빡이)·R5(터널 전조등) 추가 · 담당 박겸
+
+| 버전 | 바뀐 것 |
+| --- | --- |
+| v0.1 (11-06) | R1 상태 머신, S1~S10 |
+| v0.2 (11-09) | R4·R5 추가(시연용 최소 범위), 입력 `headlight`, tbt.turn에 `RAMP_LEFT`·`RAMP_RIGHT`·`TUNNEL`, GUIDE에 `action`, EVENT의 `turn`은 null 허용, S11·S12 |
 
 이 문서가 기준이다. 코드와 다르면 이 문서를 먼저 고친다.
 
@@ -18,6 +23,10 @@ v0.1 · 2026-11-06 상태 머신 리뷰와 에뮬레이터 확인 반영 · 담�
 | R1 | 회전 전 깜빡이 | 지금 (11/10까지) |
 | R2 | 깜빡이 없이 회전 | 11/15 이후 |
 | R3 | 적색 신호 우회전 일시정지 | 11/15 이후 |
+| R4 | 나들목 진출입 전 깜빡이 (안내 중심) | R3 다음 (11/24~25 목표) |
+| R5 | 터널 진입 전 전조등 (안내 중심) | R3 다음 (11/24~25 목표) |
+
+R4·R5는 PT 시연용 최소 범위다. 놓침(MISSED)은 내지 않고, 안내 후 운전자가 따르면 지킴(KEPT)만 기록한다. 이유는 각 룰의 "MVP 단순화"에 적는다.
 
 원칙
 
@@ -42,7 +51,8 @@ v0.1 · 2026-11-06 상태 머신 리뷰와 에뮬레이터 확인 반영 · 담�
   "lon": 127.0732,
   "headingDeg": 90.0,
   "tbt": { "turn": "LEFT", "distanceM": 48 },
-  "light": null
+  "light": null,
+  "headlight": "OFF"
 }
 ```
 
@@ -58,13 +68,18 @@ v0.1 · 2026-11-06 상태 머신 리뷰와 에뮬레이터 확인 반영 · 담�
 | headingDeg | Double | 진행 방향 (북쪽 0°, 시계 방향, 0~360) | Fused Location | 직전 값 유지 |
 | tbt | Tbt? | 내비의 다음 안내와 남은 거리 | NaviHelper getTBTInfo 목록의 첫 항목 | 목록이 비면 null |
 | light | TrafficLight? | 전방 차량 신호 | 서버(공공 신호 API) → 앱 | 정보 없으면 null. R3에서만 사용 |
+| headlight | enum? | 전조등(하향등) 상태 | Vehicle SDK Light (아래 변환표) | 직전 값 유지. 한 번도 값이 없으면 null. R5에서만 사용 |
+
+- headlight는 Kotlin에서 기본값 `= null`을 준다. 이 필드가 없는 시나리오(S1~S10)도 그대로 읽히게 하기 위해서다.
+- 앱은 headlight 값이 없다는 이유로 프레임을 막지 않는다. null이면 R5만 아무것도 하지 않는다.
 
 enum 값
 
 - gear: `P`, `R`, `N`, `D`
 - turnSignal: `OFF`, `LEFT`, `RIGHT`, `HAZARD`
-- tbt.turn: `LEFT`, `RIGHT`, `STRAIGHT`, `UTURN`, `OTHER`
+- tbt.turn: `LEFT`, `RIGHT`, `STRAIGHT`, `UTURN`, `RAMP_LEFT`, `RAMP_RIGHT`, `TUNNEL`, `OTHER`
 - light.phase: `RED`, `YELLOW`, `GREEN`, `UNKNOWN`
+- headlight: `OFF`, `ON`, `AUTO`
 
 Tbt: `{ "turn": "LEFT", "distanceM": 48 }` (distanceM은 Int, 미터. SDK의 distance를 반올림)
 
@@ -81,15 +96,39 @@ Tbt: `{ "turn": "LEFT", "distanceM": 48 }` (distanceM은 Int, 미터. SDK의 dis
 | tbt.turn | `TURN_RIGHT`, `TURN_SHARP_R` | `RIGHT` |
 | tbt.turn | `TURN_UTURN` | `UTURN` |
 | tbt.turn | `TURN_STRAIGHT` | `STRAIGHT` |
-| tbt.turn | 그 밖의 값 (`TURN_KEEP_*`, 나들목, 고가, 지하차도, 회전교차로 등) | `OTHER` |
+| tbt.turn | `TURN_ENTER_IC_L`, `TURN_EXIT_IC_L` | `RAMP_LEFT` |
+| tbt.turn | `TURN_ENTER_IC_R`, `TURN_EXIT_IC_R` | `RAMP_RIGHT` |
+| tbt.turn | `TURN_TUNNEL` | `TUNNEL` |
+| tbt.turn | 그 밖의 값 (`TURN_KEEP_*`, `TURN_ENTER_IC_C`, `TURN_EXIT_IC_C`, 고가, 지하차도, 회전교차로 등) | `OTHER` |
+| headlight | 하향등 상태(`getCurrentLowBeamLightState`)가 `ON` | `ON` |
+| headlight | 위가 아니고, 하향등 스위치(`getLowBeamLightSwitch`)가 `AUTOMATIC` | `AUTO` |
+| headlight | 그 밖의 값 (상태 `OFF`, `DAYTIME_RUNNING`) | `OFF` |
+
+- tbt는 NaviHelper 목록의 첫 항목만 쓴다. 터널 앞에 회전 안내가 먼저 있으면 그 회전이 끝날 때까지 터널은 보이지 않는다.
+- R1은 `LEFT`, `RIGHT`만 보므로 새 값이 생겨도 R1 판정은 그대로다. 앱의 `TurnType`을 쓰는 `when`은 새 값을 처리해야 컴파일된다.
+- `DAYTIME_RUNNING`(주간주행등)은 터널 안을 밝히는 등화로 보지 않고 `OFF`로 둔다. 실제 차량 동작은 확인하지 못했다(5장).
+- Light API 권한은 `pleos.car.permission.CAR_LIGHTS`이며 앱 매니페스트에 이미 있다.
 
 TrafficLight: `{ "phase": "RED", "remainSec": 12 }` (remainSec는 Int?, 모르면 null)
 
 ### 2.2 출력: GUIDE (안내 요청)
 
 ```json
-{ "type": "GUIDE", "t": 5000, "rule": "R1", "text": "좌회전 곧이에요, 깜빡이 켜세요" }
+{ "type": "GUIDE", "t": 5000, "rule": "R1", "text": "좌회전 곧이에요, 깜빡이 켜세요", "action": "SIGNAL_LEFT" }
 ```
+
+| 필드 | 뜻 |
+| --- | --- |
+| action | 안내가 운전자에게 바라는 동작. 앱이 "따랐는지"를 프레임으로 확인할 때 쓴다 |
+
+| action | 나오는 룰 | 따른 것으로 보는 프레임 |
+| --- | --- | --- |
+| `SIGNAL_LEFT` | R1, R4 | turnSignal == LEFT |
+| `SIGNAL_RIGHT` | R1, R4 | turnSignal == RIGHT |
+| `HEADLIGHT_ON` | R5 | headlight가 ON 또는 AUTO |
+
+- action이 있으면 앱은 재탐색으로 tbt가 바뀌어도 안내한 방향을 잃지 않는다.
+- 시나리오 비교 항목에는 넣지 않는다(4.1).
 
 ### 2.3 출력: EVENT (판정 이벤트)
 
@@ -111,10 +150,12 @@ TrafficLight: `{ "phase": "RED", "remainSec": 12 }` (remainSec는 Int?, 모르�
 | --- | --- |
 | id | 엔진 인스턴스 안에서 순서대로 `evt-1`, `evt-2` … (테스트 재현성 때문에 UUID를 쓰지 않는다) |
 | t | 이벤트가 나온 프레임의 시각 |
-| rule | `R1`, `R2`, `R3` |
-| result | `KEPT`(지킴), `MISSED`(놓침) |
+| rule | `R1`, `R2`, `R3`, `R4`, `R5` |
+| result | `KEPT`(지킴), `MISSED`(놓침). R4·R5는 `KEPT`만 낸다 |
 | guided | 이 판정 전에 예방 안내(GUIDE)가 나갔는지. 앱의 "아낀 범칙금" 계산에 쓴다 |
-| turn | `LEFT`, `RIGHT` |
+| turn | `LEFT`, `RIGHT`, 또는 null. R1·R4는 방향을 넣고, R5는 null |
+
+- `turn`이 null일 수 있으므로 앱과 서버는 null을 처리해야 한다.
 | lat, lon | 이벤트가 나온 프레임의 위치 |
 
 ### 2.4 앱에서 쓰는 방법
@@ -133,7 +174,8 @@ for (out in outputs) {
 ```
 
 - 엔진은 한 스레드에서만 호출한다고 가정한다.
-- 한 프레임에서 출력이 0개, 1개, 여러 개 나올 수 있다.
+- 한 프레임에서 출력이 0개, 1개, 여러 개 나올 수 있다. 여러 룰이 한 프레임에 출력하면 룰 번호 순서(R1, R3, R4, R5)로 담는다.
+- R5는 안내 직후 운전자가 전조등을 켜면 그 프레임에 EVENT가 바로 나온다. 앱이 "EVENT가 오면 안내 표시를 숨김"으로 처리하면 따랐다는 표시가 보이지 않을 수 있다. 표시 유지 시간은 앱(정현우)이 정한다.
 
 ---
 
@@ -201,6 +243,7 @@ TURNING에서는 전이표를 검사하기 전에 프레임마다 시간을 먼�
 - TURNING에서는 tbt를 보지 않는다. 회전 지점을 지나면 내비가 다음 안내로 바뀌기 때문이다.
 - headingDiff(a, b) = | ((b − a + 540) mod 360) − 180 |. 예: 90 → 30 이면 60, 350 → 10 이면 20.
 - GUIDE 문구: LEFT면 `좌회전 곧이에요, 깜빡이 켜세요`, RIGHT면 `우회전 곧이에요, 깜빡이 켜세요`.
+- GUIDE action: LEFT면 `SIGNAL_LEFT`, RIGHT면 `SIGNAL_RIGHT`.
 
 ### 3.4 예시 흐름 (시나리오 S2)
 
@@ -229,7 +272,8 @@ TURNING에서는 전이표를 검사하기 전에 프레임마다 시간을 먼�
 
 - `expect`에는 엔진이 내보내야 하는 출력 **전체**를 순서대로 적는다. 개수가 다르면 실패다.
 - 비교 항목: `type`, `t`, `rule`, 그리고 EVENT면 `result`, `guided`. `id`, `text`, 위치는 비교하지 않는다.
-- 표에 없는 필드의 공통값: `gear` = D, `brake` = false, `steeringDeg` = 0.0, `light` = null, `lat`/`lon` = 37.5500/127.0700 근처에서 조금씩 움직이는 값.
+- 표에 없는 필드의 공통값: `gear` = D, `brake` = false, `steeringDeg` = 0.0, `light` = null, `headlight`는 적지 않음(null), `lat`/`lon` = 37.5500/127.0700 근처에서 조금씩 움직이는 값.
+- `steeringDeg` = 0.0은 회전 중인 프레임에도 그대로 쓴다. R1은 핸들 각도를 쓰지 않고 좌우 부호도 미정이다. 실제 값은 R2 시나리오부터 넣는다.
 - 표의 "다음 안내"는 `tbt = { "turn": "STRAIGHT", "distanceM": 500 }`, 그 다음 프레임은 `distanceM: 480`.
 
 ### 4.2 S1: 좌회전, 처음부터 깜빡이 켬
@@ -286,6 +330,8 @@ S2와 같고, turnSignal만 모든 프레임에서 OFF.
 | S8_판정후_주차 | 4.7 표 | 출력 없음 |
 | S9_재탐색후_우회전 | 4.8 표 | EVENT t=12000 R1 KEPT guided=false |
 | S10_판정후_회전없이_주행 | 4.9 표 | 출력 없음 |
+| S11_터널_전조등 | 4.10 표 | GUIDE t=11000 R5, EVENT t=14000 R5 KEPT guided=true |
+| S12_나들목_안내후_켬 | 4.11 표 | GUIDE t=15000 R4, EVENT t=18000 R4 KEPT guided=true |
 
 ### 4.6 S7: 판정 후 신호 대기
 
@@ -344,6 +390,44 @@ S2와 같고, turnSignal만 모든 프레임에서 OFF.
 | 38000 | 다음 안내 (480m) | 40 | OFF | 90 |
 | 40000 | 다음 안내 (480m) | 30 | OFF | 20 |
 
+### 4.10 S11: 터널 전조등 (R5)
+
+70km/h로 직진하며 터널에 다가간다. 200m 안의 첫 프레임(187m)에서 안내하고, 운전자가 전조등을 켠 프레임에서 KEPT. turnSignal은 모두 OFF, headingDeg는 모두 90.
+
+| t (ms) | tbt | speedKph | headlight |
+| --- | --- | --- | --- |
+| 0 | TUNNEL 400m | 70 | OFF |
+| 5000 | TUNNEL 303m | 70 | OFF |
+| 10000 | TUNNEL 206m | 70 | OFF |
+| 11000 | TUNNEL 187m | 70 | OFF |
+| 14000 | TUNNEL 129m | 70 | ON |
+| 20000 | TUNNEL 12m | 70 | ON |
+| 22000 | 다음 안내 | 70 | ON |
+
+기대 출력
+
+1. GUIDE t=11000, R5
+2. EVENT t=14000, R5, KEPT, guided = true
+
+### 4.11 S12: 나들목, 안내 듣고 깜빡이 (R4)
+
+80km/h로 오른쪽 나들목에 다가간다. 안내 거리는 약 189m라 167m 프레임에서 안내하고, 100m 지점에서 오른쪽 깜빡이가 켜져 있어 KEPT. headingDeg는 모두 90.
+
+| t (ms) | tbt | speedKph | turnSignal |
+| --- | --- | --- | --- |
+| 0 | RAMP_RIGHT 500m | 80 | OFF |
+| 5000 | RAMP_RIGHT 389m | 80 | OFF |
+| 9000 | RAMP_RIGHT 300m | 80 | OFF |
+| 15000 | RAMP_RIGHT 167m | 80 | OFF |
+| 17000 | RAMP_RIGHT 122m | 80 | RIGHT |
+| 18000 | RAMP_RIGHT 100m | 80 | RIGHT |
+| 20000 | 다음 안내 | 80 | RIGHT |
+
+기대 출력
+
+1. GUIDE t=15000, R4
+2. EVENT t=18000, R4, KEPT, guided = true
+
 ---
 
 ## 5. 아직 정하지 않은 것
@@ -358,6 +442,10 @@ S2와 같고, turnSignal만 모든 프레임에서 OFF.
 - [ ] 실제 headingDeg 기준(북쪽 0°, 시계 방향)이 Fused Location과 같은가. 에뮬레이터에서는 위치를 움직여도 0.0으로만 나와 측정 불가. 재현 방법을 주최측에 문의한다
 - [ ] TBT 남은 거리의 기준점이 무엇인가. 에뮬레이터에서 측정 불가, 공개 문서에도 없다. 제출과 시연에 꼭 필요하지 않아 주최측 문의에서는 뺐다. 법령의 30m 기준점은 교차로 가장자리(시행령 별표 2)라서 기준점이 교차로 중심이면 판정이 늦어진다
 - [ ] 비상등 입력원. Vehicle SDK에서 찾지 못했다. R1은 HAZARD와 OFF를 똑같이 처리하므로 영향 없음
+- [ ] 에뮬레이터에서 하향등 상태·스위치 값이 실제로 나오는가. 지금은 SDK 시그니처만 확인했다 (v0.2)
+- [ ] `DAYTIME_RUNNING`을 OFF로 보는 것이 맞는가. 주간주행등이 터널에서 어떻게 동작하는지 확인 필요 (v0.2)
+- [ ] R4 판정 지점을 100m 하나로 두는 것. 일반도로 나들목은 30m 기준이라 더 엄격하게 본다 (v0.2)
+- [ ] R4·R5에서 MISSED를 낼 조건. 차로 번호, 터널 통과 여부를 알 수 있는 입력이 생기면 다시 본다 (v0.2)
 
 ---
 
@@ -365,3 +453,106 @@ S2와 같고, turnSignal만 모든 프레임에서 OFF.
 
 - **R2 깜빡이 없이 회전**: 저속(≤ 30km/h)에서 진행 방향이 60° 이상 바뀌었고, 바뀌기 시작하기 전 5초 동안 깜빡이가 꺼져 있었으면 MISSED. 후진(gear R)과 주차장 제외. 핸들 각도가 나오면 보조로 쓴다(예: 180° 이상). 내비 없이도 동작해야 한다.
 - **R3 적색 신호 우회전 일시정지**: tbt가 RIGHT이고 light.phase가 RED인 상태로 다가가면 GUIDE `전방 적색이에요, 정지선에서 멈췄다 가세요`. 회전이 끝나기 전에 speedKph == 0인 프레임이 없으면 MISSED. 근거는 도로교통법 제5조, 범칙금 6만 원·벌점 15점. light는 서버(김종범)가 채워서 앱이 넣어준다.
+- **v0.2에서 뺀 것** (시연용 최소 범위 밖)
+  - R6 비 올 때 와이퍼: 입력 `wiper`, `rain`이 필요하다. 와이퍼 권한 `pleos.car.permission.CAR_WINDOWS`가 앱에 없고, 비 정보 출처(서버 날씨)도 정해지지 않았다. 법규표에 근거 조항이 없다.
+  - R4의 `TURN_KEEP_L`/`TURN_KEEP_R`(갈림길 유지): 차로를 바꿀 필요가 없는 경우가 많아 안내가 잔소리가 될 수 있다.
+  - R5의 야간·비 조건: 엔진은 현재 시각을 쓰지 않으므로 별도 입력이 필요하다.
+  - 모드(DIAGNOSE/CORRECT/TRAINING/QUIET)에서 R4·R5를 어떻게 다룰지: tasks 단계 11에서 함께 정한다.
+  - `data/law_table.json`에 룰 연결 필드(`rule`)와 터널 등화 조항(LAW-16) 추가: 법규 Q&A와 리포트 연결 작업 때 한다.
+
+---
+
+## 7. 룰 R4: 나들목 진출입 전 깜빡이
+
+**법 근거**: 도로교통법 제38조제1항, 시행령 별표 2 (법규표 LAW-04). 차로를 바꿀 때 일반도로는 30m, 고속도로는 100m 이상 앞선 지점부터 방향지시등을 켜야 한다.
+
+**MVP 단순화**
+
+- 내비 안내가 나들목 진입·진출(`RAMP_LEFT`, `RAMP_RIGHT`)일 때만 본다.
+- 판정 지점은 고속도로 기준 100m 하나로 둔다. 엔진은 도로 종류를 모른다.
+- 100m 지점에서 해당 방향 깜빡이가 켜져 있으면 KEPT. **꺼져 있어도 MISSED를 내지 않는다.** 차로 번호를 모르므로 이미 바깥 차로에 있어서 차로를 바꿀 필요가 없었는지 알 수 없기 때문이다.
+- 회전 완료(진행 방향 변화)는 보지 않는다. 나들목은 진행 방향이 60°까지 바뀌지 않는 경우가 많다.
+
+### 7.1 파라미터
+
+| 이름 | 값 | 뜻 |
+| --- | --- | --- |
+| LANE_START_M | 300 | 나들목까지 이 거리 안이면 감시를 시작한다 |
+| LANE_CHECK_M | 100 | 판정 지점 |
+| LANE_GUIDE_MAX_M | 300 | 안내 거리의 최댓값 |
+| GUIDE_LEAD_MS | 4000 | R1과 같은 값을 쓴다 |
+
+안내 거리: laneGuideDistance(speedKph) = LANE_CHECK_M + speedKph ÷ 3.6 × GUIDE_LEAD_MS ÷ 1000 을 LANE_GUIDE_MAX_M 이하로 자른 값.
+
+| 속도 | 안내 거리 |
+| --- | --- |
+| 60km/h | 약 167m |
+| 80km/h | 약 189m |
+| 100km/h | 약 211m |
+
+### 7.2 상태
+
+| 상태 | 뜻 | 기억하는 값 |
+| --- | --- | --- |
+| IDLE | 대기 | 없음 |
+| APPROACHING | 나들목에 다가가는 중 | targetTurn(RAMP_LEFT/RAMP_RIGHT), guided |
+
+### 7.3 전이표
+
+R1과 같이 위에서부터 검사하고 처음 맞는 행 하나만 적용한다.
+
+| # | 현재 | 조건 | 다음 | 출력 |
+| --- | --- | --- | --- | --- |
+| 0 | 모든 상태 | gear가 P 또는 R | IDLE | 없음 |
+| 1 | IDLE | tbt.turn이 RAMP_LEFT 또는 RAMP_RIGHT이고 tbt.distanceM ≤ 300 | APPROACHING (targetTurn = tbt.turn, guided = false) | 없음 |
+| 2 | APPROACHING | tbt가 null이거나 tbt.turn ≠ targetTurn | IDLE | 없음 (재탐색으로 보고 취소) |
+| 3 | APPROACHING | tbt.distanceM ≤ 100 이고 turnSignal이 targetTurn과 같은 방향 | IDLE | EVENT (KEPT, guided 그대로, turn = LEFT 또는 RIGHT) |
+| 4 | APPROACHING | tbt.distanceM ≤ 100 | IDLE | 없음 (MVP 단순화) |
+| 5 | APPROACHING | 100 < tbt.distanceM ≤ laneGuideDistance(speedKph) 이고 turnSignal이 targetTurn과 다르고 guided == false | APPROACHING (guided = true) | GUIDE |
+
+- "같은 방향": RAMP_LEFT면 turnSignal == LEFT, RAMP_RIGHT면 turnSignal == RIGHT. HAZARD는 같은 방향으로 치지 않는다.
+- EVENT의 turn: RAMP_LEFT면 `LEFT`, RAMP_RIGHT면 `RIGHT`.
+- GUIDE 문구: RAMP_LEFT면 `왼쪽 나들목이 곧이에요, 깜빡이 켜세요`, RAMP_RIGHT면 `오른쪽 나들목이 곧이에요, 깜빡이 켜세요`.
+- GUIDE action: RAMP_LEFT면 `SIGNAL_LEFT`, RAMP_RIGHT면 `SIGNAL_RIGHT`.
+
+---
+
+## 8. 룰 R5: 터널 진입 전 전조등
+
+**법 근거**: 도로교통법 제37조제1항제3호. 터널 안을 운행할 때는 전조등 등 등화를 켜야 한다. 범칙금은 아직 확인하지 못했다(법규표에 행이 없다).
+
+**MVP 단순화**
+
+- 내비 안내가 터널(`TUNNEL`)일 때만 본다. 야간·비 조건은 뺀다.
+- 안내를 들은 뒤 전조등을 켜면 KEPT. **끝까지 안 켜도 MISSED를 내지 않는다.** 터널 안내가 사라지는 것이 터널 통과인지 경로 재탐색인지 구분할 수 없기 때문이다.
+- 다가갈 때 이미 전조등이 ON 또는 AUTO이면 안내도 기록도 하지 않는다.
+- headlight가 null이면 아무것도 하지 않는다.
+
+### 8.1 파라미터
+
+| 이름 | 값 | 뜻 |
+| --- | --- | --- |
+| TUNNEL_GUIDE_M | 200 | 터널까지 이 거리 안이면 안내한다 |
+
+### 8.2 상태
+
+| 상태 | 뜻 | 기억하는 값 |
+| --- | --- | --- |
+| IDLE | 대기 | 없음 |
+| WATCHING | 안내를 했고 전조등이 켜지길 기다리는 중 | 없음 |
+| DONE | 이번 터널은 끝남. 같은 터널로 다시 안내하지 않으려고 기다리는 중 | 없음 |
+
+### 8.3 전이표
+
+| # | 현재 | 조건 | 다음 | 출력 |
+| --- | --- | --- | --- | --- |
+| 0 | 모든 상태 | gear가 P 또는 R | IDLE | 없음 |
+| 1 | IDLE | tbt.turn이 TUNNEL이고 tbt.distanceM ≤ 200 이고 headlight == OFF | WATCHING | GUIDE |
+| 2 | IDLE | tbt.turn이 TUNNEL이고 tbt.distanceM ≤ 200 이고 headlight가 ON 또는 AUTO | DONE | 없음 (이미 켜져 있음) |
+| 3 | WATCHING | headlight가 ON 또는 AUTO | DONE | EVENT (KEPT, guided = true, turn = null) |
+| 4 | WATCHING | tbt가 null이거나 tbt.turn ≠ TUNNEL | IDLE | 없음 (MVP 단순화) |
+| 5 | DONE | tbt가 null이거나 tbt.turn ≠ TUNNEL | IDLE | 없음 |
+
+- IDLE에서 headlight가 null이면 #1, #2 둘 다 맞지 않아 IDLE에 머문다.
+- GUIDE 문구: `터널이 곧 나와요, 전조등 켜세요`.
+- GUIDE action: `HEADLIGHT_ON`.

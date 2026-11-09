@@ -22,6 +22,8 @@ android {
 
     // 시나리오는 엔진 테스트와 같은 파일을 쓴다. 복사하지 않는다.
     sourceSets.getByName("main").assets.directories.add(rootProject.file("scenarios").path)
+    // 법규 룰 테이블(law_table.json)도 엔진·서버와 같은 파일을 쓴다.
+    sourceSets.getByName("main").assets.directories.add(rootProject.file("data").path)
 }
 
 dependencies {

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  진단 리포트 (기획서 UI-3 앞부분). 기어 P일 때만 연다.
+  핵심 문구 한 줄, 상황별 준수율 막대(흰 선 = 전국 평균 75.7%), 습관 고르기 버튼.
+  막대 한 줄은 diagnose_row.xml을 코드에서 넣는다.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/diagnoseScreen"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingHorizontal="32dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="32dp"
+    android:visibility="gone">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="56dp"
+        android:gravity="center_vertical"
+        android:text="@string/app_name"
+        android:textColor="@color/muted"
+        android:textSize="28sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/diagnose_title"
+        android:textColor="@color/text"
+        android:textSize="48sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/diagnosePeriod"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/muted"
+        android:textSize="24sp" />
+
+    <!-- 핵심 문구. 퍼센트 숫자만 코드에서 주황으로 칠한다. -->
+    <TextView
+        android:id="@+id/diagnoseHeadline"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:paddingHorizontal="40dp"
+        android:paddingVertical="32dp"
+        android:textColor="@color/text"
+        android:textSize="52sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="36dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/diagnose_rates"
+            android:textColor="@color/muted"
+            android:textSize="26sp" />
+
+        <View
+            android:layout_width="4dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="12dp"
+            android:background="@color/text" />
+
+        <TextView
+            android:id="@+id/diagnoseAverage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/muted"
+            android:textSize="24sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/diagnoseRows"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="vertical" />
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <TextView
+        android:id="@+id/diagnoseNext"
+        android:layout_width="wrap_content"
+        android:layout_height="88dp"
+        android:layout_gravity="end"
+        android:gravity="center"
+        android:paddingHorizontal="48dp"
+        android:text="@string/diagnose_next"
+        android:textColor="@color/on_accent"
+        android:textSize="32sp"
+        android:textStyle="bold" />
+</LinearLayout>

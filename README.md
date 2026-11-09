@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | [engine/](engine/README.md) | 판정 엔진 (순수 Kotlin 라이브러리) | 박겸 | R1 완료 (v0.1) |
 | `scenarios/` | 주행 시나리오 JSON (테스트와 데모 공용) | 박겸 | S1~S10 |
-| [app/](app/README.md) | Pleos Connect 차량 앱 | 정현우 | 시작 전 |
+| [app/](app/README.md) | Pleos Connect 차량 앱 | 정현우 | 코치 카드, 주행 리포트 |
 | [server/](server/README.md) | Spring 서버 | 김종범 | 시작 전 |
 | `docs/` | 기획서, 엔진 명세, 작업 순서 | 송대현, 박겸 | 진행 중 |
 | [apk/](apk/README.md) | 제출용 APK | 정현우 | 시작 전 |

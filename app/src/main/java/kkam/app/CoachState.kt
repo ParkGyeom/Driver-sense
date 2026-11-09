@@ -16,6 +16,8 @@ enum class Tone { IDLE, WARN, OK }
 
 /** 화면에 그릴 값 전체. Android에 의존하지 않아서 JVM 테스트로 확인한다. */
 data class CoachState(
+    /** 지금 안내의 종류. 음성 안내(GUIDE)의 룰로 정한다. 그림과 제목을 고르는 데 쓴다. */
+    val guideKind: GuideKind = GuideKind.TURN_SIGNAL,
     val tone: Tone = Tone.IDLE,
     val turnLabel: String = "다음 회전 대기",
     val distanceLabel: String = "",
@@ -29,6 +31,8 @@ data class CoachState(
     val kept: Int = 0,
     val total: Int = 0,
     val logs: List<String> = emptyList(),
+    /** 오늘 나온 판정 전체. 기어 P 주행 리포트에 쓴다. kept, total처럼 새 주행을 시작해도 남긴다. */
+    val todayEvents: List<Event> = emptyList(),
 )
 
 /** 프레임 하나와 엔진 출력을 반영한 다음 상태를 돌려준다. */
@@ -52,6 +56,7 @@ fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>): CoachState
     for (output in outputs) {
         state = when (output) {
             is Guide -> state.copy(
+                guideKind = output.rule.guideKind() ?: state.guideKind,
                 message = output.text,
                 guideShowing = true,
                 logs = state.logs + state.logLine(output.t, "음성 안내"),
@@ -62,6 +67,7 @@ fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>): CoachState
                 kept = state.kept + if (output.result == Result.KEPT) 1 else 0,
                 total = state.total + 1,
                 logs = state.logs + state.logLine(output.t, "${output.turn.label()} ${output.result.label()}"),
+                todayEvents = state.todayEvents + output,
             )
         }
     }
@@ -70,7 +76,7 @@ fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>): CoachState
 
 /** 새 시나리오를 시작할 때 쓴다. 오늘 횟수와 기록은 남긴다. */
 fun CoachState.resetDrive(label: String): CoachState =
-    CoachState(message = "", driveLabel = label, kept = kept, total = total, logs = logs)
+    CoachState(message = "", driveLabel = label, kept = kept, total = total, logs = logs, todayEvents = todayEvents)
 
 private fun CoachState.logLine(t: Long, text: String): String =
     listOf(driveLabel, t.timeLabel(), text).filter { it.isNotEmpty() }.joinToString(" ")
@@ -92,7 +98,7 @@ fun TurnType.label(): String = when (this) {
     TurnType.OTHER -> "기타"
 }
 
-private fun Result.label(): String = when (this) {
+fun Result.label(): String = when (this) {
     Result.KEPT -> "지킴"
     Result.MISSED -> "놓침"
 }

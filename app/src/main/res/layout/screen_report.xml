@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  오늘 주행 리포트 (기획서 UI-2). 기어 P일 때만 보인다.
+  왼쪽: 지킴, 놓침, 아낀 범칙금 요약. 오른쪽: 판정 카드 목록 (조항·처분).
+  지도 핀은 지도 SDK 확인 뒤에 붙인다.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/reportScreen"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingHorizontal="32dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="32dp"
+    android:visibility="gone">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="56dp"
+        android:gravity="center_vertical"
+        android:text="@string/app_name"
+        android:textColor="@color/muted"
+        android:textSize="28sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/report_title"
+        android:textColor="@color/text"
+        android:textSize="48sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/report_hint"
+        android:textColor="@color/muted"
+        android:textSize="24sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="28dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <!-- 요약 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="24dp"
+            android:layout_weight="2"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/reportSavedTile"
+                style="@style/ReportTile">
+
+                <TextView
+                    style="@style/ReportTileLabel"
+                    android:text="@string/report_saved" />
+
+                <TextView
+                    android:id="@+id/reportSaved"
+                    style="@style/ReportTileValue"
+                    android:textSize="72sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:id="@+id/reportKeptTile"
+                    style="@style/ReportTile"
+                    android:layout_width="0dp"
+                    android:layout_marginEnd="16dp"
+                    android:layout_weight="1">
+
+                    <TextView
+                        style="@style/ReportTileLabel"
+                        android:text="@string/report_kept" />
+
+                    <TextView
+                        android:id="@+id/reportKept"
+                        style="@style/ReportTileValue"
+                        android:textColor="@color/ok" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/reportMissedTile"
+                    style="@style/ReportTile"
+                    android:layout_width="0dp"
+                    android:layout_weight="1">
+
+                    <TextView
+                        style="@style/ReportTileLabel"
+                        android:text="@string/report_missed" />
+
+                    <TextView
+                        android:id="@+id/reportMissed"
+                        style="@style/ReportTileValue"
+                        android:textColor="@color/warn" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <!-- 법규 Q&A(UI-5)를 붙일 자리. 지금은 누를 수 없다. -->
+            <TextView
+                android:id="@+id/reportAsk"
+                android:layout_width="wrap_content"
+                android:layout_height="64dp"
+                android:gravity="center"
+                android:paddingHorizontal="28dp"
+                android:text="@string/report_ask"
+                android:textColor="@color/muted"
+                android:textSize="24sp" />
+        </LinearLayout>
+
+        <!-- 판정 카드 -->
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="3">
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <LinearLayout
+                    android:id="@+id/reportItems"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </ScrollView>
+
+            <TextView
+                android:id="@+id/reportEmpty"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/report_empty"
+                android:textColor="@color/muted"
+                android:textSize="30sp" />
+        </FrameLayout>
+    </LinearLayout>
+</LinearLayout>

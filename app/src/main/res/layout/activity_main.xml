@@ -1,176 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+  화면 뼈대.
+  - screenSlot: 지금 보여줄 화면 하나가 들어가는 자리. 지금은 주행 화면(screen_drive)만 있다.
+    나중에 기어 P 주행 리포트, 진단 리포트, 습관 선택 화면을 여기서 갈아끼운다.
+  - demoPanel: 시연·개발용 패널(panel_demo). debug 빌드에서만 demoToggle로 연다.
+    주행 화면 레이아웃과 섞이지 않게 바깥에 둔다.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg"
-    android:orientation="horizontal"
-    android:padding="24dp">
+    android:background="@color/bg">
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginEnd="24dp"
-        android:layout_weight="5"
-        android:orientation="vertical">
+        android:orientation="horizontal">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="주행 신호"
-            android:textColor="@color/text"
-            android:textSize="32sp"
-            android:textStyle="bold" />
+        <include
+            android:id="@+id/demoPanel"
+            layout="@layout/panel_demo"
+            android:layout_width="520dp"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            android:text="실제 신호나 녹화한 시나리오를 골라요"
-            android:textColor="@color/muted"
-            android:textSize="22sp" />
-
-        <ScrollView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_marginBottom="12dp"
+        <FrameLayout
+            android:id="@+id/screenSlot"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
             android:layout_weight="1">
 
-            <LinearLayout
-                android:id="@+id/scenarios"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical" />
-        </ScrollView>
+            <include
+                android:id="@+id/driveScreen"
+                layout="@layout/screen_drive" />
 
-        <GridLayout
-            android:id="@+id/tiles"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:columnCount="3" />
+            <include layout="@layout/screen_report" />
+
+            <include layout="@layout/screen_diagnose" />
+
+            <include layout="@layout/screen_habit" />
+        </FrameLayout>
     </LinearLayout>
 
-    <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_weight="6"
-        android:orientation="vertical">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:text="@string/app_name"
-            android:textColor="@color/text"
-            android:textSize="32sp"
-            android:textStyle="bold" />
-
-        <LinearLayout
-            android:id="@+id/card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="24dp">
-
-            <TextView
-                android:id="@+id/turn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/text"
-                android:textSize="34sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/distance"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minHeight="88dp"
-                android:textColor="@color/text"
-                android:textSize="68sp"
-                android:textStyle="bold" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:gravity="center_vertical"
-                android:minHeight="48dp"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/signal"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textColor="@color/text"
-                    android:textSize="28sp" />
-
-                <TextView
-                    android:id="@+id/badge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="8dp"
-                    android:textColor="@color/on_accent"
-                    android:textSize="24sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/message"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:minHeight="80dp"
-            android:textColor="@color/text"
-            android:textSize="28sp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="오늘 지킨 횟수"
-                android:textColor="@color/muted"
-                android:textSize="22sp" />
-
-            <TextView
-                android:id="@+id/today"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/text"
-                android:textSize="34sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <ProgressBar
-            android:id="@+id/progress"
-            style="@android:style/Widget.Material.ProgressBar.Horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:progressTint="@color/ok" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="판정 기록"
-            android:textColor="@color/muted"
-            android:textSize="22sp" />
-
-        <TextView
-            android:id="@+id/logs"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:lineSpacingExtra="4dp"
-            android:textColor="@color/text"
-            android:textSize="24sp" />
-    </LinearLayout>
-</LinearLayout>
+    <TextView
+        android:id="@+id/demoToggle"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="28dp"
+        android:layout_marginEnd="32dp"
+        android:gravity="center"
+        android:paddingHorizontal="20dp"
+        android:text="@string/demo_open"
+        android:textColor="@color/muted"
+        android:textSize="20sp"
+        android:visibility="gone" />
+</FrameLayout>

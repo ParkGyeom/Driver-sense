@@ -46,7 +46,7 @@ data class Diagnosis(
 
 /**
  * 진단 값을 어디서 가져올지. 지금은 데모 고정값 하나뿐이다.
- * TODO(박겸 습관 인사이트 라이브러리, 12/1): 진단 기간 판정 이벤트로 계산하는 구현을 더하고 MainActivity에서 바꿔 끼운다.
+ * TODO(AI 담당 습관 인사이트 라이브러리, 12/1): 진단 기간 판정 이벤트로 계산하는 구현을 더하고 MainActivity에서 바꿔 끼운다.
  */
 interface DiagnosisSource {
     fun load(): Diagnosis

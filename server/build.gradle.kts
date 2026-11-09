@@ -3,6 +3,7 @@ plugins {
 	kotlin("plugin.spring") version "2.3.21"
 	id("org.springframework.boot") version "4.1.2"
 	id("io.spring.dependency-management") version "1.1.7"
+	kotlin("plugin.serialization") version "2.3.21" apply false
 }
 
 group = "kkam"
@@ -19,6 +20,7 @@ repositories {
 }
 
 dependencies {
+	implementation(project(":engine"))
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")

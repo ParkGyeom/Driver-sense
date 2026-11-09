@@ -1,0 +1,10 @@
+<resources>
+    <!-- 주행 화면 (UI-1)과 내비 위 팝업 카드. 세션 A 소유. -->
+    <string name="drive_idle_hint">다음 안내를 기다리는 중이에요</string>
+    <string name="drive_today_title">오늘 성적</string>
+    <!-- 오늘 성적 줄: "지킴 3 / 전체 5번" -->
+    <string name="drive_today_kept">지킴</string>
+    <string name="drive_today_total">/ 전체 %d번</string>
+    <string name="drive_today_rate">%d%%</string>
+    <string name="drive_today_none">–</string>
+</resources>

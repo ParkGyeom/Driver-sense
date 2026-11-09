@@ -1,51 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  주행 화면 (기획서 UI-1). 운전 중에 힐끗 보는 화면이라 정보는 셋만 둔다.
-  1. 코치 카드: 다음 회전, 남은 거리, 깜빡이 상태. 카드 전체를 상태 색으로 칠한다 (주황 = 켜세요, 파랑 = 좋아요).
+  주행 화면 (기획서 UI-1). 운전 중에 힐끗 보는 화면이라 3초 안에 위에서 아래로 읽히게 덩어리 셋만 둔다.
+  1. 코치 카드: 무엇을(방향 그림 + 회전 + 남은 거리) → 지금 할 일(상태 배지) + 깜빡이 상태.
+     카드 전체를 상태 색으로 칠한다 (주황 = 켜세요, 파랑 = 좋아요, 회색 = 대기). 색만으로 구분하지 않게 아이콘과 글자를 같이 쓴다.
   2. 한 줄 문구: 음성 안내나 판정 결과.
-  3. 오늘 지킨 횟수.
-  터치할 것은 두지 않는다 (주행 중 터치 조작 없음).
+  3. 오늘 성적: 지킨 비율 링 + "지킴 n / 전체 m번".
+  글자 크기는 거리(hero) > 상태 배지(display) > 회전·성적(title) > 문구(body) 순서. 읽는 순서를 크기로 정한다.
+  터치할 것은 두지 않는다 (주행 중 터치 조작 없음, 기획서 5.4).
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:paddingHorizontal="32dp"
-    android:paddingTop="24dp"
-    android:paddingBottom="32dp">
+    android:padding="@dimen/kk_screen_padding">
 
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="56dp"
-        android:gravity="center_vertical"
+        style="@style/Kk.Caption"
         android:text="@string/app_name"
-        android:textColor="@color/muted"
-        android:textSize="28sp"
         android:textStyle="bold" />
 
-    <!-- 코치 카드. 높이를 고정해서 상태가 바뀌어도 화면이 출렁이지 않게 한다. -->
+    <!-- 1. 코치 카드. 높이를 남은 칸 전체로 고정해서 상태가 바뀌어도 화면이 출렁이지 않게 한다. -->
     <LinearLayout
         android:id="@+id/card"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="@dimen/kk_gap"
         android:layout_weight="1"
         android:gravity="center_vertical"
         android:orientation="vertical"
         android:paddingHorizontal="48dp"
         android:paddingVertical="40dp">
 
+        <!-- 무엇을: 방향 그림 + 회전 이름 + 남은 거리 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
+            <!-- 그림 뒤 동그라미는 대기 중에만 칠한다 (코드). -->
             <ImageView
                 android:id="@+id/turnIcon"
                 android:layout_width="200dp"
                 android:layout_height="200dp"
-                android:layout_marginEnd="32dp"
+                android:layout_marginEnd="40dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_turn_left" />
 
@@ -57,22 +55,24 @@
 
                 <TextView
                     android:id="@+id/turn"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:maxLines="1"
-                    android:textColor="@color/text"
-                    android:textSize="52sp"
-                    android:textStyle="bold" />
+                    style="@style/Kk.Title"
+                    android:maxLines="1" />
 
+                <!-- 남은 거리. 숫자는 크게, 단위(m)는 작게 (numberEmphasis). -->
                 <TextView
                     android:id="@+id/distance"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:includeFontPadding="false"
+                    style="@style/Kk.Display"
                     android:maxLines="1"
-                    android:textColor="@color/text"
-                    android:textSize="160sp"
-                    android:textStyle="bold" />
+                    android:textSize="@dimen/kk_text_hero" />
+
+                <!-- 대기 중에만 보이는 차분한 한 줄. -->
+                <TextView
+                    android:id="@+id/idleHint"
+                    style="@style/Kk.Body"
+                    android:layout_marginTop="8dp"
+                    android:maxLines="1"
+                    android:text="@string/drive_idle_hint"
+                    android:textColor="@color/muted" />
             </LinearLayout>
 
             <!-- "어떻게 켜는지" 레버 그림. 초보 기능 안내(차선 변경, 전조등, 와이퍼)를 켜야 할 때만 보인다. -->
@@ -80,74 +80,152 @@
                 android:id="@+id/lever"
                 android:layout_width="380dp"
                 android:layout_height="280dp"
+                android:layout_marginStart="@dimen/kk_gap_large"
                 android:visibility="gone" />
         </LinearLayout>
 
-        <Space
+        <!-- 지금 할 일: 상태 배지 (왼쪽) + 깜빡이 상태 (오른쪽). 대기 중에는 둘 다 숨긴다. -->
+        <LinearLayout
+            android:id="@+id/actionRow"
             android:layout_width="match_parent"
-            android:layout_height="64dp" />
-
-        <!-- 한눈에 읽는 상태 한 마디: "지금 켜세요" / "좋아요" -->
-        <TextView
-            android:id="@+id/badge"
-            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:maxLines="1"
-            android:textColor="@color/on_accent"
-            android:textSize="80sp"
-            android:textStyle="bold" />
+            android:layout_marginTop="48dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/signal"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:maxLines="1"
-            android:textColor="@color/text"
-            android:textSize="36sp" />
+            <!-- 상태 배지: 카드 색을 뒤집은 알약. "! 지금 켜세요" / "✓ 좋아요" -->
+            <LinearLayout
+                android:id="@+id/badgeBox"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingVertical="16dp"
+                android:paddingStart="28dp"
+                android:paddingEnd="44dp">
+
+                <ImageView
+                    android:id="@+id/badgeIcon"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:layout_marginEnd="12dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_alert" />
+
+                <TextView
+                    android:id="@+id/badge"
+                    style="@style/Kk.Display"
+                    android:maxLines="1" />
+            </LinearLayout>
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <!-- 깜빡이 상태: 켜짐은 꽉 찬 화살표, 꺼짐은 빈 화살표 + 글자. 테두리만 있는 칩. -->
+            <LinearLayout
+                android:id="@+id/signalBox"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingVertical="12dp"
+                android:paddingStart="20dp"
+                android:paddingEnd="28dp">
+
+                <ImageView
+                    android:id="@+id/signalIcon"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginEnd="12dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_blinker_off" />
+
+                <TextView
+                    android:id="@+id/signal"
+                    style="@style/Kk.Body"
+                    android:maxLines="1"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 
+    <!-- 2. 한 줄 문구 -->
     <TextView
         android:id="@+id/message"
+        style="@style/Kk.Body"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="@dimen/kk_gap_large"
         android:ellipsize="end"
         android:maxLines="2"
-        android:minLines="2"
-        android:textColor="@color/text"
-        android:textSize="38sp" />
+        android:minLines="2" />
 
+    <!-- 3. 오늘 성적. 배경은 코드에서 cardBackground()로 칠한다. -->
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:id="@+id/scoreCard"
+        style="@style/Kk.Card"
+        android:layout_marginTop="@dimen/kk_gap"
         android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:paddingVertical="20dp">
 
-        <TextView
+        <!-- 지킨 비율 링. 가운데에 퍼센트. -->
+        <FrameLayout
+            android:layout_width="136dp"
+            android:layout_height="136dp">
+
+            <ProgressBar
+                android:id="@+id/scoreRing"
+                style="@android:style/Widget.Material.ProgressBar.Horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:indeterminate="false"
+                android:max="100"
+                android:progressDrawable="@drawable/drive_score_ring" />
+
+            <TextView
+                android:id="@+id/scoreRate"
+                style="@style/Kk.Caption"
+                android:textColor="@color/text"
+                android:layout_gravity="center"
+                android:textStyle="bold" />
+        </FrameLayout>
+
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/kk_gap_large"
             android:layout_weight="1"
-            android:text="@string/today_kept"
-            android:textColor="@color/muted"
-            android:textSize="30sp" />
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/today"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="@color/text"
-            android:textSize="56sp"
-            android:textStyle="bold" />
+            <TextView
+                style="@style/Kk.Caption"
+                android:text="@string/drive_today_title" />
+
+            <!-- "지킴 3 / 전체 5번": 지킨 횟수만 크게. 글자 아래선(baseline)을 맞춘다. -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:baselineAligned="true"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/Kk.Body"
+                    android:layout_marginEnd="12dp"
+                    android:text="@string/drive_today_kept"
+                    android:textColor="@color/muted" />
+
+                <TextView
+                    android:id="@+id/todayKept"
+                    style="@style/Kk.Display" />
+
+                <TextView
+                    android:id="@+id/todayTotal"
+                    style="@style/Kk.Body"
+                    android:layout_marginStart="12dp"
+                    android:textColor="@color/muted" />
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
-
-    <ProgressBar
-        android:id="@+id/progress"
-        style="@android:style/Widget.Material.ProgressBar.Horizontal"
-        android:layout_width="match_parent"
-        android:layout_height="12dp"
-        android:layout_marginTop="12dp"
-        android:progressBackgroundTint="@color/line"
-        android:progressTint="@color/ok" />
 </LinearLayout>

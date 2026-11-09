@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  법규 Q&amp;A (UI-5. 질문, 답변, 근거 카드(조항·처분·출처)). 기어 P일 때만 보인다.
+  0단계 빈 화면. 내용은 담당 세션이 채운다.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/qnaScreen"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="@dimen/kk_screen_padding"
+    android:visibility="gone">
+
+    <TextView
+        style="@style/Kk.Title"
+        android:layout_marginTop="56dp"
+        android:text="@string/nav_qna_title" />
+
+    <TextView
+        style="@style/Kk.Caption"
+        android:layout_marginTop="8dp"
+        android:text="@string/coming_soon" />
+</LinearLayout>

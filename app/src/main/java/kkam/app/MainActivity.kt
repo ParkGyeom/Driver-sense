@@ -14,21 +14,15 @@ import android.net.Uri
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Rect
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.provider.Settings
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.style.RelativeSizeSpan
 import android.view.View
 import android.widget.Button
 import android.widget.GridLayout
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import kkam.engine.model.Event
 import kkam.engine.model.Gear
 import kkam.engine.model.LawEntry
 import kkam.engine.model.SignalFrame
@@ -87,10 +81,14 @@ class MainActivity : Activity() {
     /** 마지막 프레임의 기어. 아직 프레임이 없으면 null. 진단·습관 선택은 P일 때만 연다. */
     private var gear: Gear? = null
     private lateinit var habitScreens: HabitScreens
+    private lateinit var driveScreen: DriveScreen
+    private lateinit var reportScreen: ReportScreen
+    private lateinit var progressScreen: ProgressScreen
+    private lateinit var qnaScreen: QnaScreen
+    private lateinit var modeScreen: ModeScreen
+    private lateinit var parkedNav: ParkedNav
     /** 진단 값. TODO(박겸 습관 인사이트, 12/1): 실제 계산 구현으로 바꾼다. */
     private val diagnosisSource: DiagnosisSource = DemoDiagnosisSource
-    /** 리포트 카드를 마지막으로 그린 판정 목록. 같으면 다시 그리지 않는다. */
-    private var reportDrawnFor: List<Event>? = null
     private val laws: List<LawEntry> by lazy { loadLaws() }
 
     private val tiles = mutableMapOf<String, TextView>()
@@ -102,14 +100,13 @@ class MainActivity : Activity() {
         setContentView(R.layout.activity_main)
 
         TILE_LABELS.forEach(::addTile)
-        setUpHabitScreens()
+        setUpScreens()
         addButton(DIAGNOSE_LABEL, getString(R.string.demo_open_diagnose)) { openDiagnoseParked() }
         addNaviButton()
         addPreviewButton()
         addLiveButton()
         ScenarioPlayer(this).fileNames().forEach(::addScenarioButton)
         setUpDemoToggle()
-        setUpReport()
         render()
 
         watchDrivingRestriction()
@@ -117,13 +114,6 @@ class MainActivity : Activity() {
 
         CoachService.start(this)
         bindService(Intent(this, CoachService::class.java), connection, Context.BIND_AUTO_CREATE)
-    }
-
-    private fun setUpReport() = with(view) {
-        listOf(reportSavedTile, reportKeptTile, reportMissedTile).forEach {
-            it.background = rounded(getColor(R.color.surface), radiusDp = 24)
-        }
-        reportAsk.background = rounded(getColor(R.color.bg), radiusDp = 999, strokeColor = getColor(R.color.line))
     }
 
     /** 법규 룰 테이블은 루트 data/law_table.json을 assets로 바로 쓴다. */
@@ -210,8 +200,17 @@ class MainActivity : Activity() {
     //  - 제한 중(isRequiresDistractionOptimization)이면 데모 패널을 닫고 demoToggle을 숨긴다.
     //  - 제한 중에는 screenSlot을 주행 화면에서 다른 화면으로 바꾸지 않는다 (onFrame의 screen 결정).
 
-    /** 진단 리포트 → 습관 선택 → 주행 화면 (기획서 5.5 PT 흐름 1~2). */
-    private fun setUpHabitScreens() {
+    /**
+     * screenSlot의 화면들과 기어 P 레일을 만든다. 화면마다 담당 클래스가 자기 레이아웃만 그린다.
+     * 진단 리포트 → 습관 선택 → 주행 화면은 기획서 5.5 PT 흐름 1~2.
+     */
+    private fun setUpScreens() {
+        driveScreen = DriveScreen(this)
+        reportScreen = ReportScreen(this) { laws }
+        progressScreen = ProgressScreen(this)
+        qnaScreen = QnaScreen(this)
+        modeScreen = ModeScreen(this)
+        parkedNav = ParkedNav(this, onSelect = ::showParked)
         habitScreens = HabitScreens(
             activity = this,
             diagnosis = diagnosisSource.load(),
@@ -326,84 +325,16 @@ class MainActivity : Activity() {
 
     /** 지금 화면을 그린다. 값은 모두 [CoachState]에서 온다. */
     private fun render() {
-        view.driveScreen.visibility = if (screen == Screen.DRIVE) View.VISIBLE else View.GONE
-        view.reportScreen.visibility = if (screen == Screen.REPORT) View.VISIBLE else View.GONE
+        parkedNav.show(screen)
+        driveScreen.show(screen)
+        reportScreen.show(screen)
         habitScreens.show(screen)
-        if (screen == Screen.REPORT) renderReport()
-        renderDrive()
-    }
-
-    /** 기어 P 주행 리포트. 판정 목록이 바뀌었을 때만 다시 그린다. */
-    private fun renderReport() {
-        if (reportDrawnFor == state.todayEvents) return
-        reportDrawnFor = state.todayEvents
-        drawReport(buildReport(state.todayEvents, laws))
-    }
-
-    private fun drawReport(report: DriveReport) = with(view) {
-        reportSaved.text = wonLabel(report.savedWon)
-        reportKept.text = report.kept.toString()
-        reportMissed.text = report.missed.toString()
-        reportEmpty.visibility = if (report.items.isEmpty()) View.VISIBLE else View.GONE
-        reportItems.removeAllViews()
-        report.items.forEach(::addReportItem)
-    }
-
-    private fun addReportItem(item: ReportItem) {
-        val card = layoutInflater.inflate(R.layout.report_item, view.reportItems, false)
-        card.background = rounded(getColor(R.color.surface), radiusDp = 20)
-        card.clipToOutline = true
-        card.findViewById<View>(R.id.itemBar).setBackgroundColor(getColor(if (item.kept) R.color.ok else R.color.warn))
-        card.findViewById<TextView>(R.id.itemTitle).text = item.title
-        card.findViewById<TextView>(R.id.itemDetail).text = item.detail
-        card.findViewById<TextView>(R.id.itemArticle).text = item.article
-        card.findViewById<TextView>(R.id.itemPenalty).text = item.penalty
-        view.reportItems.addView(card)
-    }
-
-    /** 주행 화면 (코치 카드). */
-    private fun renderDrive() = with(view) {
-        // 회전 안내 중이면 카드 전체를 상태 색으로 칠하고 글자는 어둡게, 대기 중이면 어두운 카드에 흐린 글자.
-        val active = state.tone != Tone.IDLE
-        val fill = getColor(
-            when (state.tone) {
-                Tone.IDLE -> R.color.surface
-                Tone.WARN -> R.color.warn
-                Tone.OK -> R.color.ok
-            },
-        )
-        val ink = getColor(if (active) R.color.on_accent else R.color.muted)
-        card.background = rounded(fill, radiusDp = 32, strokeColor = if (active) null else getColor(R.color.line))
-
-        turnIcon.visibility = if (active) View.VISIBLE else View.GONE
-        // 안내 종류에 맞는 그림. 회전 깜빡이면 방향(turnLabel)에 맞는 화살표.
-        turnIcon.setImageResource(guideIconRes(state.guideKind, state.turnLabel))
-        turnIcon.imageTintList = ColorStateList.valueOf(ink)
-
-        turn.text = state.turnLabel
-        distance.text = distanceText(state.distanceLabel)
-        badge.text = state.badge
-        signal.text = state.signalLabel
-        listOf(turn, distance, badge, signal).forEach { it.setTextColor(ink) }
-        listOf(badge, signal).forEach { it.visibility = if (active) View.VISIBLE else View.GONE }
-        // 거리가 없는 안내(예: 와이퍼)는 거리 줄을 비워 두지 않고 접어서 제목이 그림 옆 가운데에 오게 한다.
-        distance.visibility = if (active && state.distanceLabel.isNotEmpty()) View.VISIBLE else View.GONE
-        lever.show(leverFor(state.guideKind, state.turnLabel, state.tone == Tone.WARN), ink)
-
-        message.text = state.message
-        today.text = "${state.kept} / ${state.total}"
-        progress.max = state.total.coerceAtLeast(1)
-        progress.progress = state.kept
-        logs.text = state.logs.takeLast(MAX_LOGS).reversed().joinToString("\n").ifEmpty { getString(R.string.demo_no_logs) }
-    }
-
-    /** "60 m"에서 단위만 작게 줄여 숫자가 먼저 읽히게 한다. */
-    private fun distanceText(label: String): CharSequence {
-        val unitStart = label.lastIndexOf(' ')
-        if (unitStart < 0) return label
-        return SpannableString(label).apply {
-            setSpan(RelativeSizeSpan(DISTANCE_UNIT_SCALE), unitStart, label.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        }
+        progressScreen.show(screen)
+        qnaScreen.show(screen)
+        modeScreen.show(screen)
+        if (screen == Screen.REPORT) reportScreen.render(state)
+        driveScreen.render(state)
+        view.logs.text = state.logs.takeLast(MAX_LOGS).reversed().joinToString("\n").ifEmpty { getString(R.string.demo_no_logs) }
     }
 
     private fun addTile(label: String) {
@@ -462,14 +393,6 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun rounded(color: Int, radiusDp: Int, strokeColor: Int? = null) = GradientDrawable().apply {
-        setColor(color)
-        cornerRadius = dp(radiusDp).toFloat()
-        strokeColor?.let { setStroke(dp(2), it) }
-    }
-
-    private fun dp(value: Int) = (value * resources.displayMetrics.density).roundToInt()
-
     private fun TurnSignal.label(): String = when (this) {
         TurnSignal.OFF -> "꺼짐"
         TurnSignal.LEFT -> "좌 켜짐"
@@ -482,36 +405,14 @@ class MainActivity : Activity() {
         val demoPanel: View = activity.findViewById(R.id.demoPanel)
         val demoToggle: TextView = activity.findViewById(R.id.demoToggle)
         val demoNotifier: TextView = activity.findViewById(R.id.demoNotifier)
-        val driveScreen: View = activity.findViewById(R.id.driveScreen)
-        val reportScreen: View = activity.findViewById(R.id.reportScreen)
-        val reportSavedTile: View = activity.findViewById(R.id.reportSavedTile)
-        val reportKeptTile: View = activity.findViewById(R.id.reportKeptTile)
-        val reportMissedTile: View = activity.findViewById(R.id.reportMissedTile)
-        val reportSaved: TextView = activity.findViewById(R.id.reportSaved)
-        val reportKept: TextView = activity.findViewById(R.id.reportKept)
-        val reportMissed: TextView = activity.findViewById(R.id.reportMissed)
-        val reportItems: LinearLayout = activity.findViewById(R.id.reportItems)
-        val reportEmpty: TextView = activity.findViewById(R.id.reportEmpty)
-        val reportAsk: TextView = activity.findViewById(R.id.reportAsk)
         val scenarios: LinearLayout = activity.findViewById(R.id.scenarios)
         val tiles: GridLayout = activity.findViewById(R.id.tiles)
-        val card: LinearLayout = activity.findViewById(R.id.card)
-        val turnIcon: ImageView = activity.findViewById(R.id.turnIcon)
-        val lever: LeverGuideView = activity.findViewById(R.id.lever)
-        val turn: TextView = activity.findViewById(R.id.turn)
-        val distance: TextView = activity.findViewById(R.id.distance)
-        val signal: TextView = activity.findViewById(R.id.signal)
-        val badge: TextView = activity.findViewById(R.id.badge)
-        val message: TextView = activity.findViewById(R.id.message)
-        val today: TextView = activity.findViewById(R.id.today)
-        val progress: android.widget.ProgressBar = activity.findViewById(R.id.progress)
         val logs: TextView = activity.findViewById(R.id.logs)
     }
 
     private companion object {
         const val LAW_TABLE_FILE = "law_table.json"
         const val MAX_LOGS = 12
-        const val DISTANCE_UNIT_SCALE = 0.45f
         const val NAVI_LABEL = "내비"
         const val PREVIEW_LABEL = "미리보기"
         const val DIAGNOSE_LABEL = "진단"

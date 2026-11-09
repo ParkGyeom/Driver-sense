@@ -1,12 +1,22 @@
 <resources>
+    <!-- 배경 단계: bg(화면) < surface(카드) < surface_2(카드 안 칸) -->
     <color name="bg">#0B0E13</color>
     <color name="surface">#151A21</color>
+    <color name="surface_2">#1E242D</color>
     <color name="line">#2A313C</color>
     <color name="text">#EEF1F5</color>
     <color name="muted">#A3ADBB</color>
+
+    <!-- 상태 색. 색 = 의미: 주황 = 해야 할 일, 파랑 = 지킴, 빨강 = 놓침(정차 화면에서만). -->
     <color name="warn">#FFC04D</color>
     <color name="ok">#4C8DFF</color>
+    <color name="miss">#FF6B6B</color>
+    <!-- 상태 색을 어두운 배경 위에 옅게 깐 칸(칩, 아이콘 배경). -->
+    <color name="warn_soft">#33FFC04D</color>
+    <color name="ok_soft">#334C8DFF</color>
+    <color name="miss_soft">#33FF6B6B</color>
     <color name="on_accent">#0B0E13</color>
+
     <!-- 데모 패널 전용. 주행 상태 색(warn, ok)과 겹치지 않게 따로 둔다. -->
     <color name="panel">#10141A</color>
     <color name="demo_active">#3A4352</color>

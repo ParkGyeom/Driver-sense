@@ -18,6 +18,21 @@ class ScreenTest {
     }
 
     @Test
+    fun `기어 P에서 교정 진행, Q&A, 모드 화면도 리포트로 덮지 않는다`() {
+        listOf(Screen.PROGRESS, Screen.QNA, Screen.MODE, Screen.REPORT).forEach {
+            assertEquals(it, nextScreen(it, Gear.P))
+        }
+    }
+
+    @Test
+    fun `주행 화면 말고는 모두 기어 P 전용이다`() {
+        Screen.entries.filter { it != Screen.DRIVE }.forEach {
+            assertEquals(Screen.DRIVE, openScreen(it, Gear.D))
+            assertEquals(it, openScreen(it, Gear.P))
+        }
+    }
+
+    @Test
     fun `진단과 습관 선택은 기어 P에서만 열린다`() {
         assertEquals(Screen.DIAGNOSE, openScreen(Screen.DIAGNOSE, Gear.P))
         assertEquals(Screen.DRIVE, openScreen(Screen.DIAGNOSE, Gear.D))

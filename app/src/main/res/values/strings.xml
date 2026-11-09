@@ -52,4 +52,15 @@
     <!-- 주행 코치 서비스 알림 -->
     <string name="service_channel">주행 코치</string>
     <string name="service_running">주행 안내를 준비하고 있어요</string>
+
+    <!-- 기어 P 화면 왼쪽 레일 -->
+    <string name="nav_report">오늘 리포트</string>
+    <string name="nav_diagnose">진단·습관</string>
+    <string name="nav_progress">교정 진행</string>
+    <string name="nav_qna">법규 Q&amp;A</string>
+    <string name="nav_mode">모드</string>
+    <string name="nav_progress_title">교정 진행</string>
+    <string name="nav_qna_title">법규 Q&amp;A</string>
+    <string name="nav_mode_title">모드 설정</string>
+    <string name="coming_soon">준비 중이에요</string>
 </resources>

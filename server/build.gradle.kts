@@ -4,6 +4,7 @@ plugins {
 	id("org.springframework.boot") version "4.1.2"
 	id("io.spring.dependency-management") version "1.1.7"
 	kotlin("plugin.serialization") version "2.3.21" apply false
+	kotlin("plugin.jpa") version "2.3.21"
 }
 
 group = "kkam"
@@ -20,6 +21,9 @@ repositories {
 }
 
 dependencies {
+	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+	implementation("org.springframework.boot:spring-boot-h2console")
+	runtimeOnly("com.h2database:h2")
 	implementation(project(":engine"))
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
@@ -37,4 +41,8 @@ kotlin {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+allOpen {
+	annotation("jakarta.persistence.Entity")
 }

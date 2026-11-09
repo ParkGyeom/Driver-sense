@@ -90,7 +90,7 @@ class MainActivity : Activity() {
     /** 마지막 프레임의 기어. 아직 프레임이 없으면 null. 진단·습관 선택은 P일 때만 연다. */
     private var gear: Gear? = null
     private lateinit var habitScreens: HabitScreens
-    /** 진단 값. TODO(박겸 습관 인사이트, 12/1): 실제 계산 구현으로 바꾼다. */
+    /** 진단 값. TODO(AI 담당 습관 인사이트, 12/1): 실제 계산 구현으로 바꾼다. */
     private val diagnosisSource: DiagnosisSource = DemoDiagnosisSource
     /** 리포트 카드를 마지막으로 그린 판정 목록. 같으면 다시 그리지 않는다. */
     private var reportDrawnFor: List<Event>? = null
@@ -242,7 +242,7 @@ class MainActivity : Activity() {
     }
 
     private fun finishHabits(selection: HabitSelection) {
-        // TODO(엔진 모드 입력, spec v0.2 · 박겸 11/16): 교정(CORRECT) 모드와 고른 습관을 엔진에 넘긴다.
+        // TODO(엔진 모드 입력, spec v0.2 · AI 담당 11/16): 교정(CORRECT) 모드와 고른 습관을 엔진에 넘긴다.
         //  지금은 엔진에 넘기지 않고, 주행 화면 한 줄 문구에만 보여준다.
         session?.showMessage(selection.summary())
         screen = Screen.DRIVE

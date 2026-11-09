@@ -3,6 +3,7 @@ package kkam.engine
 import kkam.engine.model.Event
 import kkam.engine.model.ExpectedOutput
 import kkam.engine.model.Guide
+import kkam.engine.model.GuideAction
 import kkam.engine.model.OutputType
 import kkam.engine.model.Result
 import kkam.engine.model.RuleId
@@ -17,7 +18,7 @@ class ScenarioComparatorTest {
         ExpectedOutput(OutputType.GUIDE, 5000, RuleId.R1),
         ExpectedOutput(OutputType.EVENT, 11000, RuleId.R1, Result.KEPT, guided = true),
     )
-    private val guide = Guide(5000, RuleId.R1, "안내")
+    private val guide = Guide(5000, RuleId.R1, "안내", GuideAction.SIGNAL_LEFT)
     private val event = Event("evt-1", 11000, RuleId.R1, Result.KEPT, true, TurnType.LEFT, 37.55, 127.07)
 
     @Test

@@ -30,6 +30,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import kkam.engine.model.Event
 import kkam.engine.model.Gear
+import kkam.engine.model.HeadlightState
 import kkam.engine.model.LawEntry
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnSignal
@@ -63,6 +64,8 @@ class MainActivity : Activity() {
             }
             highlight(connected.running)
             render()
+            // 릴리스 APK에는 데모 패널이 없어서 실제 주행을 시작할 버튼도 없다. 앱을 켜면 바로 실제 차량 신호를 받는다.
+            if (!debuggable && connected.running == null) toggleLive()
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -92,6 +95,9 @@ class MainActivity : Activity() {
     /** 리포트 카드를 마지막으로 그린 판정 목록. 같으면 다시 그리지 않는다. */
     private var reportDrawnFor: List<Event>? = null
     private val laws: List<LawEntry> by lazy { loadLaws() }
+
+    /** debug 빌드면 true. 데모 패널은 debug에서만 열고, 릴리스는 켜자마자 실제 주행을 시작한다. */
+    private val debuggable by lazy { applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0 }
 
     private val tiles = mutableMapOf<String, TextView>()
     private val buttons = mutableMapOf<String, Button>()
@@ -193,7 +199,6 @@ class MainActivity : Activity() {
 
     /** 데모 패널은 debug 빌드에서만 열 수 있다. 릴리스 APK에는 여는 버튼이 없다. */
     private fun setUpDemoToggle() {
-        val debuggable = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         if (!debuggable) return
         view.demoToggle.visibility = View.VISIBLE
         view.demoToggle.background = rounded(getColor(R.color.surface), radiusDp = 999, strokeColor = getColor(R.color.line))
@@ -322,6 +327,7 @@ class MainActivity : Activity() {
         tiles.getValue("기어").text = frame.gear.name
         tiles.getValue("내비 TBT").text = frame.tbt?.let { "${it.turn.label()} ${it.distanceM} m" } ?: "-"
         tiles.getValue("전방 신호").text = frame.light?.phase?.name ?: "-"
+        tiles.getValue("전조등").text = frame.headlight?.label() ?: "-"
     }
 
     /** 지금 화면을 그린다. 값은 모두 [CoachState]에서 온다. */
@@ -376,8 +382,8 @@ class MainActivity : Activity() {
         card.background = rounded(fill, radiusDp = 32, strokeColor = if (active) null else getColor(R.color.line))
 
         turnIcon.visibility = if (active) View.VISIBLE else View.GONE
-        // 안내 종류에 맞는 그림. 회전 깜빡이면 방향(turnLabel)에 맞는 화살표.
-        turnIcon.setImageResource(guideIconRes(state.guideKind, state.turnLabel))
+        // 안내 종류에 맞는 그림. 회전 깜빡이면 방향에 맞는 화살표.
+        turnIcon.setImageResource(guideIconRes(state.guideKind, state.right))
         turnIcon.imageTintList = ColorStateList.valueOf(ink)
 
         turn.text = state.turnLabel
@@ -388,7 +394,7 @@ class MainActivity : Activity() {
         listOf(badge, signal).forEach { it.visibility = if (active) View.VISIBLE else View.GONE }
         // 거리가 없는 안내(예: 와이퍼)는 거리 줄을 비워 두지 않고 접어서 제목이 그림 옆 가운데에 오게 한다.
         distance.visibility = if (active && state.distanceLabel.isNotEmpty()) View.VISIBLE else View.GONE
-        lever.show(leverFor(state.guideKind, state.turnLabel, state.tone == Tone.WARN), ink)
+        lever.show(leverFor(state.guideKind, state.right, state.tone == Tone.WARN), ink)
 
         message.text = state.message
         today.text = "${state.kept} / ${state.total}"
@@ -470,6 +476,12 @@ class MainActivity : Activity() {
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).roundToInt()
 
+    private fun HeadlightState.label(): String = when (this) {
+        HeadlightState.OFF -> "꺼짐"
+        HeadlightState.ON -> "켜짐"
+        HeadlightState.AUTO -> "자동"
+    }
+
     private fun TurnSignal.label(): String = when (this) {
         TurnSignal.OFF -> "꺼짐"
         TurnSignal.LEFT -> "좌 켜짐"
@@ -520,6 +532,6 @@ class MainActivity : Activity() {
         const val PREFS = "kkam"
         const val KEY_OVERLAY_ASKED = "overlay_asked"
         val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")
-        val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호")
+        val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호", "전조등")
     }
 }

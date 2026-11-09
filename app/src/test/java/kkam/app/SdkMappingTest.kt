@@ -2,8 +2,11 @@ package kkam.app
 
 import ai.pleos.playground.navi.data.TBTInfo
 import ai.pleos.playground.vehicle.constant.area.TurnSignalValue
+import ai.pleos.playground.vehicle.constant.control.LightState
+import ai.pleos.playground.vehicle.constant.control.LightSwitch
 import ai.pleos.playground.vehicle.constant.control.VehicleGear
 import kkam.engine.model.Gear
+import kkam.engine.model.HeadlightState
 import kkam.engine.model.Tbt
 import kkam.engine.model.TurnSignal
 import kkam.engine.model.TurnType
@@ -53,6 +56,20 @@ class SdkMappingTest {
         assertEquals(TurnType.UTURN, NaviTurnType.TURN_UTURN.toEngineTurnType())
         assertEquals(TurnType.STRAIGHT, NaviTurnType.TURN_STRAIGHT.toEngineTurnType())
         assertEquals(TurnType.OTHER, NaviTurnType.TURN_KEEP_L.toEngineTurnType())
-        assertEquals(TurnType.OTHER, NaviTurnType.TURN_ENTER_IC_L.toEngineTurnType())
+        assertEquals(TurnType.RAMP_LEFT, NaviTurnType.TURN_ENTER_IC_L.toEngineTurnType())
+        assertEquals(TurnType.RAMP_LEFT, NaviTurnType.TURN_EXIT_IC_L.toEngineTurnType())
+        assertEquals(TurnType.RAMP_RIGHT, NaviTurnType.TURN_ENTER_IC_R.toEngineTurnType())
+        assertEquals(TurnType.RAMP_RIGHT, NaviTurnType.TURN_EXIT_IC_R.toEngineTurnType())
+        assertEquals(TurnType.OTHER, NaviTurnType.TURN_EXIT_IC_C.toEngineTurnType())
+        assertEquals(TurnType.TUNNEL, NaviTurnType.TURN_TUNNEL.toEngineTurnType())
+    }
+
+    @Test
+    fun `전조등은 상태가 켜짐이면 ON, 스위치가 자동이면 AUTO, 주간주행등은 OFF`() {
+        assertEquals(HeadlightState.ON, headlightOf(LightState.ON, LightSwitch.AUTOMATIC))
+        assertEquals(HeadlightState.AUTO, headlightOf(LightState.OFF, LightSwitch.AUTOMATIC))
+        assertEquals(HeadlightState.OFF, headlightOf(LightState.DAYTIME_RUNNING, LightSwitch.DAYTIME_RUNNING))
+        assertEquals(HeadlightState.OFF, headlightOf(LightState.OFF, null))
+        assertNull(headlightOf(null, LightSwitch.AUTOMATIC))
     }
 }

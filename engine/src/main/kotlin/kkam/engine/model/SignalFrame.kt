@@ -21,6 +21,11 @@ data class SignalFrame(
     val tbt: Tbt?,
     /** 전방 차량 신호. 정보가 없으면 null. R3에서만 쓴다. */
     val light: TrafficLight?,
+    /**
+     * 전조등(하향등) 상태. R5에서만 쓴다.
+     * 기본값 null: 이 필드가 없는 시나리오(S1~S10)도 그대로 읽히게 한다 (spec 2.1).
+     */
+    val headlight: HeadlightState? = null,
 )
 
 /** 내비의 다음 안내와 남은 거리. */
@@ -45,7 +50,11 @@ enum class Gear { P, R, N, D }
 enum class TurnSignal { OFF, LEFT, RIGHT, HAZARD }
 
 @Serializable
-enum class TurnType { LEFT, RIGHT, STRAIGHT, UTURN, OTHER }
+enum class TurnType { LEFT, RIGHT, STRAIGHT, UTURN, RAMP_LEFT, RAMP_RIGHT, TUNNEL, OTHER }
+
+/** 전조등 상태. AUTO는 스위치가 자동이라 필요하면 켜지는 상태 (spec 2.1 변환표). */
+@Serializable
+enum class HeadlightState { OFF, ON, AUTO }
 
 @Serializable
 enum class LightPhase { RED, YELLOW, GREEN, UNKNOWN }

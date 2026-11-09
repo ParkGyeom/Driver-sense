@@ -4,6 +4,7 @@ import kkam.engine.Engine
 import kkam.engine.model.Event
 import kkam.engine.model.Gear
 import kkam.engine.model.Guide
+import kkam.engine.model.GuideAction
 import kkam.engine.model.Result
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.Tbt
@@ -40,6 +41,12 @@ class R1RuleTest {
     fun guideTextFollowsTurnDirection() {
         assertEquals("좌회전 곧이에요, 깜빡이 켜세요", firstGuide(TurnType.LEFT).text)
         assertEquals("우회전 곧이에요, 깜빡이 켜세요", firstGuide(TurnType.RIGHT).text)
+    }
+
+    @Test
+    fun guideActionFollowsTurnDirection() {
+        assertEquals(GuideAction.SIGNAL_LEFT, firstGuide(TurnType.LEFT).action)
+        assertEquals(GuideAction.SIGNAL_RIGHT, firstGuide(TurnType.RIGHT).action)
     }
 
     @Test

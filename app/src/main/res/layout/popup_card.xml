@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  내비 위에 잠깐 뜨는 안내 카드. 내비를 덜 가리게 작게, 운전 중 한눈에 읽히게 글자는 크게.
+  내비 위에 잠깐 뜨는 안내 카드. 주행 화면 코치 카드(screen_drive.xml)를 작게 줄인 같은 모양:
+  [방향 그림] [회전 이름 / 남은 거리(숫자 크게)] [상태 배지 "! 지금 켜세요" / "✓ 좋아요"] [레버 그림(초보 기능만)].
   배경색(주황/파랑)은 코드에서 칠한다. 터치는 받지 않는다 (내비 조작을 막지 않음).
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -11,7 +12,7 @@
     android:orientation="horizontal"
     android:paddingStart="28dp"
     android:paddingTop="20dp"
-    android:paddingEnd="40dp"
+    android:paddingEnd="28dp"
     android:paddingBottom="20dp">
 
     <ImageView
@@ -21,32 +22,55 @@
         android:contentDescription="@null"
         android:src="@drawable/ic_turn_left" />
 
+    <!-- 무엇을: 회전 이름 + 남은 거리 -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="24dp"
+        android:layout_marginStart="20dp"
         android:orientation="vertical">
 
         <TextView
             android:id="@+id/popupTurn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            style="@style/Kk.Body"
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/on_accent"
-            android:textSize="36sp"
             android:textStyle="bold" />
+
+        <!-- 숫자는 크게, 단위(m)는 작게 (numberEmphasis). 거리가 없는 안내는 숨긴다. -->
+        <TextView
+            android:id="@+id/popupDistance"
+            style="@style/Kk.Display"
+            android:layout_marginTop="4dp"
+            android:maxLines="1"
+            android:textColor="@color/on_accent" />
+    </LinearLayout>
+
+    <!-- 지금 할 일: 카드 색을 뒤집은 알약 배지 -->
+    <LinearLayout
+        android:id="@+id/popupBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="28dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingVertical="12dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="28dp">
+
+        <ImageView
+            android:id="@+id/popupBadgeIcon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_alert" />
 
         <TextView
             android:id="@+id/popupHeadline"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            style="@style/Kk.Title"
             android:includeFontPadding="false"
-            android:maxLines="1"
-            android:textColor="@color/on_accent"
-            android:textSize="56sp"
-            android:textStyle="bold" />
+            android:maxLines="1" />
     </LinearLayout>
 
     <!-- "어떻게 켜는지" 레버 그림. 초보 기능 안내일 때만 보인다. -->

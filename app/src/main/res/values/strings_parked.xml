@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 기어 P 정차 화면(리포트·진단·습관 선택) 개편 문구. 기존 strings.xml의 report_*, diagnose_*, habit_*도 그대로 쓴다. -->
+<resources>
+    <!-- 오늘 주행 리포트 -->
+    <string name="parked_report_summary">판정 %1$d번 · 최근 판정이 맨 위에 있어요</string>
+    <string name="parked_report_summary_empty">출발하면 코치 화면으로 돌아가요</string>
+    <string name="parked_report_saved_hint">안내를 듣고 지켜서 내지 않은 범칙금</string>
+    <string name="parked_report_rate">지킴률</string>
+    <string name="parked_report_rate_none">–</string>
+    <string name="parked_report_kept_count">✓ 지킴 %d번</string>
+    <string name="parked_report_missed_count">! 놓침 %d번</string>
+    <string name="parked_report_timeline">판정 기록</string>
+    <string name="parked_report_empty_hint">기어를 D로 두고 달리면 회전할 때마다 여기에 기록돼요</string>
+
+    <!-- 진단 리포트 -->
+    <string name="parked_diagnose_below">평균보다 낮음</string>
+    <string name="parked_diagnose_above">평균 이상</string>
+    <string name="parked_diagnose_average_legend">전국 평균 %s%%</string>
+
+    <!-- 습관 선택 -->
+    <string name="parked_habit_progress">%1$d/%2$d 개</string>
+    <string name="parked_habit_progress_label">골랐어요</string>
+    <string name="parked_habit_tap">카드를 눌러 고르세요. 다시 누르면 빠져요</string>
+    <string name="parked_habit_recommended">★ 추천</string>
+    <string name="parked_habit_selected">선택됨</string>
+    <string name="parked_habit_average">전국 평균 %s%%</string>
+</resources>

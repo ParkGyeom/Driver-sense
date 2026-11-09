@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  습관 카드 한 장. 고르면 파란 테두리와 체크, 2개를 다 골랐으면 안 고른 카드는 흐리게.
-  "추천"은 전국 평균보다 낮은 습관에만 붙인다.
+  습관 카드 한 장.
+  위: 체크 동그라미(고르면 파랑 ✓) + "★ 추천" 배지(전국 평균보다 낮은 습관만).
+  가운데: 습관 아이콘. 아래: 이름, 내 준수율(평균보다 낮으면 주황), 전국 평균.
+  고르면 파란 테두리 + 옅은 파랑 배경 + "선택됨" 글자. 2개를 다 골랐으면 안 고른 카드는 흐리게.
+  배경·색은 HabitScreens.kt에서 칠한다.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="0dp"
@@ -16,13 +19,20 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <TextView
+        <ImageView
             android:id="@+id/habitCheck"
             android:layout_width="64dp"
             android:layout_height="64dp"
-            android:gravity="center"
-            android:textColor="@color/on_accent"
-            android:textSize="36sp"
+            android:contentDescription="@null"
+            android:padding="12dp"
+            android:src="@drawable/ic_kk_check" />
+
+        <TextView
+            android:id="@+id/habitSelectedLabel"
+            style="@style/Kk.Caption"
+            android:layout_marginStart="12dp"
+            android:text="@string/parked_habit_selected"
+            android:textColor="@color/ok"
             android:textStyle="bold" />
 
         <Space
@@ -32,15 +42,24 @@
 
         <TextView
             android:id="@+id/habitBadge"
-            android:layout_width="wrap_content"
+            style="@style/Kk.Pill"
             android:layout_height="48dp"
-            android:gravity="center"
             android:paddingHorizontal="20dp"
-            android:text="@string/habit_recommended"
-            android:textColor="@color/on_accent"
-            android:textSize="22sp"
-            android:textStyle="bold" />
+            android:text="@string/parked_habit_recommended"
+            android:textColor="@color/on_accent" />
     </LinearLayout>
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <ImageView
+        android:id="@+id/habitIcon"
+        android:layout_width="112dp"
+        android:layout_height="112dp"
+        android:contentDescription="@null"
+        android:padding="20dp" />
 
     <Space
         android:layout_width="match_parent"
@@ -49,17 +68,17 @@
 
     <TextView
         android:id="@+id/habitName"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="@color/text"
-        android:textSize="40sp"
-        android:textStyle="bold" />
+        style="@style/Kk.Title" />
 
+    <!-- "내 준수율 62%": 퍼센트 숫자만 크게·색 칠한다 -->
     <TextView
         android:id="@+id/habitRate"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        style="@style/Kk.Body"
         android:layout_marginTop="8dp"
-        android:textColor="@color/muted"
-        android:textSize="28sp" />
+        android:textColor="@color/muted" />
+
+    <TextView
+        android:id="@+id/habitAverage"
+        style="@style/Kk.Caption"
+        android:layout_marginTop="4dp" />
 </LinearLayout>

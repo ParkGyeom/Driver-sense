@@ -37,8 +37,8 @@ fun buildReport(events: List<Event>, laws: List<LawEntry>): DriveReport {
     return DriveReport(
         kept = events.count { it.result == Result.KEPT },
         missed = events.count { it.result == Result.MISSED },
-        savedWon = events.filter { it.guided && it.result == Result.KEPT }.sumOf { FINE_WON.getValue(it.rule) },
-        items = events.reversed().map { it.toItem(lawById[LAW_ID.getValue(it.rule)]) },
+        savedWon = events.filter { it.guided && it.result == Result.KEPT }.sumOf { it.rule.fineWon() },
+        items = events.reversed().map { it.toItem(it.rule.lawId()?.let(lawById::get)) },
     )
 }
 
@@ -53,7 +53,7 @@ private fun Event.toItem(law: LawEntry?): ReportItem {
     val kept = result == Result.KEPT
     return ReportItem(
         kept = kept,
-        title = "${ruleTitle()} ${result.label()}",
+        title = "${title()} ${result.label()}",
         detail = when {
             !kept -> "놓쳤어요"
             guided -> "안내 듣고 지켰어요"
@@ -64,17 +64,25 @@ private fun Event.toItem(law: LawEntry?): ReportItem {
     )
 }
 
-private fun Event.ruleTitle(): String = when (rule) {
-    RuleId.R1 -> "${turn.label()} 깜빡이"
-    RuleId.R2 -> "깜빡이 없이 ${turn.label()}"
-    RuleId.R3 -> "적색 우회전 일시정지"
+/**
+ * 룰별 범칙금 (승용차, 기획서 5.2). when이라 룰이 늘면 컴파일러가 빠진 룰을 알려준다.
+ * R5(터널 전조등)는 처분 금액을 아직 확인하지 못해 0원으로 둔다 (spec 8장).
+ */
+private fun RuleId.fineWon(): Int = when (this) {
+    RuleId.R1, RuleId.R2, RuleId.R4 -> 30_000
+    RuleId.R3 -> 60_000
+    RuleId.R5 -> 0
 }
-
-/** 룰별 범칙금 (승용차, 기획서 5.2). */
-private val FINE_WON = mapOf(RuleId.R1 to 30_000, RuleId.R2 to 30_000, RuleId.R3 to 60_000)
 
 /**
  * 룰과 룰 테이블 행의 연결. 룰 테이블에 룰 필드가 생기면 그걸 쓴다.
- * R1: 회전 전 방향지시등, R2: 깜빡이 없이 회전, R3: 적색 신호 우회전 일시정지.
+ * R1: 회전 전 방향지시등, R2: 깜빡이 없이 회전, R3: 적색 신호 우회전 일시정지, R4: 차로 변경.
+ * R5(터널 전조등)는 룰 테이블에 행이 아직 없다.
  */
-private val LAW_ID = mapOf(RuleId.R1 to "LAW-01", RuleId.R2 to "LAW-03", RuleId.R3 to "LAW-12")
+private fun RuleId.lawId(): String? = when (this) {
+    RuleId.R1 -> "LAW-01"
+    RuleId.R2 -> "LAW-03"
+    RuleId.R3 -> "LAW-12"
+    RuleId.R4 -> "LAW-04"
+    RuleId.R5 -> null
+}

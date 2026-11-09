@@ -2,6 +2,7 @@ package kkam.app
 
 import kkam.engine.model.Gear
 import kkam.engine.model.Guide
+import kkam.engine.model.GuideAction
 import kkam.engine.model.RuleId
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.Tbt
@@ -18,15 +19,17 @@ class GuideKindTest {
     fun `음성 안내가 있는 룰만 안내 종류가 있다`() {
         assertEquals(GuideKind.TURN_SIGNAL, RuleId.R1.guideKind())
         assertEquals(GuideKind.RED_RIGHT_TURN, RuleId.R3.guideKind())
+        assertEquals(GuideKind.LANE_CHANGE, RuleId.R4.guideKind())
+        assertEquals(GuideKind.HEADLIGHT, RuleId.R5.guideKind())
         assertNull(RuleId.R2.guideKind())
     }
 
     @Test
     fun `음성 안내의 룰로 안내 종류를 정하고 팝업에도 넘긴다`() {
-        val state = CoachState().next(frame, listOf(Guide(4000, RuleId.R3, "전방 적색이에요, 정지선에서 멈췄다 가세요")))
+        val state = CoachState().next(frame, listOf(Guide(4000, RuleId.R3, "전방 적색이에요, 정지선에서 멈췄다 가세요", GuideAction.SIGNAL_RIGHT)))
 
         assertEquals(GuideKind.RED_RIGHT_TURN, state.guideKind)
-        assertEquals(GuideKind.RED_RIGHT_TURN, nextPopup(null, state, listOf(Guide(4000, RuleId.R3, "")), Gear.D)?.kind)
+        assertEquals(GuideKind.RED_RIGHT_TURN, nextPopup(null, state, listOf(Guide(4000, RuleId.R3, "", GuideAction.SIGNAL_RIGHT)), frame)?.kind)
     }
 
     @Test
@@ -43,6 +46,6 @@ class GuideKindTest {
         assertEquals(Tone.WARN, state.tone)
         assertEquals(GuideKind.HEADLIGHT, state.guideKind)
         assertEquals(1 to 2, state.kept to state.total)
-        assertEquals(Popup(PopupTone.WARN, GuideKind.HEADLIGHT, "터널 진입", "200 m", "전조등 켜세요"), state.previewPopup())
+        assertEquals(Popup(PopupTone.WARN, GuideKind.HEADLIGHT, false, "터널 진입", "200 m", "전조등 켜세요"), state.previewPopup())
     }
 }

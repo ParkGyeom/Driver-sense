@@ -69,11 +69,11 @@ class CoachPopup(context: Context) : CoachNotifier {
             setColor(fill)
             cornerRadius = 32 * density
         }
-        icon.setImageResource(guideIconRes(popup.kind, popup.turnLabel))
+        icon.setImageResource(guideIconRes(popup.kind, popup.right))
         icon.setColorFilter(context.getColor(R.color.on_accent))
         turn.text = listOf(popup.turnLabel, popup.distanceLabel).filter { it.isNotEmpty() }.joinToString(" ")
         headline.text = popup.headline
-        lever.show(leverFor(popup.kind, popup.turnLabel, popup.tone == PopupTone.WARN), context.getColor(R.color.on_accent))
+        lever.show(leverFor(popup.kind, popup.right, popup.tone == PopupTone.WARN), context.getColor(R.color.on_accent))
     }
 
     /**

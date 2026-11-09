@@ -1,0 +1,9 @@
+<resources>
+    <!-- 모드 설정 화면 (F3, 기획서 4.3). 모드 이름·대상·안내 설명은 DriveMode.kt에 있다. -->
+    <string name="mode_hint">주행 중 음성 안내를 얼마나 할지 고릅니다. 판정 기록은 모든 모드에서 남습니다.</string>
+    <string name="mode_target">대상: %1$s</string>
+    <string name="mode_guide">주행 중 안내: %1$s</string>
+    <string name="mode_check">✓</string>
+    <string name="mode_records_saved">오늘 기록 %1$d건 저장됨</string>
+    <string name="mode_records_empty">오늘 기록 없음. 판정이 나오면 바로 저장돼요</string>
+</resources>

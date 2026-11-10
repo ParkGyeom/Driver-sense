@@ -9,9 +9,12 @@ import ai.pleos.playground.navi.helper.NaviHelper
 import ai.pleos.playground.navi.helper.listener.NaviHelperEventListener
 import ai.pleos.playground.vehicle.Vehicle
 import ai.pleos.playground.vehicle.constant.area.TurnSignalValue
+import ai.pleos.playground.vehicle.constant.control.LightState
+import ai.pleos.playground.vehicle.constant.control.LightSwitch
 import ai.pleos.playground.vehicle.constant.control.VehicleGear
 import ai.pleos.playground.vehicle.listener.BrakePedalStatusListener
 import ai.pleos.playground.vehicle.listener.GearSelectionListener
+import ai.pleos.playground.vehicle.listener.LightStateListener
 import ai.pleos.playground.vehicle.listener.SteeringWheelAngleListener
 import ai.pleos.playground.vehicle.listener.TurnSignalStateListener
 import android.car.Car
@@ -46,6 +49,9 @@ class SignalCollector(context: Context) {
     private var brake: Boolean? = null
     private var position: LocationData? = null
     private var tbt: Tbt? = null
+    /** 하향등 상태와 스위치. 없어도 프레임은 만든다(headlight = null, spec 2.1). */
+    private var lowBeamState: LightState? = null
+    private var lowBeamSwitch: LightSwitch? = null
 
     private var vehicle: Vehicle? = null
     private var navi: NaviHelper? = null
@@ -56,6 +62,7 @@ class SignalCollector(context: Context) {
     private val tick = object : Runnable {
         override fun run() {
             navi?.getTBTInfo()
+            readLowBeamSwitch()
             snapshot()?.let { frame -> onFrame?.invoke(frame) }
             main.postDelayed(this, FRAME_INTERVAL_MS)
         }
@@ -87,8 +94,11 @@ class SignalCollector(context: Context) {
             it.getSteeringWheel().unregisterSteeringWheelAngle(steeringListener)
             it.getGear().unregisterGearSelection(gearListener)
             it.getBrake().unregisterBrakePedalStatus(brakeListener)
+            runCatching { it.getLight().unregisterLowBeamLightState(lowBeamListener) }
             it.release()
         }
+        lowBeamState = null
+        lowBeamSwitch = null
         propertyManager = null
         car = null
         navi = null
@@ -109,6 +119,7 @@ class SignalCollector(context: Context) {
             headingDeg = position?.heading?.toDouble() ?: return null,
             tbt = tbt,
             light = null, // 신호 정보는 서버가 붙으면 채운다 (R3)
+            headlight = headlightOf(lowBeamState, lowBeamSwitch),
         )
         return frame
     }
@@ -150,6 +161,19 @@ class SignalCollector(context: Context) {
         car.getSteeringWheel().registerSteeringWheelAngle(steeringListener)
         car.getGear().registerGearSelection(gearListener)
         car.getBrake().registerBrakePedalStatus(brakeListener)
+        // 전조등은 R5에서만 쓴다. 권한이나 SDK 문제로 실패해도 나머지 신호는 계속 모은다.
+        runCatching {
+            car.getLight().getCurrentLowBeamLightState({ value -> onMain { lowBeamState = value ?: lowBeamState } }, onFailed)
+            car.getLight().registerLowBeamLightState(lowBeamListener)
+        }.onFailure { logFailure("low beam", it as? Exception ?: Exception(it)) }
+    }
+
+    /** 스위치(AUTOMATIC 여부)는 변경 알림이 없어서 프레임마다 읽는다. */
+    private fun readLowBeamSwitch() {
+        val car = vehicle ?: return
+        runCatching {
+            car.getLight().getLowBeamLightSwitch({ value -> onMain { lowBeamSwitch = value ?: lowBeamSwitch } }, { _ -> })
+        }
     }
 
     private fun onMain(block: () -> Unit) {
@@ -178,6 +202,12 @@ class SignalCollector(context: Context) {
             onMain { steeringDeg = value?.toDouble() ?: steeringDeg }
 
         override fun onFailed(e: Exception) = logFailure("steering", e)
+    }
+
+    private val lowBeamListener = object : LightStateListener {
+        override fun onLightStateUpdated(value: LightState?) = onMain { lowBeamState = value ?: lowBeamState }
+
+        override fun onFailed(e: Exception) = logFailure("low beam", e)
     }
 
     private val gearListener = object : GearSelectionListener {

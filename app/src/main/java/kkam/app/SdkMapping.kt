@@ -2,8 +2,11 @@ package kkam.app
 
 import ai.pleos.playground.navi.data.TBTInfo
 import ai.pleos.playground.vehicle.constant.area.TurnSignalValue
+import ai.pleos.playground.vehicle.constant.control.LightState
+import ai.pleos.playground.vehicle.constant.control.LightSwitch
 import ai.pleos.playground.vehicle.constant.control.VehicleGear
 import kkam.engine.model.Gear
+import kkam.engine.model.HeadlightState
 import kkam.engine.model.Tbt
 import kkam.engine.model.TurnSignal
 import kkam.engine.model.TurnType
@@ -42,5 +45,19 @@ fun NaviTurnType.toEngineTurnType(): TurnType = when (this) {
     NaviTurnType.TURN_RIGHT, NaviTurnType.TURN_SHARP_R -> TurnType.RIGHT
     NaviTurnType.TURN_UTURN -> TurnType.UTURN
     NaviTurnType.TURN_STRAIGHT -> TurnType.STRAIGHT
-    else -> TurnType.OTHER
+    NaviTurnType.TURN_ENTER_IC_L, NaviTurnType.TURN_EXIT_IC_L -> TurnType.RAMP_LEFT
+    NaviTurnType.TURN_ENTER_IC_R, NaviTurnType.TURN_EXIT_IC_R -> TurnType.RAMP_RIGHT
+    NaviTurnType.TURN_TUNNEL -> TurnType.TUNNEL
+    else -> TurnType.OTHER // TURN_KEEP_*, 방향 없는 IC(TURN_*_IC_C) 등
+}
+
+/**
+ * 하향등 상태와 스위치를 엔진 값으로 (spec 2.1). 상태가 ON이면 ON, 아니고 스위치가 AUTOMATIC이면 AUTO,
+ * 그 밖(상태 OFF, DAYTIME_RUNNING)은 OFF. 상태를 아직 못 읽었으면 null.
+ */
+fun headlightOf(state: LightState?, switch: LightSwitch?): HeadlightState? = when {
+    state == null -> null
+    state == LightState.ON -> HeadlightState.ON
+    switch == LightSwitch.AUTOMATIC -> HeadlightState.AUTO
+    else -> HeadlightState.OFF
 }

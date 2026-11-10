@@ -33,7 +33,7 @@ fun interface QnaAnswerer {
     fun answer(question: String): QnaAnswer
 }
 
-// TODO(Gleo AI SDK 확인 후 정현우, 프롬프트는 박겸 P10(ai/ 프롬프트 빌더)):
+// TODO(Gleo AI SDK 확인 후 앱 담당, 프롬프트는 AI 담당 P10(ai/ 프롬프트 빌더)):
 //  GleoQnaAnswerer(laws) : QnaAnswerer 를 만든다. 질문 + 룰 테이블 전체를 프롬프트로 보내고
 //  "2~3문장 답 + 근거 룰 ID"를 받아 QnaAnswer로 바꾼다. 응답의 룰 ID가 테이블에 없으면 근거 없음으로 본다.
 //  오프라인이거나 호출이 실패하면 KeywordQnaAnswerer로 대신 답한다.

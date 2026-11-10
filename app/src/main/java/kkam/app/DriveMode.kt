@@ -41,7 +41,7 @@ fun guidesOn(mode: DriveMode): Boolean = when (mode) {
 
 /**
  * 고른 모드를 SharedPreferences에 저장한다. 앱을 다시 켜도 남는다.
- * TODO(엔진 모드 입력, spec v0.3 · 박겸 P6): 나오면 CoachSession이 주행을 시작할 때 [load] 값을 엔진에 넘긴다.
+ * TODO(엔진 모드 입력, spec v0.3 · AI 담당 P6): 나오면 CoachSession이 주행을 시작할 때 [load] 값을 엔진에 넘긴다.
  *  지금은 저장과 화면 표시만 하고, 안내는 모드와 관계없이 엔진이 내는 대로 읽는다.
  */
 class ModeStore(context: Context) {

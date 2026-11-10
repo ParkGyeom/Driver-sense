@@ -46,7 +46,7 @@ class RecordStoreTest {
         assertEquals(1, state.kept)
         assertEquals(2, state.total)
         assertEquals(events, state.todayEvents)
-        assertEquals(listOf("11초 좌회전 지킴", "25초 우회전 놓침"), state.logs)
+        assertEquals(listOf("11초 좌회전 깜빡이 지킴", "25초 우회전 깜빡이 놓침"), state.logs)
     }
 
     @Test

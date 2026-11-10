@@ -30,12 +30,11 @@ enum class LeverMotion(
 
 /**
  * 안내 종류와 방향으로 레버 동작을 정한다. 레버를 쓰지 않는 안내(적색 우회전 일시정지)는 null.
- * 방향: 회전은 turnLabel("좌회전"/"우회전"), 차선 변경은 제목의 "왼쪽"/"오른쪽".
- * TODO(박겸 spec): 차선 변경 방향이 GUIDE에 따로 오면 제목 대신 그 값을 쓴다.
+ * 방향(right)은 엔진 GUIDE의 action에서 온다. 안내 전에는 내비 안내의 방향을 쓴다.
  */
-fun leverMotion(kind: GuideKind, turnLabel: String): LeverMotion? = when (kind) {
-    GuideKind.TURN_SIGNAL -> if (turnLabel.contains("우")) LeverMotion.LEFT_UP else LeverMotion.LEFT_DOWN
-    GuideKind.LANE_CHANGE -> if (turnLabel.contains("오른")) LeverMotion.LEFT_TAP_UP else LeverMotion.LEFT_TAP_DOWN
+fun leverMotion(kind: GuideKind, right: Boolean): LeverMotion? = when (kind) {
+    GuideKind.TURN_SIGNAL -> if (right) LeverMotion.LEFT_UP else LeverMotion.LEFT_DOWN
+    GuideKind.LANE_CHANGE -> if (right) LeverMotion.LEFT_TAP_UP else LeverMotion.LEFT_TAP_DOWN
     GuideKind.HEADLIGHT -> LeverMotion.LEFT_TWIST
     GuideKind.WIPER -> LeverMotion.RIGHT_DOWN
     GuideKind.RED_RIGHT_TURN -> null
@@ -44,10 +43,10 @@ fun leverMotion(kind: GuideKind, turnLabel: String): LeverMotion? = when (kind) 
 /**
  * 그림을 보여줄 안내인지. 초보 기능 안내(차선 변경, 전조등, 와이퍼)만 보여준다.
  * 회전 깜빡이는 누구나 아는 동작이라 그림 없이 화살표만 쓴다.
- * TODO(연수 모드, spec v0.2): 초보 운전자(연수 모드)면 회전 깜빡이에도 그림을 보여준다.
+ * TODO(연수 모드, spec v0.3): 초보 운전자(연수 모드)면 회전 깜빡이에도 그림을 보여준다.
  */
-fun leverFor(kind: GuideKind, turnLabel: String, warn: Boolean): LeverMotion? =
-    if (warn && kind != GuideKind.TURN_SIGNAL) leverMotion(kind, turnLabel) else null
+fun leverFor(kind: GuideKind, right: Boolean, warn: Boolean): LeverMotion? =
+    if (warn && kind != GuideKind.TURN_SIGNAL) leverMotion(kind, right) else null
 
 /** 레버 동작을 말로. 그림과 같이 보여주고, 미리보기에서는 음성으로 읽는다. */
 val LeverMotion.howTo: String

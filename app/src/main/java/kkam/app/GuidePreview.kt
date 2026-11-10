@@ -12,20 +12,22 @@ fun CoachState.preview(kind: GuideKind): CoachState {
         GuideKind.WIPER -> listOf("비가 와요", "", "와이퍼 꺼짐", "와이퍼 켜세요")
         GuideKind.RED_RIGHT_TURN -> listOf("적색 우회전", "40 m", "전방 적색", "멈췄다 가세요")
     }
+    val right = kind == GuideKind.LANE_CHANGE
     return copy(
         guideKind = kind,
+        right = right,
         tone = Tone.WARN,
         turnLabel = title,
         distanceLabel = distance,
         signalLabel = status,
         badge = headline,
-        message = previewHowTo(kind, title),
+        message = previewHowTo(kind, right),
     )
 }
 
 /** 미리보기 한 줄 문구이자 음성. 레버를 쓰는 안내는 레버 동작, 아니면 해야 할 일. */
-fun previewHowTo(kind: GuideKind, title: String): String =
-    leverMotion(kind, title)?.howTo ?: "정지선에서 완전히 멈췄다가 우회전하세요"
+fun previewHowTo(kind: GuideKind, right: Boolean): String =
+    leverMotion(kind, right)?.howTo ?: "정지선에서 완전히 멈췄다가 우회전하세요"
 
 /** 미리보기 상태를 팝업으로 그대로 옮긴다. */
-fun CoachState.previewPopup(): Popup = Popup(PopupTone.WARN, guideKind, turnLabel, distanceLabel, badge)
+fun CoachState.previewPopup(): Popup = Popup(PopupTone.WARN, guideKind, right, turnLabel, distanceLabel, badge)

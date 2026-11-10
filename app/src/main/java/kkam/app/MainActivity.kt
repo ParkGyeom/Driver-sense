@@ -24,6 +24,7 @@ import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import kkam.engine.model.Gear
+import kkam.engine.model.HeadlightState
 import kkam.engine.model.LawEntry
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnSignal
@@ -57,6 +58,8 @@ class MainActivity : Activity() {
             }
             highlight(connected.running)
             render()
+            // 릴리스 APK에는 데모 패널이 없어서 실제 주행을 시작할 버튼도 없다. 앱을 켜면 바로 실제 차량 신호를 받는다.
+            if (!debuggable && connected.running == null) toggleLive()
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -87,9 +90,12 @@ class MainActivity : Activity() {
     private lateinit var qnaScreen: QnaScreen
     private lateinit var modeScreen: ModeScreen
     private lateinit var parkedNav: ParkedNav
-    /** 진단 값. TODO(박겸 습관 인사이트, 12/1): 실제 계산 구현으로 바꾼다. */
+    /** 진단 값. TODO(AI 담당 습관 인사이트, 12/1): 실제 계산 구현으로 바꾼다. */
     private val diagnosisSource: DiagnosisSource = DemoDiagnosisSource
     private val laws: List<LawEntry> by lazy { loadLaws() }
+
+    /** debug 빌드면 true. 데모 패널은 debug에서만 열고, 릴리스는 켜자마자 실제 주행을 시작한다. */
+    private val debuggable by lazy { applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0 }
 
     private val tiles = mutableMapOf<String, TextView>()
     private val buttons = mutableMapOf<String, Button>()
@@ -183,7 +189,6 @@ class MainActivity : Activity() {
 
     /** 데모 패널은 debug 빌드에서만 열 수 있다. 릴리스 APK에는 여는 버튼이 없다. */
     private fun setUpDemoToggle() {
-        val debuggable = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         if (!debuggable) return
         view.demoToggle.visibility = View.VISIBLE
         view.demoToggle.background = rounded(getColor(R.color.surface), radiusDp = 999, strokeColor = getColor(R.color.line))
@@ -236,7 +241,7 @@ class MainActivity : Activity() {
     }
 
     private fun finishHabits(selection: HabitSelection) {
-        // TODO(엔진 모드 입력, spec v0.2 · 박겸 11/16): 교정(CORRECT) 모드와 고른 습관을 엔진에 넘긴다.
+        // TODO(엔진 모드 입력, spec v0.2 · AI 담당 11/16): 교정(CORRECT) 모드와 고른 습관을 엔진에 넘긴다.
         //  지금은 엔진에 넘기지 않고, 주행 화면 한 줄 문구에만 보여준다.
         session?.showMessage(selection.summary())
         screen = Screen.DRIVE
@@ -321,6 +326,7 @@ class MainActivity : Activity() {
         tiles.getValue("기어").text = frame.gear.name
         tiles.getValue("내비 TBT").text = frame.tbt?.let { "${it.turn.label()} ${it.distanceM} m" } ?: "-"
         tiles.getValue("전방 신호").text = frame.light?.phase?.name ?: "-"
+        tiles.getValue("전조등").text = frame.headlight?.label() ?: "-"
     }
 
     /** 지금 화면을 그린다. 값은 모두 [CoachState]에서 온다. */
@@ -393,6 +399,12 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun HeadlightState.label(): String = when (this) {
+        HeadlightState.OFF -> "꺼짐"
+        HeadlightState.ON -> "켜짐"
+        HeadlightState.AUTO -> "자동"
+    }
+
     private fun TurnSignal.label(): String = when (this) {
         TurnSignal.OFF -> "꺼짐"
         TurnSignal.LEFT -> "좌 켜짐"
@@ -421,6 +433,6 @@ class MainActivity : Activity() {
         const val PREFS = "kkam"
         const val KEY_OVERLAY_ASKED = "overlay_asked"
         val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")
-        val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호")
+        val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호", "전조등")
     }
 }

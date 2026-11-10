@@ -50,7 +50,7 @@ class QnaScreen(
             if (actionId == EditorInfo.IME_ACTION_SEARCH) askTyped()
             actionId == EditorInfo.IME_ACTION_SEARCH
         }
-        // STT는 자리만. TODO(정현우): Pleos 음성 인식 SDK 확인 후 받은 문장을 ask()에 넘긴다.
+        // STT는 자리만. TODO(앱 담당): Pleos 음성 인식 SDK 확인 후 받은 문장을 ask()에 넘긴다.
         mic.setOnClickListener { Toast.makeText(activity, R.string.qna_mic_soon, Toast.LENGTH_SHORT).show() }
     }
 

@@ -4,6 +4,7 @@ import kkam.engine.model.EngineOutput
 import kkam.engine.model.Event
 import kkam.engine.model.Gear
 import kkam.engine.model.Guide
+import kkam.engine.model.GuideAction
 import kkam.engine.model.Result
 import kkam.engine.model.RuleId
 import kkam.engine.model.SignalFrame
@@ -105,7 +106,7 @@ class R1Rule(private val nextEventId: () -> String) {
                 !isSameDirection(frame.turnSignal, current.targetTurn) &&
                 !current.guided -> {
                 state = current.copy(guided = true)
-                return listOf(Guide(frame.t, RuleId.R1, guideText(current.targetTurn)))
+                return listOf(Guide(frame.t, RuleId.R1, guideText(current.targetTurn), guideAction(current.targetTurn)))
             }
 
             // 전이표 #5: 진행 방향이 충분히 바뀌어 회전이 끝남. 이때 기록한다
@@ -159,6 +160,9 @@ class R1Rule(private val nextEventId: () -> String) {
         TurnType.RIGHT -> signal == TurnSignal.RIGHT
         else -> false
     }
+
+    private fun guideAction(turn: TurnType): GuideAction =
+        if (turn == TurnType.LEFT) GuideAction.SIGNAL_LEFT else GuideAction.SIGNAL_RIGHT
 
     private fun guideText(turn: TurnType): String =
         if (turn == TurnType.LEFT) "좌회전 곧이에요, 깜빡이 켜세요" else "우회전 곧이에요, 깜빡이 켜세요"

@@ -88,13 +88,13 @@ class CoachPopup(context: Context) : CoachNotifier {
     /** 주행 화면 코치 카드와 같은 순서: 방향 그림 → 회전·거리 → 상태 배지. */
     private fun draw(popup: Popup) {
         val fill = context.getColor(if (popup.tone == PopupTone.OK) R.color.ok else R.color.warn)
-        icon.setImageResource(guideIconRes(popup.kind, popup.turnLabel))
+        icon.setImageResource(guideIconRes(popup.kind, popup.right))
         turn.text = popup.turnLabel
         distance.text = numberEmphasis(popup.distanceLabel)
         distance.visibility = if (popup.distanceLabel.isEmpty()) View.GONE else View.VISIBLE
         headline.text = popup.headline
         badgeIcon.setImageResource(if (popup.tone == PopupTone.OK) R.drawable.ic_check else R.drawable.ic_alert)
-        lever.show(leverFor(popup.kind, popup.turnLabel, popup.tone == PopupTone.WARN), ink)
+        lever.show(leverFor(popup.kind, popup.right, popup.tone == PopupTone.WARN), ink)
         paint(fill)
     }
 

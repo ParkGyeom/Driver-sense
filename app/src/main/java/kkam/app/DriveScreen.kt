@@ -77,7 +77,7 @@ class DriveScreen(private val activity: Activity) {
     /** 카드 안 글자와 그림. 색은 [paint]가 칠한다. */
     private fun renderCard(state: CoachState, active: Boolean) {
         // 그림: 회전 안내 중이면 안내 종류에 맞는 그림(회전이면 방향 화살표), 대기 중이면 경로 화살표.
-        turnIcon.setImageResource(if (active) guideIconRes(state.guideKind, state.turnLabel) else R.drawable.ic_route_idle)
+        turnIcon.setImageResource(if (active) guideIconRes(state.guideKind, state.right) else R.drawable.ic_route_idle)
         // 대기 중에는 동그라미 안에 작게, 안내 중에는 동그라미 없이 칸을 꽉 채워 크게.
         turnIcon.background = if (active) null else idleIconCircle
         val iconPadding = activity.dp(if (active) 0 else IDLE_ICON_PADDING_DP)
@@ -115,7 +115,7 @@ class DriveScreen(private val activity: Activity) {
         val toneChanged = paintedTone != null && paintedTone != state.tone
         paintedTone = state.tone
         // 레버 그림은 프레임마다 안내 종류가 바뀔 수 있어서 늘 다시 넘긴다.
-        val leverMotion = leverFor(state.guideKind, state.turnLabel, state.tone == Tone.WARN)
+        val leverMotion = leverFor(state.guideKind, state.right, state.tone == Tone.WARN)
         cardFill.setStroke(activity.dp(2), if (state.tone == Tone.IDLE) color(R.color.line) else Color.TRANSPARENT)
 
         if (from == null || !toneChanged || root.visibility != View.VISIBLE) {

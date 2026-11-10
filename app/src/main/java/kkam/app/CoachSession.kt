@@ -6,7 +6,6 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import kkam.engine.Engine
-import kkam.engine.model.Gear
 import kkam.engine.model.Guide
 import kkam.engine.model.SignalFrame
 
@@ -31,6 +30,13 @@ class CoachSession(context: Context) {
     private val handler = Handler(Looper.getMainLooper())
     private val hideOkPopup = Runnable {
         if (popup?.tone == PopupTone.OK) {
+            popup = null
+            notifyChanged(null)
+        }
+    }
+
+    private val hidePreviewPopup = Runnable {
+        if (running == null && popup != null) {
             popup = null
             notifyChanged(null)
         }
@@ -97,6 +103,7 @@ class CoachSession(context: Context) {
         running = null
         popup = null
         handler.removeCallbacks(hideOkPopup)
+        handler.removeCallbacks(hidePreviewPopup)
         if (wasRunning) notifyChanged(null)
     }
 
@@ -105,6 +112,9 @@ class CoachSession(context: Context) {
         stopAll()
         state = state.preview(kind)
         popup = state.previewPopup()
+        // 미리보기에는 프레임이 오지 않아 팝업이 저절로 숨지 않는다. 시간이 지나면 숨긴다.
+        handler.removeCallbacks(hidePreviewPopup)
+        handler.postDelayed(hidePreviewPopup, PREVIEW_POPUP_MS)
         // 어떻게 하는지(레버 동작)를 음성으로도 읽는다. 실제 주행에서는 엔진 GUIDE 문구를 읽는다.
         speaker.speak(state.message)
         notifyChanged(null)
@@ -129,7 +139,7 @@ class CoachSession(context: Context) {
             state = CoachState()
             records.save(emptyList())
         }
-        // TODO(엔진 모드 입력, spec v0.3 · 박겸 P6): 나오면 modes.load()를 엔진에 넘긴다.
+        // TODO(엔진 모드 입력, spec v0.3 · AI 담당 P6): 나오면 modes.load()를 엔진에 넘긴다.
         //  지금은 모드를 저장·표시만 하고, 안내는 모드와 관계없이 엔진이 내는 대로 읽는다.
         Log.i(TAG, "주행 시작 모드: ${modes.load()}")
         engine = Engine()
@@ -147,15 +157,15 @@ class CoachSession(context: Context) {
         state = state.next(frame, outputs)
         // 판정이 새로 생겼을 때만 저장한다. 매 프레임 쓰지 않는다.
         if (state.todayEvents.size != eventsBefore) records.save(state.todayEvents)
-        updatePopup(outputs, frame.gear)
+        updatePopup(outputs, frame)
         lastFrame = frame
         notifyChanged(frame)
     }
 
     /** 파랑("좋아요")으로 바뀌면 [OK_POPUP_MS] 뒤에 숨긴다. 그 사이 주황으로 돌아가면 숨기지 않는다. */
-    private fun updatePopup(outputs: List<kkam.engine.model.EngineOutput>, gear: Gear) {
+    private fun updatePopup(outputs: List<kkam.engine.model.EngineOutput>, frame: SignalFrame) {
         val before = popup
-        popup = nextPopup(before, state, outputs, gear)
+        popup = nextPopup(before, state, outputs, frame)
         if (popup?.tone == PopupTone.OK && before?.tone != PopupTone.OK) {
             handler.removeCallbacks(hideOkPopup)
             handler.postDelayed(hideOkPopup, OK_POPUP_MS)
@@ -169,6 +179,7 @@ class CoachSession(context: Context) {
     companion object {
         const val LIVE = "실차"
         private const val OK_POPUP_MS = 3000L
+        private const val PREVIEW_POPUP_MS = 6000L
         private const val TAG = "KkamCoach"
     }
 }

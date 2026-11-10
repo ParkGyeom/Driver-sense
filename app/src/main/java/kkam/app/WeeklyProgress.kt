@@ -30,7 +30,7 @@ const val GRADUATION_WEEKS = 3
 
 /**
  * 졸업 단계를 정한다.
- * TODO(박겸 졸업 판정 P9 GuidancePolicy, 11/25): 엔진 결과가 나오면 이 함수 대신 엔진 값을 쓴다.
+ * TODO(AI 담당 졸업 판정 P9 GuidancePolicy, 11/25): 엔진 결과가 나오면 이 함수 대신 엔진 값을 쓴다.
  *
  * | 조건                                          | 단계      |
  * |-----------------------------------------------|-----------|
@@ -155,8 +155,8 @@ private fun percentOf(part: Int, whole: Int): Int = if (whole == 0) 0 else (part
 
 /**
  * 교정 진행 값을 어디서 가져올지. 지금은 데모 고정값 하나뿐이다.
- * TODO(박겸 습관 인사이트 P11 12/1, 졸업 판정 P9 11/25): 판정 기록으로 계산하는 구현을 더하고 바꿔 끼운다.
- * TODO(AI 코칭 문장): Gleo 호출(앱) + 박겸 주간 코칭 프롬프트(P10)로 [WeeklyProgress.coaching]·[WeeklyProgress.nextFocus]를 채운다.
+ * TODO(AI 담당 습관 인사이트 P11 12/1, 졸업 판정 P9 11/25): 판정 기록으로 계산하는 구현을 더하고 바꿔 끼운다.
+ * TODO(AI 코칭 문장): Gleo 호출(앱) + AI 담당 주간 코칭 프롬프트(P10)로 [WeeklyProgress.coaching]·[WeeklyProgress.nextFocus]를 채운다.
  */
 interface ProgressSource {
     fun load(): WeeklyProgress

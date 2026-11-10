@@ -12,7 +12,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class DriveReportTest {
-    private fun event(id: String, rule: RuleId, result: Result, guided: Boolean, turn: TurnType = TurnType.LEFT) =
+    private fun event(id: String, rule: RuleId, result: Result, guided: Boolean, turn: TurnType? = TurnType.LEFT) =
         Event(id, 11000, rule, result, guided, turn, 37.55, 127.07)
 
     private fun law(id: String, article: String, penalty: String) =
@@ -64,6 +64,26 @@ class DriveReportTest {
         val report = buildReport(listOf(event("evt-1", RuleId.R2, Result.MISSED, guided = false)), laws)
 
         assertEquals(ReportItem(false, "깜빡이 없이 좌회전 놓침", "놓쳤어요", "", ""), report.items.single())
+    }
+
+    @Test
+    fun `나들목과 터널 판정도 리포트에 나온다`() {
+        val report = buildReport(
+            listOf(
+                event("evt-1", RuleId.R4, Result.KEPT, guided = true, turn = TurnType.RIGHT),
+                event("evt-2", RuleId.R5, Result.KEPT, guided = true, turn = null),
+            ),
+            laws + law("LAW-04", "제38조", "범칙금 3만 원"),
+        )
+
+        assertEquals(30_000, report.savedWon) // R4 3만 원. R5 처분 금액은 아직 확인하지 못해 0원
+        assertEquals(
+            listOf(
+                ReportItem(true, "터널 전조등 지킴", "안내 듣고 지켰어요", "", ""),
+                ReportItem(true, "오른쪽 나들목 깜빡이 지킴", "안내 듣고 지켰어요", "제38조", "단속됐다면: 범칙금 3만 원"),
+            ),
+            report.items,
+        )
     }
 
     @Test

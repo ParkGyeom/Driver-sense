@@ -37,6 +37,9 @@ class R6Rule(private val nextEventId: () -> String) {
 
     private var state: State = State.Idle
 
+    /** R6 안내가 진행 중(시간을 재거나 와이퍼를 기다림)이면 true. R7이 이때는 기다린다 (spec 13.3). */
+    val isBusy: Boolean get() = state is State.Waiting || state is State.Watching
+
     /** 프레임 하나를 처리한다. spec 10.3 전이표를 위에서부터 검사해 처음 맞는 행만 적용한다. */
     fun onFrame(frame: SignalFrame): List<EngineOutput> {
         val current = state

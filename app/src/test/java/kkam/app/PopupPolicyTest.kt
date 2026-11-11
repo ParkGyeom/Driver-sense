@@ -182,4 +182,34 @@ class PopupPolicyTest {
         assertEquals(0 to 0, state.kept to state.total)
         assertEquals("안내 듣고 와이퍼를 켰어요", state.message)
     }
+
+    @Test
+    fun `S22 김서림 카드가 뜨고 성에 제거를 켜면 파랑으로 바뀐다`() {
+        val engine = Engine()
+        var state = CoachState()
+        var popup: Popup? = null
+        val seen = mutableListOf<Triple<PopupTone?, String?, String?>>()
+        for ((t, defroster) in listOf(0L to false, 10000L to false, 14000L to true)) {
+            val f = frame(TurnSignal.OFF, Tbt(TurnType.STRAIGHT, 900), t = t).copy(
+                speedKph = 40.0, rain = true, wiper = kkam.engine.model.WiperMode.ON, recirc = true, defroster = defroster,
+            )
+            val outputs = engine.onFrame(f)
+            state = state.next(f, outputs)
+            popup = nextPopup(popup, state, outputs, f)
+            seen += Triple(popup?.tone, popup?.turnLabel, popup?.headline)
+        }
+
+        assertEquals(
+            listOf(
+                Triple(null, null, null),
+                Triple(PopupTone.WARN, "김서림 주의", "성에 제거 켜세요"),
+                Triple(PopupTone.OK, "김서림 주의", "좋아요"),
+            ),
+            seen,
+        )
+        assertEquals(GuideKind.DEFOG, popup?.kind)
+        // 김서림은 법규 근거가 없어 오늘 성적에 세지 않는다
+        assertEquals(0 to 0, state.kept to state.total)
+        assertEquals("안내 듣고 김서림을 잡았어요", state.message)
+    }
 }

@@ -7,4 +7,5 @@ fun guideIconRes(kind: GuideKind, right: Boolean): Int = when (kind) {
     GuideKind.HEADLIGHT -> R.drawable.ic_headlight
     GuideKind.WIPER -> R.drawable.ic_wiper
     GuideKind.RED_RIGHT_TURN -> R.drawable.ic_red_light
+    GuideKind.DEFOG -> R.drawable.ic_defog
 }

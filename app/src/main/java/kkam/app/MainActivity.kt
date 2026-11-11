@@ -333,6 +333,10 @@ class MainActivity : Activity() {
         tiles.getValue("내비 TBT").text = frame.tbt?.let { "${it.turn.label()} ${it.distanceM} m" } ?: "-"
         tiles.getValue("전방 신호").text = frame.light?.phase?.name ?: "-"
         tiles.getValue("전조등").text = frame.headlight?.label() ?: "-"
+        tiles.getValue("성에·순환").text = listOfNotNull(
+            frame.defroster?.let { if (it) "성에 켜짐" else "성에 꺼짐" },
+            frame.recirc?.let { if (it) "내기" else "외기" },
+        ).joinToString(" · ").ifEmpty { "-" }
         tiles.getValue("와이퍼·비").text = listOfNotNull(frame.wiper?.label(), frame.rain?.let { if (it) "비" else "맑음" }).joinToString(" · ").ifEmpty { "-" }
     }
 
@@ -447,6 +451,6 @@ class MainActivity : Activity() {
         const val KEY_OVERLAY_ASKED = "overlay_asked"
         const val KEY_NAVI_AFTER_PLAY = "navi_after_play"
         val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")
-        val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호", "전조등", "와이퍼·비")
+        val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호", "전조등", "와이퍼·비", "성에·순환")
     }
 }

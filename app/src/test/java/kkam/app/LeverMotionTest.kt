@@ -38,4 +38,10 @@ class LeverMotionTest {
         assertEquals("정지선에서 완전히 멈췄다가 우회전하세요", previewHowTo(GuideKind.RED_RIGHT_TURN, right = true))
         assertEquals(LeverMotion.LEFT_TWIST.howTo, previewHowTo(GuideKind.HEADLIGHT, right = false))
     }
+
+    @Test
+    fun `김서림은 레버가 아니라 공조 버튼이라 그림 대신 할 일을 말한다`() {
+        assertNull(leverMotion(GuideKind.DEFOG, right = false))
+        assertEquals("앞유리 성에 제거 버튼을 누르고, 공조를 외기 순환으로 바꾸세요", previewHowTo(GuideKind.DEFOG, right = false))
+    }
 }

@@ -90,6 +90,7 @@ private fun Event.routeTurns(): Set<TurnType> = when (rule) {
     RuleId.R3 -> setOf(TurnType.RIGHT)
     RuleId.R4 -> setOf(TurnType.RAMP_LEFT, TurnType.RAMP_RIGHT)
     RuleId.R5 -> setOf(TurnType.TUNNEL)
+    RuleId.R6, RuleId.R7 -> emptySet() // 와이퍼(비)·김서림은 날씨에 달려 있어 경로 위 지점이 없다
 }
 
 private fun Habit.routeTurns(): Set<TurnType> = when (this) {
@@ -166,20 +167,22 @@ enum class RouteStartAction {
     /** 이미 실제 차량 신호 코치 중: 경로만 붙인다. */
     ATTACH,
 
-    /** 시나리오·경로 데모 재생 중: 건드리지 않는다 (시연을 끊지 않는다). */
+    /** 코치가 꺼져 있거나, 시나리오·경로 데모 재생 중: 건드리지 않는다 (시연을 끊지 않는다). */
     IGNORE,
 }
 
 /**
- * 전이표 (세션이 지금 도는 것 → 경로 시작 이벤트에서 할 일)
- * | 지금                 | 할 일      |
- * | 멈춤 (null)          | START_LIVE |
- * | 실제 차량 신호 (LIVE)  | ATTACH     |
- * | 시나리오·경로 데모     | IGNORE     |
+ * 전이표 (코치 켬/끔과 세션이 지금 도는 것 → 경로 시작 이벤트에서 할 일)
+ * | 코치 | 지금                 | 할 일      |
+ * | 끔   | (무엇이든)            | IGNORE     |
+ * | 켬   | 멈춤 (null)          | START_LIVE |
+ * | 켬   | 실제 차량 신호 (LIVE)  | ATTACH     |
+ * | 켬   | 시나리오·경로 데모     | IGNORE     |
  */
-fun routeStartAction(running: String?): RouteStartAction = when (running) {
-    null -> RouteStartAction.START_LIVE
-    CoachSession.LIVE -> RouteStartAction.ATTACH
+fun routeStartAction(running: String?, coachOn: Boolean): RouteStartAction = when {
+    !coachOn -> RouteStartAction.IGNORE
+    running == null -> RouteStartAction.START_LIVE
+    running == CoachSession.LIVE -> RouteStartAction.ATTACH
     else -> RouteStartAction.IGNORE
 }
 

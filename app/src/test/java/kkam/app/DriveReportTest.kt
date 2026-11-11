@@ -87,6 +87,21 @@ class DriveReportTest {
     }
 
     @Test
+    fun `와이퍼 판정은 목록에는 나오지만 지킴률과 범칙금에는 세지 않는다`() {
+        val report = buildReport(
+            listOf(
+                event("evt-1", RuleId.R1, Result.KEPT, guided = true),
+                event("evt-2", RuleId.R6, Result.KEPT, guided = true, turn = null),
+            ),
+            laws,
+        )
+
+        assertEquals(1 to 0, report.kept to report.missed)
+        assertEquals(30_000, report.savedWon)
+        assertEquals(ReportItem(true, "비 올 때 와이퍼 지킴", "안내 듣고 지켰어요", "", ""), report.items.first())
+    }
+
+    @Test
     fun `금액은 만 원 단위로 읽기 쉽게 쓴다`() {
         assertEquals("0원", wonLabel(0))
         assertEquals("9만 원", wonLabel(90_000))

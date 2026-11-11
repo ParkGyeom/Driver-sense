@@ -15,6 +15,7 @@ enum class GuideKind(
     HEADLIGHT("전조등"),
     WIPER("와이퍼"),
     RED_RIGHT_TURN("적색 우회전"),
+    DEFOG("김서림"),
 }
 
 /**
@@ -27,4 +28,6 @@ fun RuleId.guideKind(): GuideKind? = when (this) {
     RuleId.R3 -> GuideKind.RED_RIGHT_TURN
     RuleId.R4 -> GuideKind.LANE_CHANGE
     RuleId.R5 -> GuideKind.HEADLIGHT
+    RuleId.R6 -> GuideKind.WIPER
+    RuleId.R7 -> GuideKind.DEFOG
 }

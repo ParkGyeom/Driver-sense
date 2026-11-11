@@ -10,10 +10,12 @@ import kkam.engine.model.RuleId
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnSignal
 import kkam.engine.model.TurnType
+import kkam.engine.model.WiperMode
 import kkam.engine.rules.APPROACH_START_M
 import kkam.engine.rules.CHECK_AT_M
 import kkam.engine.rules.LANE_CHECK_M
 import kkam.engine.rules.LANE_START_M
+import kkam.engine.rules.STOP_KPH
 import kkam.engine.rules.TUNNEL_GUIDE_M
 import java.time.Instant
 import java.time.ZoneId
@@ -46,6 +48,8 @@ data class CoachState(
      */
     val checkedTurn: TurnType? = null,
     val checkedTone: Tone? = null,
+    /** R3 "멈췄다 가세요" 안내 뒤 한 번이라도 멈췄으면 true. 엔진처럼 한 번 멈추면 지킨 것으로 본다. */
+    val stopSeen: Boolean = false,
     /** 기록 앞에 붙는 주행 이름. 예: S2 */
     val driveLabel: String = "",
     val kept: Int = 0,
@@ -72,7 +76,57 @@ private data class Target(
     val offLabel: String,
     val warnBadge: String,
     val answered: String,
+    /** 카드 제목. null이면 내비 안내 이름(예: "좌회전"). */
+    val title: String? = null,
+    /** 남은 거리를 보여주는가. 와이퍼처럼 거리가 없는 안내는 false. */
+    val showDistance: Boolean = true,
 )
+
+/**
+ * 이 상태에서 카드에 보여줄 대상. R6 "와이퍼 켜세요" 안내 중이면 내비 안내 대신 와이퍼를 보여준다.
+ * 그 밖에는 내비 안내로 정한다.
+ */
+private fun CoachState.targetFor(frame: SignalFrame): Target? = when (guideAction) {
+    GuideAction.WIPER_ON -> frame.wiperTarget() ?: frame.target()
+    GuideAction.DEFOG -> frame.defogTarget() ?: frame.target()
+    else -> frame.target()
+}
+
+/** R7 안내 뒤의 김서림 카드. 성에 제거 값을 모르면 null. 엔진처럼 성에 제거를 켜거나 외기로 바꾸면 따른 것으로 본다. */
+private fun SignalFrame.defogTarget(): Target? {
+    val defrost = defroster ?: return null
+    return Target(
+        turn = TurnType.OTHER,
+        kind = GuideKind.DEFOG,
+        right = false,
+        checkM = null,
+        ok = defrost || recirc == false,
+        okLabel = if (defrost) "성에 제거 켜짐" else "외기 순환",
+        offLabel = if (recirc == true) "내기 순환 중" else "성에 제거 꺼짐",
+        warnBadge = "성에 제거 켜세요",
+        answered = "김서림을 잡았어요",
+        title = "김서림 주의",
+        showDistance = false,
+    )
+}
+
+/** R6 안내 뒤의 와이퍼 카드. 와이퍼 값을 모르면 null. */
+private fun SignalFrame.wiperTarget(): Target? {
+    val mode = wiper ?: return null
+    return Target(
+        turn = TurnType.OTHER,
+        kind = GuideKind.WIPER,
+        right = false,
+        checkM = null,
+        ok = mode != WiperMode.OFF,
+        okLabel = if (mode == WiperMode.AUTO) "와이퍼 자동" else "와이퍼 켜짐",
+        offLabel = "와이퍼 꺼짐",
+        warnBadge = "와이퍼 켜세요",
+        answered = "와이퍼를 켰어요",
+        title = "비 오는 중",
+        showDistance = false,
+    )
+}
 
 private fun SignalFrame.target(): Target? {
     val tbt = tbt ?: return null
@@ -128,12 +182,12 @@ private fun SignalFrame.signalTarget(turn: TurnType, kind: GuideKind, checkM: In
 
 /** 프레임 하나와 엔진 출력을 반영한 다음 상태를 돌려준다. */
 fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>): CoachState {
-    val target = frame.target()
+    val target = targetFor(frame)
     var state = if (target == null) {
         copy(
             tone = Tone.IDLE, turnLabel = IDLE_LABEL, distanceLabel = "", signalLabel = "", badge = "",
             guideKind = GuideKind.TURN_SIGNAL, guideAction = null, guidedKind = null,
-            checkedTurn = null, checkedTone = null,
+            checkedTurn = null, checkedTone = null, stopSeen = false,
         )
     } else {
         withTarget(frame, target)
@@ -144,7 +198,7 @@ fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>): CoachState
                 guideKind = output.rule.guideKind() ?: state.guideKind,
                 guidedKind = output.rule.guideKind(),
                 guideAction = output.action,
-                right = output.action == GuideAction.SIGNAL_RIGHT,
+                right = output.action.isRight(),
                 message = output.text,
                 guideShowing = true,
                 logs = state.logs + state.logLine(output.t, "음성 안내"),
@@ -154,21 +208,32 @@ fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>): CoachState
                 guideShowing = false,
                 guideAction = null,
                 guidedKind = null,
-                kept = state.kept + if (output.result == Result.KEPT) 1 else 0,
-                total = state.total + 1,
+                stopSeen = false,
+                kept = state.kept + if (output.rule.inRate && output.result == Result.KEPT) 1 else 0,
+                total = state.total + if (output.rule.inRate) 1 else 0,
                 logs = state.logs + state.logLine(output.t, "${output.title()} ${output.result.label()}"),
                 todayEvents = state.todayEvents + output,
             )
         }
     }
+    // 이 프레임에 안내가 나왔으면 카드 색을 그 안내 기준으로 다시 정한다.
+    // 예: 깜빡이를 켜 둔 우회전에서 R3 "멈췄다 가세요"가 나오면 깜빡이 기준 파랑이 아니라 주황이어야 한다.
+    if (outputs.any { it is Guide }) {
+        state.targetFor(frame)?.let { state = state.withTarget(frame, it) }
+    }
     return state
 }
 
-private fun CoachState.withTarget(frame: SignalFrame, target: Target): CoachState {
+private fun CoachState.withTarget(frame: SignalFrame, signalTarget: Target): CoachState {
     val distanceM = frame.tbt?.distanceM ?: 0
     // 안내 대상이 바뀌면(재탐색, 다음 안내) 이전 안내의 종류와 고정 색을 지운다
-    val sameTarget = checkedTurn == target.turn || guidedFor(target)
-    val base = if (sameTarget) this else copy(guideAction = null, guidedKind = null, checkedTurn = null, checkedTone = null)
+    val sameTarget = checkedTurn == signalTarget.turn || guidedFor(signalTarget)
+    val reset = copy(guideAction = null, guidedKind = null, checkedTurn = null, checkedTone = null, stopSeen = false)
+    val base = if (sameTarget) this else reset
+    // R3 "멈췄다 가세요" 안내 뒤의 우회전은 깜빡이 대신 멈췄는지를 보여준다
+    val stopping = base.guideAction == GuideAction.STOP
+    val stopSeen = stopping && (base.stopSeen || frame.speedKph <= STOP_KPH)
+    val target = if (stopping) stopTarget(signalTarget.turn, stopSeen) else signalTarget
 
     val pastCheck = target.checkM != null && distanceM <= target.checkM
     val liveTone = if (target.ok) Tone.OK else Tone.WARN
@@ -181,10 +246,10 @@ private fun CoachState.withTarget(frame: SignalFrame, target: Target): CoachStat
     val answered = tone == Tone.OK && base.guideShowing
     return base.copy(
         guideKind = base.guidedKind ?: target.kind,
-        right = base.guideAction?.let { it == GuideAction.SIGNAL_RIGHT } ?: target.right,
+        right = base.guideAction?.isRight() ?: target.right,
         tone = tone,
-        turnLabel = target.turn.label(),
-        distanceLabel = "$distanceM m",
+        turnLabel = target.title ?: target.turn.label(),
+        distanceLabel = if (target.showDistance) "$distanceM m" else "",
         signalLabel = if (target.ok) target.okLabel else target.offLabel,
         badge = when {
             tone == Tone.OK -> "좋아요"
@@ -195,8 +260,25 @@ private fun CoachState.withTarget(frame: SignalFrame, target: Target): CoachStat
         guideShowing = base.guideShowing && !answered,
         checkedTurn = if (pastCheck) target.turn else null,
         checkedTone = locked,
+        stopSeen = stopSeen,
     )
 }
+
+/** R3 안내 뒤의 우회전 카드. 판정 지점에서 색을 고정하지 않는다 (엔진은 회전 시작 전 멈춤을 본다). */
+private fun stopTarget(turn: TurnType, stopSeen: Boolean) = Target(
+    turn = turn,
+    kind = GuideKind.RED_RIGHT_TURN,
+    right = true,
+    checkM = null,
+    ok = stopSeen,
+    okLabel = "정지 확인",
+    offLabel = "전방 적색",
+    warnBadge = "멈췄다 가세요",
+    answered = "정지선에서 멈췄어요",
+)
+
+/** 오른쪽을 가리키는 안내인가. 적색 우회전(STOP)은 우회전이다. */
+private fun GuideAction.isRight(): Boolean = this == GuideAction.SIGNAL_RIGHT || this == GuideAction.STOP
 
 /** 지금 안내(GUIDE)가 이 대상에 대한 것인가. 회전·나들목은 방향까지 같아야 한다. */
 private fun CoachState.guidedFor(target: Target): Boolean = when (guideAction) {
@@ -204,6 +286,9 @@ private fun CoachState.guidedFor(target: Target): Boolean = when (guideAction) {
     GuideAction.HEADLIGHT_ON -> target.kind == GuideKind.HEADLIGHT
     GuideAction.SIGNAL_LEFT -> target.kind != GuideKind.HEADLIGHT && !target.right
     GuideAction.SIGNAL_RIGHT -> target.kind != GuideKind.HEADLIGHT && target.right
+    GuideAction.STOP -> target.kind == GuideKind.TURN_SIGNAL && target.right
+    GuideAction.WIPER_ON -> target.kind == GuideKind.WIPER
+    GuideAction.DEFOG -> target.kind == GuideKind.DEFOG
 }
 
 /** 새 시나리오를 시작할 때 쓴다. 오늘 횟수와 기록은 남긴다. */
@@ -217,8 +302,8 @@ fun CoachState.resetDrive(label: String): CoachState =
 fun restoredToday(events: List<Event>): CoachState {
     val base = CoachState(todayEvents = events)
     return base.copy(
-        kept = events.count { it.result == Result.KEPT },
-        total = events.size,
+        kept = events.count { it.rule.inRate && it.result == Result.KEPT },
+        total = events.count { it.rule.inRate },
         logs = events.map { base.logLine(it.t, "${it.title()} ${it.result.label()}") },
     )
 }
@@ -257,13 +342,18 @@ fun Event.title(): String {
         RuleId.R3 -> "적색 우회전 일시정지"
         RuleId.R4 -> "${if (turn == TurnType.RIGHT) "오른쪽" else "왼쪽"} 나들목 깜빡이"
         RuleId.R5 -> "터널 전조등"
+        RuleId.R6 -> "비 올 때 와이퍼"
+        RuleId.R7 -> "앞유리 김서림"
     }
 }
 
 private fun Event.message(): String = when {
     result == Result.MISSED && rule == RuleId.R3 -> "이번 우회전은 멈추지 않았어요"
     result == Result.MISSED -> "이번 ${turn?.label().orEmpty()}은 깜빡이를 놓쳤어요"
+    rule == RuleId.R3 -> "정지선에서 잘 멈췄어요"
     rule == RuleId.R5 -> "안내 듣고 전조등을 켰어요"
+    rule == RuleId.R6 -> "안내 듣고 와이퍼를 켰어요"
+    rule == RuleId.R7 -> "안내 듣고 김서림을 잡았어요"
     guided -> "안내 듣고 잘 켰어요"
     else -> "안내 없이 잘 켰어요"
 }

@@ -84,11 +84,13 @@ class RouteCoachTest {
     }
 
     @Test
-    fun `경로 시작 전이표 - 멈춤이면 켜고, 실차면 붙이고, 재생 중이면 무시`() {
-        assertEquals(RouteStartAction.START_LIVE, routeStartAction(null))
-        assertEquals(RouteStartAction.ATTACH, routeStartAction(CoachSession.LIVE))
-        assertEquals(RouteStartAction.IGNORE, routeStartAction("S2"))
-        assertEquals(RouteStartAction.IGNORE, routeStartAction(CoachSession.ROUTE_DEMO))
+    fun `경로 시작 전이표 - 코치 끔이면 무시, 켬이면 멈춤은 켜고 실차는 붙이고 재생 중은 무시`() {
+        assertEquals(RouteStartAction.START_LIVE, routeStartAction(null, coachOn = true))
+        assertEquals(RouteStartAction.ATTACH, routeStartAction(CoachSession.LIVE, coachOn = true))
+        assertEquals(RouteStartAction.IGNORE, routeStartAction("S2", coachOn = true))
+        assertEquals(RouteStartAction.IGNORE, routeStartAction(CoachSession.ROUTE_DEMO, coachOn = true))
+        assertEquals(RouteStartAction.IGNORE, routeStartAction(null, coachOn = false))
+        assertEquals(RouteStartAction.IGNORE, routeStartAction(CoachSession.LIVE, coachOn = false))
     }
 
     @Test

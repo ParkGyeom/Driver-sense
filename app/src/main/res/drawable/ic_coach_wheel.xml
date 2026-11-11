@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 연수 모드: 운전대 (모든 룰을 배우기) -->
+<!-- 운전 코치: 운전대. 코치 켬/끔 카드에 쓴다. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"

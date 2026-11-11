@@ -13,13 +13,17 @@ import ai.pleos.playground.vehicle.constant.control.LightState
 import ai.pleos.playground.vehicle.constant.control.LightSwitch
 import ai.pleos.playground.vehicle.constant.control.WiperState
 import ai.pleos.playground.vehicle.constant.control.WiperSwitch
+import ai.pleos.playground.vehicle.api.model.area.SeatArea
 import ai.pleos.playground.vehicle.api.model.area.WindowArea
+import ai.pleos.playground.vehicle.constant.area.SeatValue
 import ai.pleos.playground.vehicle.constant.area.WindowValue
 import ai.pleos.playground.vehicle.constant.control.VehicleGear
 import ai.pleos.playground.vehicle.listener.BrakePedalStatusListener
 import ai.pleos.playground.vehicle.listener.GearSelectionListener
 import ai.pleos.playground.vehicle.listener.LightStateListener
 import ai.pleos.playground.vehicle.listener.WiperStateListener
+import ai.pleos.playground.vehicle.listener.HvacDefrosterStateListener
+import ai.pleos.playground.vehicle.listener.HvacRecirculationStateListener
 import ai.pleos.playground.vehicle.listener.SteeringWheelAngleListener
 import ai.pleos.playground.vehicle.listener.TurnSignalStateListener
 import android.car.Car
@@ -62,6 +66,9 @@ class SignalCollector(context: Context) {
     private var wiperState: WiperState? = null
     private var wiperSwitch: WiperSwitch? = null
     private var lastWiper: WiperMode? = null
+    /** 앞유리 성에 제거와 내기 순환. R7에서만 쓴다. 없어도 프레임은 만든다. */
+    private var defroster: Boolean? = null
+    private var recirc: Boolean? = null
 
     private var vehicle: Vehicle? = null
     private var navi: NaviHelper? = null
@@ -107,6 +114,8 @@ class SignalCollector(context: Context) {
             it.getBrake().unregisterBrakePedalStatus(brakeListener)
             runCatching { it.getLight().unregisterLowBeamLightState(lowBeamListener) }
             runCatching { it.getWiper().unregisterWiperState(FRONT, wiperListener) }
+            runCatching { it.getHVAC().unregisterHvacDefrosterState(FRONT, defrosterListener) }
+            runCatching { it.getHVAC().unregisterHvacRecirculationState(CABIN, recircListener) }
             it.release()
         }
         lowBeamState = null
@@ -114,6 +123,8 @@ class SignalCollector(context: Context) {
         wiperState = null
         wiperSwitch = null
         lastWiper = null
+        defroster = null
+        recirc = null
         propertyManager = null
         car = null
         navi = null
@@ -136,7 +147,10 @@ class SignalCollector(context: Context) {
             light = null, // 신호 정보는 서버가 붙으면 채운다 (R3)
             headlight = headlightOf(lowBeamState, lowBeamSwitch),
             wiper = (wiperOf(wiperState, wiperSwitch) ?: lastWiper).also { lastWiper = it },
-            rain = null, // 비 정보는 서버 날씨가 붙으면 채운다 (R6)
+            rain = null, // 비 정보는 서버 날씨가 붙으면 채운다 (R6·R7)
+            defroster = defroster,
+            recirc = recirc,
+            fogReported = null, // 음성 "앞이 뿌옇다"는 STT가 붙으면 채운다 (R7)
         )
         return frame
     }
@@ -183,6 +197,14 @@ class SignalCollector(context: Context) {
             car.getLight().getCurrentLowBeamLightState({ value -> onMain { lowBeamState = value ?: lowBeamState } }, onFailed)
             car.getLight().registerLowBeamLightState(lowBeamListener)
         }.onFailure { logFailure("low beam", it as? Exception ?: Exception(it)) }
+        // 성에 제거와 내기 순환은 R7에서만 쓴다. CAR_CLIMATE 권한이나 SDK 문제로 실패해도 나머지 신호는 계속 모은다.
+        runCatching {
+            val hvac = car.getHVAC()
+            hvac.getHvacDefrosterState(FRONT, { value -> onMain { defroster = value ?: defroster } }, onFailed)
+            hvac.getHvacRecirculationState(CABIN, { value -> onMain { recirc = value ?: recirc } }, onFailed)
+            hvac.registerHvacDefrosterState(FRONT, defrosterListener)
+            hvac.registerHvacRecirculationState(CABIN, recircListener)
+        }.onFailure { logFailure("hvac", it as? Exception ?: Exception(it)) }
         // 와이퍼는 R6에서만 쓴다. CAR_WINDOWS 권한이나 SDK 문제로 실패해도 나머지 신호는 계속 모은다.
         runCatching {
             car.getWiper().getCurrentWiperState(FRONT, { value -> onMain { wiperState = value ?: wiperState } }, onFailed)
@@ -234,6 +256,18 @@ class SignalCollector(context: Context) {
         override fun onFailed(e: Exception) = logFailure("steering", e)
     }
 
+    private val defrosterListener = object : HvacDefrosterStateListener {
+        override fun onHvacDefrosterStateUpdated(value: Boolean?) = onMain { defroster = value ?: defroster }
+
+        override fun onFailed(e: Exception) = logFailure("defroster", e)
+    }
+
+    private val recircListener = object : HvacRecirculationStateListener {
+        override fun onHvacAutoRecirculationStateUpdated(value: Boolean?) = onMain { recirc = value ?: recirc }
+
+        override fun onFailed(e: Exception) = logFailure("recirc", e)
+    }
+
     private val wiperListener = object : WiperStateListener {
         override fun onWiperStateUpdated(value: WiperState?) = onMain { wiperState = value ?: wiperState }
 
@@ -280,8 +314,11 @@ class SignalCollector(context: Context) {
 
     private companion object {
         const val TAG = "KkamCollector"
-        /** 앞 유리 와이퍼. */
+        /** 앞 유리. 와이퍼와 성에 제거에 쓴다. */
         val FRONT = WindowArea(WindowValue.FRONT_WINDSHIELD)
+
+        /** 내기 순환을 읽는 좌석 영역. 에뮬레이터는 1열 좌·우와 2열 좌·중·우를 묶은 영역만 지원한다 (spec 2.1). */
+        val CABIN = SeatArea(SeatValue.ROW_1_LEFT, SeatValue.ROW_1_RIGHT, SeatValue.ROW_2_LEFT, SeatValue.ROW_2_CENTER, SeatValue.ROW_2_RIGHT)
         const val FRAME_INTERVAL_MS = 1000L
         const val SDK_CONNECT_DELAY_MS = 2000L
         const val SPEED_RATE_HZ = 1f

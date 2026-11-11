@@ -84,8 +84,29 @@ private data class Target(
  * 이 상태에서 카드에 보여줄 대상. R6 "와이퍼 켜세요" 안내 중이면 내비 안내 대신 와이퍼를 보여준다.
  * 그 밖에는 내비 안내로 정한다.
  */
-private fun CoachState.targetFor(frame: SignalFrame): Target? =
-    if (guideAction == GuideAction.WIPER_ON) frame.wiperTarget() ?: frame.target() else frame.target()
+private fun CoachState.targetFor(frame: SignalFrame): Target? = when (guideAction) {
+    GuideAction.WIPER_ON -> frame.wiperTarget() ?: frame.target()
+    GuideAction.DEFOG -> frame.defogTarget() ?: frame.target()
+    else -> frame.target()
+}
+
+/** R7 안내 뒤의 김서림 카드. 성에 제거 값을 모르면 null. 엔진처럼 성에 제거를 켜거나 외기로 바꾸면 따른 것으로 본다. */
+private fun SignalFrame.defogTarget(): Target? {
+    val defrost = defroster ?: return null
+    return Target(
+        turn = TurnType.OTHER,
+        kind = GuideKind.DEFOG,
+        right = false,
+        checkM = null,
+        ok = defrost || recirc == false,
+        okLabel = if (defrost) "성에 제거 켜짐" else "외기 순환",
+        offLabel = if (recirc == true) "내기 순환 중" else "성에 제거 꺼짐",
+        warnBadge = "성에 제거 켜세요",
+        answered = "김서림을 잡았어요",
+        title = "김서림 주의",
+        showDistance = false,
+    )
+}
 
 /** R6 안내 뒤의 와이퍼 카드. 와이퍼 값을 모르면 null. */
 private fun SignalFrame.wiperTarget(): Target? {
@@ -265,6 +286,7 @@ private fun CoachState.guidedFor(target: Target): Boolean = when (guideAction) {
     GuideAction.SIGNAL_RIGHT -> target.kind != GuideKind.HEADLIGHT && target.right
     GuideAction.STOP -> target.kind == GuideKind.TURN_SIGNAL && target.right
     GuideAction.WIPER_ON -> target.kind == GuideKind.WIPER
+    GuideAction.DEFOG -> target.kind == GuideKind.DEFOG
 }
 
 /** 새 시나리오를 시작할 때 쓴다. 오늘 횟수와 기록은 남긴다. */
@@ -319,6 +341,7 @@ fun Event.title(): String {
         RuleId.R4 -> "${if (turn == TurnType.RIGHT) "오른쪽" else "왼쪽"} 나들목 깜빡이"
         RuleId.R5 -> "터널 전조등"
         RuleId.R6 -> "비 올 때 와이퍼"
+        RuleId.R7 -> "앞유리 김서림"
     }
 }
 
@@ -328,6 +351,7 @@ private fun Event.message(): String = when {
     rule == RuleId.R3 -> "정지선에서 잘 멈췄어요"
     rule == RuleId.R5 -> "안내 듣고 전조등을 켰어요"
     rule == RuleId.R6 -> "안내 듣고 와이퍼를 켰어요"
+    rule == RuleId.R7 -> "안내 듣고 김서림을 잡았어요"
     guided -> "안내 듣고 잘 켰어요"
     else -> "안내 없이 잘 켰어요"
 }

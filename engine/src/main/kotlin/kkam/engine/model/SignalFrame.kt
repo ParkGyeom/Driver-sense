@@ -30,6 +30,12 @@ data class SignalFrame(
     val wiper: WiperMode? = null,
     /** 지금 비가 오는가. 시연은 시나리오 값, 실제 주행은 서버 날씨. 모르면 null. R6에서만 쓴다. */
     val rain: Boolean? = null,
+    /** 앞유리 성에 제거가 켜져 있는가. R7에서만 쓴다. 기본값 null. */
+    val defroster: Boolean? = null,
+    /** 내기 순환이 켜져 있는가 (false면 외기). R7에서만 쓴다. 기본값 null. */
+    val recirc: Boolean? = null,
+    /** 운전자가 이 프레임에 "앞이 뿌옇다"고 말했는가. 말한 프레임만 true. R7에서만 쓴다. */
+    val fogReported: Boolean? = null,
 )
 
 /** 내비의 다음 안내와 남은 거리. */

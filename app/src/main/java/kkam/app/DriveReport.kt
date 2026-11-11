@@ -71,14 +71,14 @@ private fun Event.toItem(law: LawEntry?): ReportItem {
 private fun RuleId.fineWon(): Int = when (this) {
     RuleId.R1, RuleId.R2, RuleId.R4 -> 30_000
     RuleId.R3 -> 60_000
-    RuleId.R5, RuleId.R6 -> 0
+    RuleId.R5, RuleId.R6, RuleId.R7 -> 0
 }
 
 /**
- * 지킴률(준수율)에 세는 룰인가. R6(비 올 때 와이퍼)은 법규 근거가 없는 안전 안내라 기록만 남기고 세지 않는다 (spec 2.3).
+ * 지킴률(준수율)에 세는 룰인가. R6(비 올 때 와이퍼)·R7(김서림)은 법규 근거가 없는 안전 안내라 기록만 남기고 세지 않는다 (spec 2.3).
  * 리포트 카드 목록에는 그대로 나온다.
  */
-val RuleId.inRate: Boolean get() = this != RuleId.R6
+val RuleId.inRate: Boolean get() = this != RuleId.R6 && this != RuleId.R7
 
 /**
  * 룰과 룰 테이블 행의 연결. 룰 테이블에 룰 필드가 생기면 그걸 쓴다.
@@ -90,5 +90,5 @@ private fun RuleId.lawId(): String? = when (this) {
     RuleId.R2 -> "LAW-03"
     RuleId.R3 -> "LAW-12"
     RuleId.R4 -> "LAW-04"
-    RuleId.R5, RuleId.R6 -> null
+    RuleId.R5, RuleId.R6, RuleId.R7 -> null
 }

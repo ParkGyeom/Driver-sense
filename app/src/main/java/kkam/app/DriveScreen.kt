@@ -137,7 +137,7 @@ class DriveScreen(private val activity: Activity) {
         turn.setTextColor(palette.ink)
         distance.setTextColor(palette.ink)
         turnIcon.imageTintList = ColorStateList.valueOf(palette.sub)
-        // 배지는 카드 색을 뒤집는다: 어두운 알약 위에 카드 색 글자.
+        // 배지는 카드 색을 뒤집는다: on_accent 알약 위에 카드 색 글자.
         badgeFill.setColor(palette.ink)
         badge.setTextColor(palette.fill)
         badgeIcon.imageTintList = ColorStateList.valueOf(palette.fill)
@@ -147,7 +147,7 @@ class DriveScreen(private val activity: Activity) {
         lever.show(leverMotion, palette.ink)
     }
 
-    /** 대기 = 어두운 카드에 밝은 글자, 안내 중 = 상태 색 카드에 어두운 글자. */
+    /** 대기 = 기본 카드(surface)에 본문 글자, 안내 중 = 상태 색 카드에 on_accent 글자. */
     private fun paletteFor(tone: Tone): Palette = when (tone) {
         Tone.IDLE -> Palette(fill = color(R.color.surface), ink = color(R.color.text), sub = color(R.color.muted))
         Tone.WARN -> Palette(fill = color(R.color.warn), ink = color(R.color.on_accent), sub = color(R.color.on_accent))

@@ -1,24 +1,32 @@
 <resources>
-    <!-- 배경 단계: bg(화면) < surface(카드) < surface_2(카드 안 칸) -->
-    <color name="bg">#0B0E13</color>
-    <color name="surface">#151A21</color>
-    <color name="surface_2">#1E242D</color>
-    <color name="line">#2A313C</color>
-    <color name="text">#EEF1F5</color>
-    <color name="muted">#A3ADBB</color>
+    <!--
+      밝은 테마 (앱 전체). 화면 파일은 이 이름만 쓰므로 여기 값만 바꾸면 모든 화면이 함께 바뀐다.
+      대비는 WCAG 기준으로 계산했다. 글자는 흰 카드와 bg 위 모두 4.5:1 이상.
+    -->
 
-    <!-- 상태 색. 색 = 의미: 주황 = 해야 할 일, 파랑 = 지킴, 빨강 = 놓침(정차 화면에서만). -->
-    <color name="warn">#FFC04D</color>
-    <color name="ok">#4C8DFF</color>
-    <color name="miss">#FF6B6B</color>
-    <!-- 상태 색을 어두운 배경 위에 옅게 깐 칸(칩, 아이콘 배경). -->
-    <color name="warn_soft">#33FFC04D</color>
-    <color name="ok_soft">#334C8DFF</color>
-    <color name="miss_soft">#33FF6B6B</color>
-    <color name="on_accent">#0B0E13</color>
+    <!-- 배경 단계: bg(화면) < surface(카드) < surface_2(카드 안 칸). 흰 카드가 bg와 구분되게 bg는 옅은 회색. -->
+    <color name="bg">#EBEEF2</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_2">#EEF1F5</color>
+    <color name="line">#D5DBE3</color>
+    <color name="text">#151A21</color>         <!-- 흰 카드 대비 17.5:1 -->
+    <color name="muted">#566173</color>        <!-- 흰 카드 6.3:1, bg 5.4:1 -->
+
+    <!--
+      상태 색. 색 = 의미: 주황 = 해야 할 일, 파랑 = 지킴, 빨강 = 놓침(정차 화면에서만).
+      글자색으로도, 흰 글자(on_accent)를 얹는 카드 바탕으로도 쓰므로 흰색과 4.5:1 이상인 진한 색을 고른다.
+    -->
+    <color name="warn">#A85400</color>         <!-- 흰색 대비 5.3:1 -->
+    <color name="ok">#1F5FD1</color>           <!-- 흰색 대비 5.8:1 -->
+    <color name="miss">#C02B2B</color>         <!-- 흰색 대비 5.8:1 -->
+    <!-- 상태 색을 옅게 깐 칸(칩, 아이콘 배경). 위에 상태 색 글자를 얹어도 4.5:1 이상. -->
+    <color name="warn_soft">#FDF1DE</color>
+    <color name="ok_soft">#E7EFFC</color>
+    <color name="miss_soft">#FBE9E9</color>
+    <!-- 상태 색 바탕(주황·파랑 카드, 버튼) 위 글자 -->
+    <color name="on_accent">#FFFFFF</color>
 
     <!-- 데모 패널 전용. 주행 상태 색(warn, ok)과 겹치지 않게 따로 둔다. -->
-    <color name="panel">#10141A</color>
-    <color name="demo_active">#3A4352</color>
-
+    <color name="panel">#E2E7ED</color>
+    <color name="demo_active">#C3CCD8</color>
 </resources>

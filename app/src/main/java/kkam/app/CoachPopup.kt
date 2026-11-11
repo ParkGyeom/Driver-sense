@@ -33,7 +33,7 @@ class CoachPopup(context: Context) : CoachNotifier {
     private val lever: LeverGuideView = card.findViewById(R.id.popupLever)
     private val ink = this.context.getColor(R.color.on_accent)
 
-    // 배경은 한 번만 만들고 색만 바꾼다. 카드 = 상태 색, 배지 = 카드 색을 뒤집은 어두운 알약.
+    // 배경은 한 번만 만들고 색만 바꾼다. 카드 = 상태 색, 배지 = 카드 색을 뒤집은 on_accent 알약.
     private val cardFill = GradientDrawable().apply { cornerRadius = 32 * density }
     private val badgeFill = GradientDrawable().apply {
         setColor(ink)

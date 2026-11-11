@@ -1,6 +1,9 @@
 package kkam.app
 
 import android.app.Activity
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -113,10 +116,22 @@ class ReportScreen(
         findViewById<TextView>(R.id.statValue).setTextColor(color(toneRes))
     }
 
-    /** 수치 카드 아래쪽: "3만 원"(숫자 크게, 단위 작게)과 보조 설명. */
+    /** 수치 카드 아래쪽: "21만 원"(숫자 크게, "만 원"은 작게)과 보조 설명. */
     private fun View.setStatBody(value: String, caption: String) {
-        findViewById<TextView>(R.id.statValue).text = numberEmphasis(value)
+        findViewById<TextView>(R.id.statValue).text = digitsEmphasis(value)
         findViewById<TextView>(R.id.statCaption).text = caption
+    }
+
+    /**
+     * 앞쪽 숫자만 크게, 나머지는 모두 작게. "21만 원" → "21" 크게 + "만 원" 작게, "10 번" → "10" 크게 + " 번" 작게.
+     * Ui.kt의 numberEmphasis는 마지막 공백 뒤만 줄여서 "21만"이 한 덩어리로 커지기 때문에 리포트에서는 이걸 쓴다.
+     */
+    private fun digitsEmphasis(label: String): CharSequence {
+        val unitStart = label.indexOfFirst { !it.isDigit() && it != ',' }
+        if (unitStart <= 0) return label
+        return SpannableString(label).apply {
+            setSpan(RelativeSizeSpan(UNIT_SCALE), unitStart, label.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
     }
 
     /** 판정 한 줄: 시간 | 상황 + 설명 | 결과 칩, 아래 조항·처분. */
@@ -159,6 +174,8 @@ class ReportScreen(
 
     private companion object {
         const val ZERO_WON = "0 원"
+        /** 단위 글자 크기 비율. Ui.kt numberEmphasis의 기본값(0.45)과 같다. */
+        const val UNIT_SCALE = 0.45f
 
         /** 이보다 작은 t는 시나리오 시각(0부터 ms), 크면 실제 시각(epoch ms). CoachState의 판정 기록과 같은 기준. */
         const val EPOCH_START_MS = 1_000_000_000_000L

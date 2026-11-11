@@ -25,6 +25,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import kkam.engine.model.Gear
 import kkam.engine.model.HeadlightState
+import kkam.engine.model.WiperMode
 import kkam.engine.model.LawEntry
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnSignal
@@ -332,6 +333,7 @@ class MainActivity : Activity() {
         tiles.getValue("내비 TBT").text = frame.tbt?.let { "${it.turn.label()} ${it.distanceM} m" } ?: "-"
         tiles.getValue("전방 신호").text = frame.light?.phase?.name ?: "-"
         tiles.getValue("전조등").text = frame.headlight?.label() ?: "-"
+        tiles.getValue("와이퍼·비").text = listOfNotNull(frame.wiper?.label(), frame.rain?.let { if (it) "비" else "맑음" }).joinToString(" · ").ifEmpty { "-" }
     }
 
     /** 지금 화면을 그린다. 값은 모두 [CoachState]에서 온다. */
@@ -404,6 +406,12 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun WiperMode.label(): String = when (this) {
+        WiperMode.OFF -> "꺼짐"
+        WiperMode.ON -> "켜짐"
+        WiperMode.AUTO -> "자동"
+    }
+
     private fun HeadlightState.label(): String = when (this) {
         HeadlightState.OFF -> "꺼짐"
         HeadlightState.ON -> "켜짐"
@@ -439,6 +447,6 @@ class MainActivity : Activity() {
         const val KEY_OVERLAY_ASKED = "overlay_asked"
         const val KEY_NAVI_AFTER_PLAY = "navi_after_play"
         val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")
-        val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호", "전조등")
+        val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호", "전조등", "와이퍼·비")
     }
 }

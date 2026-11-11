@@ -48,7 +48,8 @@ fun nextPopup(current: Popup?, state: CoachState, outputs: List<EngineOutput>, f
     val turn = frame.tbt?.turn
     return when {
         frame.gear == Gear.P -> null
-        outputs.any { it is Guide } -> state.toPopup(turn)
+        // 와이퍼 안내는 내비 안내와 상관없어서 내비 안내가 바뀌어도 숨기지 않는다
+        outputs.any { it is Guide } -> state.toPopup(if (state.guideKind == GuideKind.WIPER) null else turn)
         outputs.any { it is Event && it.result == Result.MISSED } -> null
         outputs.any { it is Event } && current != null -> current.copy(
             tone = PopupTone.OK,

@@ -149,4 +149,37 @@ class PopupPolicyTest {
         assertEquals(true, popup?.right)
         assertEquals("정지선에서 멈췄어요", state.message)
     }
+
+    @Test
+    fun `S17 비 오는 중 와이퍼 카드가 뜨고 켜면 파랑으로 바뀐다`() {
+        val engine = Engine()
+        var state = CoachState()
+        var popup: Popup? = null
+        val seen = mutableListOf<Triple<PopupTone?, String?, String?>>()
+        for ((t, rain, wiper) in listOf(
+            Triple(5000L, true, kkam.engine.model.WiperMode.OFF),
+            Triple(10000L, true, kkam.engine.model.WiperMode.OFF),
+            Triple(13000L, true, kkam.engine.model.WiperMode.ON),
+        )) {
+            val f = frame(TurnSignal.OFF, Tbt(TurnType.STRAIGHT, 900), t = t).copy(speedKph = 50.0, rain = rain, wiper = wiper)
+            val outputs = engine.onFrame(f)
+            state = state.next(f, outputs)
+            popup = nextPopup(popup, state, outputs, f)
+            seen += Triple(popup?.tone, popup?.turnLabel, popup?.headline)
+        }
+
+        assertEquals(
+            listOf(
+                Triple(null, null, null),
+                Triple(PopupTone.WARN, "비 오는 중", "와이퍼 켜세요"),
+                Triple(PopupTone.OK, "비 오는 중", "좋아요"),
+            ),
+            seen,
+        )
+        assertEquals(GuideKind.WIPER, popup?.kind)
+        assertEquals(null, popup?.forTurn)
+        // 와이퍼는 법규 근거가 없어 오늘 성적(지킴률)에 세지 않는다
+        assertEquals(0 to 0, state.kept to state.total)
+        assertEquals("안내 듣고 와이퍼를 켰어요", state.message)
+    }
 }

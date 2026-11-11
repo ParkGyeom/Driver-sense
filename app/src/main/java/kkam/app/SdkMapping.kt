@@ -5,11 +5,14 @@ import ai.pleos.playground.vehicle.constant.area.TurnSignalValue
 import ai.pleos.playground.vehicle.constant.control.LightState
 import ai.pleos.playground.vehicle.constant.control.LightSwitch
 import ai.pleos.playground.vehicle.constant.control.VehicleGear
+import ai.pleos.playground.vehicle.constant.control.WiperState
+import ai.pleos.playground.vehicle.constant.control.WiperSwitch
 import kkam.engine.model.Gear
 import kkam.engine.model.HeadlightState
 import kkam.engine.model.Tbt
 import kkam.engine.model.TurnSignal
 import kkam.engine.model.TurnType
+import kkam.engine.model.WiperMode
 import kotlin.math.roundToInt
 import ai.pleos.playground.navi.constants.TurnType as NaviTurnType
 
@@ -60,4 +63,15 @@ fun headlightOf(state: LightState?, switch: LightSwitch?): HeadlightState? = whe
     state == LightState.ON -> HeadlightState.ON
     switch == LightSwitch.AUTOMATIC -> HeadlightState.AUTO
     else -> HeadlightState.OFF
+}
+
+/**
+ * 와이퍼 상태와 스위치를 엔진 값으로 (spec 2.1). 스위치가 AUTO면 AUTO, 아니면 상태 ON은 ON, OFF는 OFF.
+ * 상태가 OTHER·SERVICE이거나 아직 못 읽었으면 null이다. 수집기는 이때 직전 값을 유지한다.
+ */
+fun wiperOf(state: WiperState?, switch: WiperSwitch?): WiperMode? = when {
+    switch == WiperSwitch.AUTO -> WiperMode.AUTO
+    state == WiperState.ON -> WiperMode.ON
+    state == WiperState.OFF -> WiperMode.OFF
+    else -> null
 }

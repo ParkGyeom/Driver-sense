@@ -27,4 +27,5 @@ fun RuleId.guideKind(): GuideKind? = when (this) {
     RuleId.R3 -> GuideKind.RED_RIGHT_TURN
     RuleId.R4 -> GuideKind.LANE_CHANGE
     RuleId.R5 -> GuideKind.HEADLIGHT
+    RuleId.R6 -> GuideKind.WIPER
 }

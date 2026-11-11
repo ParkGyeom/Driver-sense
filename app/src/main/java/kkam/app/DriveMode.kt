@@ -4,8 +4,8 @@ import android.content.Context
 
 /**
  * 운전 코치 켬/끔. 사용자 요청으로 기획서 4.3의 4개 모드(진단·교정·연수·조용)를 이 두 값으로 줄였다.
- * - 켬: 목적지까지 가는 동안 음성 안내와 판정을 한다. 도착하면 리포트를 보여준다(경로 리포트는 route-coach 세션).
- * - 끔: 안내도 판정 기록도 하지 않는다.
+ * - 켬: 목적지까지 가는 동안 음성 안내를 하고 판정을 기록한다. 도착하면 리포트를 보여준다(경로 리포트는 route-coach 세션).
+ * - 끔: 음성·카드·팝업 안내만 끈다. 판정은 계속 기록한다(진단→교정→졸업과 리포트가 끊기지 않게).
  */
 enum class DriveMode {
     ON,
@@ -32,8 +32,9 @@ enum class DriveMode {
 /** 주행 중에 음성 안내를 하는가. */
 fun guidesOn(mode: DriveMode): Boolean = mode == DriveMode.ON
 
-/** 판정을 오늘 기록에 남기는가. 끔이면 남기지 않는다. */
-fun recordsOn(mode: DriveMode): Boolean = mode == DriveMode.ON
+/** 판정을 오늘 기록에 남기는가. 끔이어도 남긴다 (끔은 안내만 끈다). */
+@Suppress("UNUSED_PARAMETER")
+fun recordsOn(mode: DriveMode): Boolean = true
 
 /**
  * 코치 켬/끔을 SharedPreferences에 저장한다. 앱을 다시 켜도 남는다.

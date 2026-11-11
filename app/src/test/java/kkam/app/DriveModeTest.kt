@@ -13,9 +13,9 @@ class DriveModeTest {
     }
 
     @Test
-    fun `끔이면 안내도 기록도 하지 않는다`() {
+    fun `끔이면 안내는 끄고 기록은 남긴다`() {
         assertFalse(guidesOn(DriveMode.OFF))
-        assertFalse(recordsOn(DriveMode.OFF))
+        assertTrue(recordsOn(DriveMode.OFF))
     }
 
     @Test

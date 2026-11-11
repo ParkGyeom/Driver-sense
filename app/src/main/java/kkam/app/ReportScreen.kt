@@ -16,7 +16,7 @@ import kotlin.math.roundToInt
 
 /**
  * 오늘 주행 리포트 (기획서 UI-2, screen_report.xml). 기어 P일 때만 보인다.
- * 값은 [buildReport]에서만 온다. 색은 다른 화면과 같은 어두운 토큰을 쓴다.
+ * 값은 [buildReport]에서만 온다. 색은 다른 화면과 같은 공통 토큰을 쓴다.
  *
  * 화면 구성 (읽는 순서)
  * 1. 제목 + 핵심 요약 한 줄

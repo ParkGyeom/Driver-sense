@@ -77,17 +77,21 @@ fun Context.palette(look: CardLook): CardPalette = when (look) {
         iconInk = getColor(R.color.ink_soft),
         note = getColor(R.color.text),
     )
-    CardLook.WARN -> accentPalette(R.color.warn, R.color.warn_deep)
-    CardLook.OK -> accentPalette(R.color.ok, R.color.ok_deep)
-    CardLook.MISS -> accentPalette(R.color.miss, R.color.miss_deep)
+    CardLook.WARN -> accentPalette(R.color.coach_warn, R.color.warn_deep, R.color.warn)
+    CardLook.OK -> accentPalette(R.color.coach_ok, R.color.ok_deep, R.color.ok)
+    CardLook.MISS -> accentPalette(R.color.coach_miss, R.color.miss_deep, R.color.miss)
 }
 
-private fun Context.accentPalette(accent: Int, deep: Int) = CardPalette(
+/**
+ * 카드 안(채움·원·테두리)은 밝은 코치 전용 색, 카드 밖 한 줄 문구(note)는 앱 바탕 위 글자라
+ * 대비가 충분한 앱 공통 상태 색(warn/ok/miss)을 쓴다.
+ */
+private fun Context.accentPalette(accent: Int, deep: Int, note: Int) = CardPalette(
     accent = getColor(accent),
     edge = getColor(deep),
     iconBg = getColor(accent),
     iconInk = getColor(R.color.ink_strong),
-    note = getColor(accent),
+    note = getColor(note),
 )
 
 /** "60 m" → 숫자는 크게(numberEmphasis), 단위는 작고 흐리게(unitColor). */

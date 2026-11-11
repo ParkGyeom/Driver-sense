@@ -50,7 +50,7 @@ class ModeScreen(
         draw(next)
     }
 
-    /** 켬: 파란 테두리 + 옅은 파란 배경 + 파란 스위치(오른쪽). 끔: 어두운 카드 + 회색 스위치(왼쪽). */
+    /** 켬: 파란 테두리 + 옅은 파란 배경 + 파란 스위치(오른쪽). 끔: 기본 카드 + 회색 스위치(왼쪽). */
     private fun draw(mode: DriveMode) {
         val on = mode == DriveMode.ON
         val ok = activity.getColor(R.color.ok)

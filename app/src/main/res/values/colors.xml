@@ -34,4 +34,5 @@
     <!-- 데모 패널 전용. 주행 상태 색(warn, ok)과 겹치지 않게 따로 둔다. -->
     <color name="panel">#10141A</color>
     <color name="demo_active">#3A4352</color>
+
 </resources>

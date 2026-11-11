@@ -1,217 +1,161 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   오늘 주행 리포트 (기획서 UI-2). 기어 P일 때만 보인다.
-  위: 제목 + 한 줄 요약.
-  왼쪽: 히어로 카드(아낀 범칙금 큰 숫자) + 지킴률 카드(링, 지킴 n번·놓침 m번) + "AI에게 묻기".
-  큰 숫자와 지킴/놓침 횟수는 한 줄로 두고, 칸이 좁으면(데모 패널이 열렸을 때 등) 글자를 줄인다.
-  오른쪽: 판정 기록 타임라인 (report_item.xml을 코드에서 넣는다). 비었으면 아이콘+안내 문구.
-  배경(둥근 모서리)은 ReportScreen.kt에서 Ui.kt 헬퍼로 칠한다.
+  배경은 다른 화면처럼 앱 바탕(bg)을 그대로 쓴다. 읽는 순서대로 위에서 아래로 쌓는다.
+    1. 제목 + 핵심 요약 한 줄 (오른쪽: "AI에게 묻기")
+    2. 요약 수치 카드 3개: 지킴, 놓침, 아낀 범칙금 (report_stat.xml)
+    3. 판정 기록 리스트: 한 카드 안에 줄마다 시간 | 상황 | 결과 칩, 아래 조항·처분 (report_item.xml)
+  카드 배경(surface)은 ReportScreen.kt에서 Ui.kt의 cardBackground()로 칠한다.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/reportScreen"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="@dimen/kk_screen_padding"
+    android:paddingHorizontal="48dp"
+    android:paddingTop="40dp"
+    android:paddingBottom="@dimen/kk_screen_padding"
     android:visibility="gone">
 
-    <!-- 머리: 제목 + 한 줄 요약 -->
-    <TextView
-        style="@style/Kk.Title"
-        android:text="@string/report_title" />
-
-    <TextView
-        android:id="@+id/reportSummary"
-        style="@style/Kk.Caption"
-        android:layout_marginTop="4dp" />
-
+    <!-- ===== 1. 제목 + 핵심 요약 ===== -->
+    <!-- marginEnd: 오른쪽 위 "데모" 버튼(debug 빌드) 자리를 비운다 -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="@dimen/kk_gap_large"
-        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="96dp"
+        android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <!-- ===== 왼쪽: 요약 ===== -->
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_marginEnd="@dimen/kk_gap_large"
-            android:layout_weight="2"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:orientation="vertical">
 
-            <!-- 히어로: 아낀 범칙금 -->
-            <LinearLayout
-                android:id="@+id/reportHero"
-                style="@style/Kk.Card"
-                android:paddingVertical="36dp">
-
-                <TextView
-                    style="@style/Kk.Caption"
-                    android:text="@string/report_saved" />
-
-                <!-- "3만 원": 숫자 크게, 단위 작게 (numberEmphasis) -->
-                <TextView
-                    android:id="@+id/reportSaved"
-                    style="@style/Kk.Display"
-                    android:layout_width="match_parent"
-                    android:maxLines="1"
-                    android:autoSizeTextType="uniform"
-                    android:autoSizeMinTextSize="32sp"
-                    android:autoSizeMaxTextSize="@dimen/kk_text_hero"
-                    android:layout_marginTop="8dp"
-                    android:textColor="@color/ok"
-                    android:textSize="@dimen/kk_text_hero" />
-
-                <TextView
-                    style="@style/Kk.Caption"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/parked_report_saved_hint" />
-            </LinearLayout>
-
-            <!-- 지킴률: 링 + 지킴/놓침 횟수 -->
-            <LinearLayout
-                android:id="@+id/reportRateCard"
-                style="@style/Kk.Card"
-                android:layout_marginTop="@dimen/kk_gap"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <FrameLayout
-                    android:layout_width="200dp"
-                    android:layout_height="200dp">
-
-                    <kkam.app.RateRingView
-                        android:id="@+id/reportRing"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent" />
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:gravity="center_horizontal"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:id="@+id/reportRate"
-                            style="@style/Kk.Title" />
-
-                        <TextView
-                            style="@style/Kk.Caption"
-                            android:text="@string/parked_report_rate" />
-                    </LinearLayout>
-                </FrameLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/kk_gap_large"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <!-- 색만으로 구분하지 않게 ✓ / ! 기호를 글자에 같이 쓴다 -->
-                    <TextView
-                        android:id="@+id/reportKept"
-                        style="@style/Kk.Body"
-                        android:layout_width="match_parent"
-                        android:layout_height="44dp"
-                        android:gravity="center_vertical"
-                        android:maxLines="1"
-                        android:autoSizeTextType="uniform"
-                        android:autoSizeMinTextSize="14sp"
-                        android:autoSizeMaxTextSize="@dimen/kk_text_body"
-                        android:textColor="@color/ok"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/reportMissed"
-                        style="@style/Kk.Body"
-                        android:layout_width="match_parent"
-                        android:layout_height="44dp"
-                        android:gravity="center_vertical"
-                        android:maxLines="1"
-                        android:autoSizeTextType="uniform"
-                        android:autoSizeMinTextSize="14sp"
-                        android:autoSizeMaxTextSize="@dimen/kk_text_body"
-                        android:layout_marginTop="@dimen/kk_gap"
-                        android:textColor="@color/miss"
-                        android:textStyle="bold" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
-
-            <!-- 법규 Q&A(UI-5)를 붙일 자리. 지금은 누를 수 없다 (합칠 때 연결). -->
             <TextView
-                android:id="@+id/reportAsk"
-                style="@style/Kk.Pill"
-                android:text="@string/report_ask"
+                style="@style/Kk.Title"
+                android:text="@string/report_title"
+                android:textColor="@color/text" />
+
+            <!-- 예: "2번 중 1번 지켰어요. 안내 덕분에 범칙금 3만 원을 아꼈어요" -->
+            <TextView
+                android:id="@+id/reportSummary"
+                style="@style/Kk.Body"
+                android:layout_marginTop="8dp"
                 android:textColor="@color/muted" />
         </LinearLayout>
 
-        <!-- ===== 오른쪽: 판정 기록 타임라인 ===== -->
-        <LinearLayout
+        <!-- 법규 Q&A(UI-5)를 붙일 자리. 지금은 누를 수 없다. -->
+        <TextView
+            android:id="@+id/reportAsk"
+            style="@style/Kk.Pill"
+            android:text="@string/report_ask"
+            android:textColor="@color/muted" />
+    </LinearLayout>
+
+    <!-- ===== 2. 요약 수치 카드 3개 ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="36dp"
+        android:baselineAligned="false"
+        android:orientation="horizontal">
+
+        <include
+            android:id="@+id/reportStatKept"
+            layout="@layout/report_stat" />
+
+        <Space
+            android:layout_width="24dp"
+            android:layout_height="0dp" />
+
+        <include
+            android:id="@+id/reportStatMissed"
+            layout="@layout/report_stat" />
+
+        <Space
+            android:layout_width="24dp"
+            android:layout_height="0dp" />
+
+        <include
+            android:id="@+id/reportStatSaved"
+            layout="@layout/report_stat" />
+    </LinearLayout>
+
+    <!-- ===== 3. 판정 기록 ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="40dp"
+        android:gravity="bottom"
+        android:orientation="horizontal">
+
+        <TextView
+            style="@style/Kk.Body"
             android:layout_width="0dp"
+            android:layout_weight="1"
+            android:text="@string/parked_report_timeline"
+            android:textColor="@color/text"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/reportListHint"
+            style="@style/Kk.Caption"
+            android:text="@string/parked_report_list_hint"
+            android:textColor="@color/muted" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/reportListCard"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/kk_gap"
+        android:layout_weight="1">
+
+        <ScrollView
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="3"
-            android:orientation="vertical">
+            android:paddingHorizontal="32dp">
+
+            <!-- 줄 사이 구분선은 ReportScreen.kt가 넣는다 -->
+            <LinearLayout
+                android:id="@+id/reportItems"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </ScrollView>
+
+        <!-- 빈 상태: 아이콘 + 문구 -->
+        <LinearLayout
+            android:id="@+id/reportEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="@dimen/kk_gap_large">
+
+            <ImageView
+                android:id="@+id/reportEmptyIcon"
+                android:layout_width="104dp"
+                android:layout_height="104dp"
+                android:contentDescription="@null"
+                android:padding="24dp"
+                android:src="@drawable/ic_kk_car"
+                android:tint="@color/muted" />
+
+            <TextView
+                style="@style/Kk.Body"
+                android:layout_marginTop="@dimen/kk_gap_large"
+                android:text="@string/report_empty"
+                android:textColor="@color/text"
+                android:textStyle="bold" />
 
             <TextView
                 style="@style/Kk.Caption"
-                android:layout_marginBottom="@dimen/kk_gap"
-                android:text="@string/parked_report_timeline" />
-
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1">
-
-                <ScrollView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent">
-
-                    <LinearLayout
-                        android:id="@+id/reportItems"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical" />
-                </ScrollView>
-
-                <!-- 빈 상태: 아이콘 + 문구 -->
-                <LinearLayout
-                    android:id="@+id/reportEmpty"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:padding="@dimen/kk_gap_large">
-
-                    <ImageView
-                        android:id="@+id/reportEmptyIcon"
-                        android:layout_width="120dp"
-                        android:layout_height="120dp"
-                        android:padding="24dp"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_kk_car"
-                        android:tint="@color/muted" />
-
-                    <TextView
-                        style="@style/Kk.Body"
-                        android:layout_marginTop="@dimen/kk_gap_large"
-                        android:text="@string/report_empty"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        style="@style/Kk.Caption"
-                        android:layout_marginTop="8dp"
-                        android:gravity="center"
-                        android:text="@string/parked_report_empty_hint" />
-                </LinearLayout>
-            </FrameLayout>
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="@string/parked_report_empty_hint"
+                android:textColor="@color/muted" />
         </LinearLayout>
-    </LinearLayout>
+    </FrameLayout>
 </LinearLayout>

@@ -12,7 +12,7 @@ import java.net.URL
 import kotlin.math.roundToInt
 
 /**
- * Pleos 에뮬레이터 Virtual Console(에뮬레이터 안 127.0.0.1:8088)에 경로 데모의 기어·속도·깜빡이를 보낸다.
+ * Pleos 에뮬레이터 Virtual Console(에뮬레이터 안 127.0.0.1:8088)에 경로 데모의 기어(필요하면 속도·깜빡이)를 보낸다.
  * 그러면 차량 화면 계기판과 Vehicle SDK 값도 데모와 같이 움직인다. 실제 차량에는 콘솔이 없어서 실패해도 무시한다.
  *
  * 콘솔은 브라우저 세션이 살아 있을 때만 값을 받는다 ("emulator_inactive" 오류).
@@ -103,7 +103,12 @@ class VehicleConsole(private val baseUrl: String = DEFAULT_URL) {
  * [sendSpeed]가 false면 속도는 늘 0으로 보낸다 (차는 정지(IDLING)로 남아 앱 화면이 막히지 않는다).
  * 콘솔 API는 Virtual Console 웹 페이지가 쓰는 것과 같다 (PUT, 값은 쿼리 문자열).
  */
-fun consoleWrites(previous: SignalFrame?, frame: SignalFrame, sendSpeed: Boolean = true): List<String> {
+fun consoleWrites(
+    previous: SignalFrame?,
+    frame: SignalFrame,
+    sendSpeed: Boolean = true,
+    sendTurnSignal: Boolean = false,
+): List<String> {
     val writes = mutableListOf<String>()
     if (previous?.gear != frame.gear) writes += "/vehicle/gear?gear=${frame.gear.consoleName()}"
 
@@ -118,7 +123,11 @@ fun consoleWrites(previous: SignalFrame?, frame: SignalFrame, sendSpeed: Boolean
         writes += "/vehicle/controls?speed=$kph&accelerator=$accelerator&brake=$brake&steering=0"
     }
 
-    if (previous?.turnSignal != frame.turnSignal) writes += "/vehicle/turn-signal?mode=${frame.turnSignal.consoleName()}"
+    // 깜빡이는 기본으로 보내지 않는다. 차량에 깜빡이를 켜면 사각지대 카메라 화면이 떠서 앱 지도를 가린다.
+    // 코치 카드와 엔진 판정은 데모 프레임의 깜빡이 값으로 돌아서 영향이 없다.
+    if (sendTurnSignal && previous?.turnSignal != frame.turnSignal) {
+        writes += "/vehicle/turn-signal?mode=${frame.turnSignal.consoleName()}"
+    }
     return writes
 }
 

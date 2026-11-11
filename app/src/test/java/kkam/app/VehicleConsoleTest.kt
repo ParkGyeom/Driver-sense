@@ -18,7 +18,7 @@ class VehicleConsoleTest {
                 "/vehicle/controls?speed=40&accelerator=20&brake=0&steering=0",
                 "/vehicle/turn-signal?mode=BlinkLeft",
             ),
-            consoleWrites(null, frame(Gear.D, 40.0, TurnSignal.LEFT)),
+            consoleWrites(null, frame(Gear.D, 40.0, TurnSignal.LEFT), sendTurnSignal = true),
         )
     }
 
@@ -26,7 +26,10 @@ class VehicleConsoleTest {
     fun `바뀐 값만 보낸다`() {
         val a = frame(Gear.D, 40.2)
         assertEquals(emptyList(), consoleWrites(a, frame(Gear.D, 39.8)))
-        assertEquals(listOf("/vehicle/turn-signal?mode=BlinkRight"), consoleWrites(a, frame(Gear.D, 40.0, TurnSignal.RIGHT)))
+        assertEquals(
+            listOf("/vehicle/turn-signal?mode=BlinkRight"),
+            consoleWrites(a, frame(Gear.D, 40.0, TurnSignal.RIGHT), sendTurnSignal = true),
+        )
         assertEquals(
             listOf("/vehicle/controls?speed=15&accelerator=0&brake=30&steering=0"),
             consoleWrites(a, frame(Gear.D, 15.0, brake = true)),
@@ -36,10 +39,15 @@ class VehicleConsoleTest {
     @Test
     fun `속도를 보내지 않으면 속도 0에 브레이크를 밟아 차를 정지 상태로 둔다`() {
         assertEquals(
-            listOf("/vehicle/gear?gear=Drive", "/vehicle/controls?speed=0&accelerator=0&brake=30&steering=0", "/vehicle/turn-signal?mode=Off"),
+            listOf("/vehicle/gear?gear=Drive", "/vehicle/controls?speed=0&accelerator=0&brake=30&steering=0"),
             consoleWrites(null, frame(Gear.D, 40.0), sendSpeed = false),
         )
         assertEquals(emptyList(), consoleWrites(frame(Gear.D, 40.0), frame(Gear.D, 25.0, brake = true), sendSpeed = false))
+    }
+
+    @Test
+    fun `깜빡이는 기본으로 보내지 않는다 (사각지대 카메라가 앱 지도를 가리지 않게)`() {
+        assertEquals(emptyList(), consoleWrites(frame(Gear.D, 40.0), frame(Gear.D, 40.0, TurnSignal.LEFT)))
     }
 
     @Test

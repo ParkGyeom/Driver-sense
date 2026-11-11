@@ -2,6 +2,13 @@
 
 2026-11-11 · 제안 단계 (AI 담당 확인 전) · 작성: 앱 담당 요청으로 정리
 
+> **진행 상황 (2026-11-11, origin/main 병합 후)**
+>
+> - main에 AI 담당의 spec v0.3·v0.3.1이 먼저 들어갔다. 이 문서의 1장(R3)과 2장(R2)은 **spec v0.3 9장·11장으로 대체**되었다. AI 담당이 따로 구현했고, 이 브랜치도 그 구현을 따른다. 아래 1·2장은 비교용 기록으로만 남긴다. 차이는 "부록 A".
+> - 룰 번호: R6 = 비 올 때 와이퍼, R7 = 앞유리 김서림으로 정해졌다. 회전교차로는 **R8**로 바꿨다.
+> - 시나리오 번호: main이 S13~S24를 쓴다. 이 문서의 시나리오는 유턴 S25·S26, 연속 회전 S27~S29, 회전교차로 S30~S32로 다시 매겼다.
+> - 구현됨(이 브랜치): 유턴(R1 확장), 연속 회전(R1 #1a·#2a). 구현 안 됨: R8(앱 `when` 분기가 같이 바뀌어야 해서 보류, 6.8).
+
 이 문서는 `docs/spec.md`에 넣을 내용을 **제안**한다. 코드는 아직 바꾸지 않았다. AI 담당이 확인하고, 아래 "미정 질문"에 답이 정해지면 spec.md에 옮기고 구현한다.
 
 | # | 상황 | 제안 룰 | 판정 수준 |
@@ -11,7 +18,7 @@
 | 3 | 유턴 깜빡이 | **R1 확장** 추천 | 안내 + KEPT/MISSED |
 | 4 | 연속 회전 | R1 보완 (새 룰 아님) | R1과 같음 |
 | 5 | 고속도로 차로 변경 깜빡이 | **판정하지 않음** 추천 | Q&A·주간 코칭에서만 다룸 |
-| 6 | 회전교차로 진입·진출 깜빡이 | R6 (신규) | 진입 KEPT/MISSED, 진출 안내 + KEPT만 |
+| 6 | 회전교차로 진입·진출 깜빡이 | R8 (신규) | 진입 KEPT/MISSED, 진출 안내 + KEPT만 |
 
 ---
 
@@ -56,7 +63,7 @@
 
 | 대상 | 바뀌는 것 | 필요한 룰 | 다른 담당 영향 |
 | --- | --- | --- | --- |
-| `RuleId` | `R6` 추가 | 회전교차로 | 앱 리포트, 서버 저장 |
+| `RuleId` | `R8` 추가 | 회전교차로 | 앱 리포트, 서버 저장 |
 | `TurnType` | `ROUNDABOUT_IN`, `ROUNDABOUT_OUT` 추가 | 회전교차로 | 앱 `SdkMapping.kt` 수정 (앱 담당) |
 | `Tbt` | `exitClock: Int? = null` 추가 (선택, 질문 Q6-3) | 회전교차로 | 앱 매핑 |
 | `GuideAction` | `STOP` 추가 | R3 | 앱이 "따름"을 `speedKph == 0`으로 확인 |
@@ -189,7 +196,7 @@ CHECKING에서는 R1의 TURNING처럼 전이표 전에 movingMs, lastT를 먼저
 - 저속(≤ 30km/h)에서 진행 방향이 빠르게 바뀌기 시작하면 "회전 시작", 시작 방향에서 60° 이상 바뀌면 "회전 완료".
 - 회전 시작 전 5초 안에 그 방향 깜빡이가 한 프레임이라도 켜져 있으면 KEPT, 아니면 MISSED. (30m를 거리로 잴 수 없어 시간으로 대신한다. 20km/h에서 5초 ≈ 28m)
 - 안내(GUIDE)는 하지 않는다. 회전을 미리 알 수 없기 때문이다(proposal 5.2 "없음(기록만)").
-- 다른 룰이 이 회전을 맡고 있으면(R1, R6) R2는 쉰다. 같은 회전을 두 번 기록하지 않기 위해서다.
+- 다른 룰이 이 회전을 맡고 있으면(R1, R8) R2는 쉰다. 같은 회전을 두 번 기록하지 않기 위해서다.
 - steeringDeg는 쓰지 않는다. 좌우 부호가 미정이고 null일 수 있다(spec 5장). 필요하면 보조 조건으로 나중에 넣는다(Q2-4).
 
 ### 2.1 입력 신호
@@ -200,13 +207,13 @@ CHECKING에서는 R1의 TURNING처럼 전이표 전에 movingMs, lastT를 먼저
 | speedKph | 있음 | 저속 조건, 주행 시간 |
 | turnSignal | 있음 | 깜빡이 기억 |
 | gear | 있음 | 주차·후진 제외 |
-| 다른 룰이 회전을 맡고 있는지 | **엔진 내부 값** (새 입력 아님) | R1·R6와 겹침 방지 |
+| 다른 룰이 회전을 맡고 있는지 | **엔진 내부 값** (새 입력 아님) | R1·R8와 겹침 방지 |
 
 ### 2.2 R1과 겹치는 회전 처리 (tasks 단계 12 요구)
 
 | 안 | 방법 | 장점 | 단점 |
 | --- | --- | --- | --- |
-| A (추천) | Engine이 R1·R6가 IDLE이 아닌지(이 프레임 처리 전 또는 후)를 R2에 넘긴다. 맡고 있으면 R2는 쉬고, 끝난 뒤 주행 10초 동안 더 쉰다 | 한 회전에 한 기록. 전이표 한 행으로 설명 가능 | R1이 다가가다 다른 골목으로 꺾으면 그 회전은 둘 다 기록하지 않는다 |
+| A (추천) | Engine이 R1·R8가 IDLE이 아닌지(이 프레임 처리 전 또는 후)를 R2에 넘긴다. 맡고 있으면 R2는 쉬고, 끝난 뒤 주행 10초 동안 더 쉰다 | 한 회전에 한 기록. 전이표 한 행으로 설명 가능 | R1이 다가가다 다른 골목으로 꺾으면 그 회전은 둘 다 기록하지 않는다 |
 | B | R2는 항상 돌고, Engine이 같은 프레임 근처에 R1 EVENT가 있으면 R2 EVENT를 버린다 | R2 상태 머신이 단순 | "근처"의 기준이 또 하나의 매직 넘버. Engine에 판정 논리가 섞임 |
 | C | tbt가 null일 때(내비 안 쓸 때)만 R2를 돌린다 | 가장 단순 | 내비 안내 중 경로 밖 골목 회전을 놓친다 (이번 요청 범위와 맞지 않음) |
 
@@ -247,15 +254,15 @@ CHECKING에서는 R1의 TURNING처럼 전이표 전에 movingMs, lastT를 먼저
 | # | 현재 | 조건 | 다음 | 출력 |
 | --- | --- | --- | --- | --- |
 | 0 | 모든 상태 | gear가 P 또는 R | COOLDOWN (remainMs = 60000) | 없음 |
-| 1 | 모든 상태 | otherRuleBusy | COOLDOWN (remainMs = max(지금 remainMs, 10000)) | 없음 (R1·R6가 맡음) |
+| 1 | 모든 상태 | otherRuleBusy | COOLDOWN (remainMs = max(지금 remainMs, 10000)) | 없음 (R1·R8가 맡음) |
 | 2 | COOLDOWN | remainMs ≤ 0 | CRUISING | 없음 |
 | 3 | CRUISING | 5 ≤ speedKph ≤ 30 이고 turnRate ≥ 8 | TURNING (startHeading = prevHeading, startT = t, direction = signedDiff 부호, signalOk = 그 방향 lastT ≥ t − 5000) | 없음 |
 | 4 | TURNING | headingDiff(startHeading, headingDeg) ≥ 60 | CRUISING | EVENT (signalOk면 KEPT 아니면 MISSED, guided = false, turn = direction) |
 | 5 | TURNING | t − startT > 10000 | CRUISING | 없음 (곡선으로 보고 취소) |
 
-- otherRuleBusy: Engine이 계산한다. R1 또는 R6가 이 프레임을 처리하기 **전이나 후에** IDLE이 아니면 true. "전"을 넣는 이유는 R1이 EVENT를 내고 IDLE이 된 그 프레임에도 R2가 쉬어야 하기 때문이다.
+- otherRuleBusy: Engine이 계산한다. R1 또는 R8가 이 프레임을 처리하기 **전이나 후에** IDLE이 아니면 true. "전"을 넣는 이유는 R1이 EVENT를 내고 IDLE이 된 그 프레임에도 R2가 쉬어야 하기 때문이다.
 - #3의 startHeading은 직전 프레임 값이다. 회전이 이미 시작된 프레임에서 잡히므로 그 전 방향이 기준이다.
-- Engine의 호출 순서: R1 → R2 → R3 → R4 → R5 → R6. R2는 R6보다 먼저 불리므로 R6의 "후" 상태 대신 R6의 직전 프레임 상태를 쓴다(구현 때 확인).
+- Engine의 호출 순서: R1 → R2 → R3 → R4 → R5 → R8. R2는 R8보다 먼저 불리므로 R8의 "후" 상태 대신 R8의 직전 프레임 상태를 쓴다(구현 때 확인).
 
 ### 2.6 시나리오
 
@@ -343,10 +350,10 @@ A를 추천한다. 판정 방식이 R1과 완전히 같고, 코드 중복이 없
 
 ### 3.3 시나리오
 
-**S22_유턴_안내후_켬**: S2와 같고 tbt.turn = UTURN, headingDeg는 90, 90, 90, 90, 90, 90, 80, 30, 270.
+**S25_유턴_안내후_켬**: S2와 같고 tbt.turn = UTURN, headingDeg는 90, 90, 90, 90, 90, 90, 80, 30, 270.
 기대: GUIDE t=4000 R1 → EVENT t=11000 R1 KEPT guided=true
 
-**S23_유턴_반대쪽_깜빡이**: S22와 같고 t=6000부터 turnSignal = RIGHT.
+**S26_유턴_반대쪽_깜빡이**: S25와 같고 t=6000부터 turnSignal = RIGHT.
 기대: GUIDE t=4000 R1 → EVENT t=11000 R1 MISSED guided=true
 
 ### 3.4 오판 위험
@@ -399,7 +406,7 @@ F2를 넣은 APPROACHING 부분:
 
 ### 4.3 시나리오
 
-**S24_연속회전_좌후우_여유** (지금 코드로도 통과해야 함)
+**S27_연속회전_좌후우_여유** (지금 코드로도 통과해야 함)
 
 | t | tbt | speedKph | turnSignal | headingDeg |
 | --- | --- | --- | --- | --- |
@@ -418,7 +425,7 @@ F2를 넣은 APPROACHING 부분:
 
 기대: EVENT t=11000 R1 KEPT guided=false → GUIDE t=15000 R1 → EVENT t=21000 R1 KEPT guided=true
 
-**S25_연속회전_좌후우_근접** (F1 필요)
+**S28_연속회전_좌후우_근접** (F1 필요)
 
 t=0~9000은 S24와 같고, 그 뒤:
 
@@ -432,7 +439,7 @@ t=0~9000은 S24와 같고, 그 뒤:
 - 지금 코드: EVENT t=11000 R1 KEPT만 (두 번째 회전은 t=15000에 #2로 취소)
 - F1 적용 후 기대: EVENT t=11000 R1 KEPT guided=false → EVENT t=15000 R1 KEPT guided=false
 
-**S26_같은방향_연속_30m놓침** (F2 필요)
+**S29_같은방향_연속_30m놓침** (F2 필요)
 
 | t | tbt | speedKph | turnSignal | headingDeg |
 | --- | --- | --- | --- | --- |
@@ -448,7 +455,7 @@ t=0~9000은 S24와 같고, 그 뒤:
 - 지금 코드: GUIDE t=4000 → EVENT t=14000 R1 MISSED guided=true (두 번째 회전 안내 없음)
 - F2 적용 후 기대: GUIDE t=4000 → GUIDE t=10000 → EVENT t=14000 R1 MISSED guided=true
 
-**S27_비스듬한_좌회전후_우회전** (한계 기록용. Q4-2 답에 따라 기대값을 정한다)
+**(번호 없음)_비스듬한_좌회전후_우회전** (한계 기록용. Q4-2 답에 따라 기대값을 정한다)
 
 첫 좌회전이 90°→45°(45°만 바뀜), 이어서 RIGHT TBT 60m → 우회전. 지금 코드는 두 회전 모두 기록 없음.
 
@@ -493,7 +500,7 @@ t=0~9000은 S24와 같고, 그 뒤:
 
 ---
 
-## 6. R6: 회전교차로 진입·진출 깜빡이 (신규)
+## 6. R8: 회전교차로 진입·진출 깜빡이 (신규)
 
 **목적**: 회전교차로에 들어갈 때 왼쪽, 나갈 때 오른쪽 깜빡이를 켜는 습관. 2022년 법 개정으로 생긴 의무라 모르는 운전자가 많다.
 
@@ -576,7 +583,7 @@ CIRCLING에서는 전이표 전에 movingMs, lastT를 먼저 갱신한다(R1 TUR
 
 ### 6.5 시나리오
 
-**S28_회전교차로_진입진출_켬**
+**S30_회전교차로_진입진출_켬**
 
 | t | tbt | speedKph | turnSignal | headingDeg |
 | --- | --- | --- | --- | --- |
@@ -591,15 +598,15 @@ CIRCLING에서는 전이표 전에 movingMs, lastT를 먼저 갱신한다(R1 TUR
 | 14000 | 다음 안내 | 30 | OFF | 180 |
 
 t=4000: 28km/h 안내 거리 약 61m → 진입 GUIDE. t=9000: 진출 50m 안, 오른쪽 아님 → 진출 GUIDE.
-기대: GUIDE t=4000 R6 → EVENT t=7000 R6 KEPT guided=true → GUIDE t=9000 R6 → EVENT t=12000 R6 KEPT guided=true
+기대: GUIDE t=4000 R8 → EVENT t=7000 R8 KEPT guided=true → GUIDE t=9000 R8 → EVENT t=12000 R8 KEPT guided=true
 
-**S29_회전교차로_진입_안켬**: S28과 같고 t=6000·7000의 turnSignal = OFF, t=9000부터 RIGHT.
-기대: GUIDE t=4000 R6 → EVENT t=7000 R6 MISSED guided=true → EVENT t=12000 R6 KEPT guided=false
+**S31_회전교차로_진입_안켬**: S30과 같고 t=6000·7000의 turnSignal = OFF, t=9000부터 RIGHT.
+기대: GUIDE t=4000 R8 → EVENT t=7000 R8 MISSED guided=true → EVENT t=12000 R8 KEPT guided=false
 
-**S30_회전교차로_진출TBT없음**: S28의 t=0~7000(turnSignal은 처음부터 LEFT) 뒤로 tbt가 `STRAIGHT 500`에서 줄어드는 프레임만 70초 이어짐.
-기대: EVENT t=7000 R6 KEPT guided=false (진출 출력 없음, 주행 60초 뒤 IDLE)
+**S32_회전교차로_진출TBT없음**: S30의 t=0~7000(turnSignal은 처음부터 LEFT) 뒤로 tbt가 `STRAIGHT 500`에서 줄어드는 프레임만 70초 이어짐.
+기대: EVENT t=7000 R8 KEPT guided=false (진출 출력 없음, 주행 60초 뒤 IDLE)
 
-R2는 위 세 시나리오 모두에서 R6가 맡고 있으므로 출력이 없어야 한다.
+R2는 위 세 시나리오 모두에서 R8가 맡고 있으므로 출력이 없어야 한다.
 
 ### 6.6 오판 위험
 
@@ -665,11 +672,11 @@ LAW-16은 spec 6장에서 터널 등화 조항용으로 예약되어 있어 LAW-
 
 | 순서 | 작업 | 이유 | 다른 담당 필요 |
 | --- | --- | --- | --- |
-| 1 | 유턴 (R1 확장) + S22·S23 | 가장 작다. 입력이 이미 들어온다 | 앱·서버: Event.turn에 UTURN 처리 (확인만) |
-| 2 | 연속 회전 F1·F2 + S24~S26 | R1이 핵심 룰이라 다른 룰보다 먼저 단단히 한다. R2가 R1 상태를 보므로 R2 전에 고정 | 없음 |
+| 1 | 유턴 (R1 확장) + S25·S26 | 가장 작다. 입력이 이미 들어온다 | 앱·서버: Event.turn에 UTURN 처리 (확인만) |
+| 2 | 연속 회전 F1·F2 + S27~S29 | R1이 핵심 룰이라 다른 룰보다 먼저 단단히 한다. R2가 R1 상태를 보므로 R2 전에 고정 | 없음 |
 | 3 | R2 + S17~S21 | tasks 단계 12 일정(11/17~19). 새 입력 없음 | 없음 |
 | 4 | R3 + S13~S16 | tasks 단계 13 일정(11/20~23). 엔진은 바로 만들 수 있지만 실제 동작은 light 연동에 달림 | 서버 담당(신호 API), 앱 담당(light 채우기) |
-| 5 | R6 회전교차로 + S28~S30, 법규표 LAW-17~19 | 모델 변경(TurnType, RuleId)과 앱 매핑이 같이 가야 함 | 앱 담당(SdkMapping), 서버 담당(R6 저장), PM(proposal 5.2 표) |
+| 5 | R8 회전교차로 + S30~S32, 법규표 LAW-17~19 | 모델 변경(TurnType, RuleId)과 앱 매핑이 같이 가야 함 | 앱 담당(SdkMapping), 서버 담당(R8 저장), PM(proposal 5.2 표) |
 | - | 고속도로 차로 변경 | 판정하지 않음. Q&A·코칭 문장만 | AI 담당(코칭 프롬프트) |
 
 룰 하나가 끝날 때마다 `./gradlew test` 전체 통과 확인 후 커밋한다.
@@ -680,7 +687,7 @@ LAW-16은 spec 6장에서 터널 등화 조항용으로 예약되어 있어 LAW-
 
 **공통**
 
-- Q0-1. 룰 번호: proposal.md 5.2 표는 R4 = 회전교차로, R5 = 어린이보호구역(로드맵)인데, spec은 R4 = 나들목, R5 = 터널로 쓰고 있다. 회전교차로를 R6로 두고 proposal.md 표를 spec에 맞게 고치면 되는가? (spec 6장에서 R6는 "와이퍼, v0.2에서 뺌"으로 언급만 되어 있다.)
+- Q0-1. 룰 번호: proposal.md 5.2 표는 R4 = 회전교차로, R5 = 어린이보호구역(로드맵)인데, spec은 R4 = 나들목, R5 = 터널로 쓰고 있다. 회전교차로를 R8로 두고 proposal.md 표를 spec에 맞게 고치면 되는가? (spec 6장에서 R8는 "와이퍼, v0.2에서 뺌"으로 언급만 되어 있다.)
 - Q0-2. 시나리오 번호를 S13부터 이어서 써도 되는가?
 
 **R3 (1장)**
@@ -707,7 +714,7 @@ LAW-16은 spec 6장에서 터널 등화 조항용으로 예약되어 있어 LAW-
 **연속 회전 (4장)**
 
 - Q4-1. F1(30m 안에서 처음 본 회전도 판정), F2(TBT 거리 점프 = 새 회전)를 넣을 것인가?
-- Q4-2. 회전 완료를 TBT 변화로도 볼 것인가? (spec 5장 기존 질문. S27 기대값이 이 답에 달렸다)
+- Q4-2. 회전 완료를 TBT 변화로도 볼 것인가? (spec 5장 기존 질문. 비스듬한 교차로 시나리오 기대값이 이 답에 달렸다)
 - Q4-3. 두 회전 사이가 30m보다 짧아 두 번째 회전의 30m 점등이 불가능한 경우를 판정에서 뺄 것인가?
 
 **차로 변경 (5장)**
@@ -722,3 +729,34 @@ LAW-16은 spec 6장에서 터널 등화 조항용으로 예약되어 있어 LAW-
 - Q6-3. `Tbt.exitClock`을 추가할 것인가? Q6-2에서 생략하기로 할 때만 필요하다.
 - Q6-4. 진출 판정 지점 10m, 진출 안내 50m를 이대로 둘 것인가? 진출 TBT가 실제로 오는지 확인 전이다.
 - Q6-5. 진입 때 서행·양보(제25조의2제2항)는 판정하지 않고 Q&A(LAW-19)로만 다루는가?
+
+---
+
+## 부록 A. R2: 이 제안과 AI 담당 구현(spec v0.3 11장)의 차이
+
+이 브랜치는 AI 담당 구현을 따른다. 이 제안의 R2 코드는 병합 때 버렸다.
+
+| 항목 | 이 제안 (2장) | AI 담당 spec v0.3 11장 (채택) |
+| --- | --- | --- |
+| 구조 | 상태 머신 (CRUISING, TURNING, COOLDOWN) | 상태 없이 최근 15초 프레임 기록(history) |
+| 회전 시작 | 직전 프레임 대비 초당 8° 이상 | 10초 안 어떤 프레임과 비교해 60° 이상이면 그 프레임이 시작 |
+| 속도 조건 | 회전 시작 프레임이 5~30km/h | 회전 구간 모든 프레임이 30km/h 이하 (최소 속도 없음) |
+| 깜빡이 | 회전 시작 전 5초 안 | 회전 시작 5초 전부터 회전 완료까지 |
+| 주차 제외 | P·R 뒤 주행 60초 | R 뒤 30초 (시각 기준), P는 기록만 비움 |
+| R1과 겹침 | R1이 처리 전·후 IDLE 아니면 쉼 + 끝난 뒤 주행 10초 | R1 IDLE 아님, LEFT·RIGHT 100m 안, RAMP 300m 안, R1·R4 EVENT 뒤 10초 |
+| 정지 중 GPS 튐 | 5km/h 미만은 회전 시작 아님 | 따로 거르지 않음 (AI 담당 확인 필요) |
+
+## 부록 B. R8을 구현하려면 앱에서 같이 바꿔야 하는 곳
+
+엔진에 `RuleId.R8`, `TurnType.ROUNDABOUT_IN`·`ROUNDABOUT_OUT`을 넣으면 앱의 빠짐없는 `when`이 컴파일되지 않는다(2026-11-11 main 기준). 이 브랜치에서는 `app/`을 고치지 않으므로 R8 구현을 보류했다. 앱 담당에게 제안하는 변경:
+
+| 파일 | 위치 | 추가할 분기 (제안) |
+| --- | --- | --- |
+| `GuideKind.kt` | `RuleId.guideKind()` | `RuleId.R8 -> GuideKind.TURN_SIGNAL` |
+| `CoachState.kt` | `TurnType.label()` | `ROUNDABOUT_IN -> "회전교차로 진입"`, `ROUNDABOUT_OUT -> "회전교차로 진출"` |
+| `CoachState.kt` | EVENT 제목 `when (rule)` | `RuleId.R8 -> "회전교차로 깜빡이"` |
+| `DriveReport.kt` | `RuleId.fineWon()` | `RuleId.R8 ->` 30000 (R1과 같음, 별표 8 확인 필요) |
+| `DriveReport.kt` | `RuleId.lawId()` | `RuleId.R8 -> "LAW-17"` (진입. 진출은 LAW-18) |
+| `SdkMapping.kt` | `toEngineTurnType()` | `TURN_ENTER_ROUNDABOUT_* -> ROUNDABOUT_IN`, `TURN_EXIT_ROUNDABOUT -> ROUNDABOUT_OUT` |
+| `CoachState.kt` | `SignalFrame.target()` | 회전교차로 카드가 필요하면 `ROUNDABOUT_IN`(왼쪽, 30m), `ROUNDABOUT_OUT`(오른쪽, 10m) 대상 추가. 없으면 지금처럼 `else -> null` |
+

@@ -8,14 +8,15 @@ import android.text.style.ForegroundColorSpan
 
 /**
  * 코치 카드(주행 화면)와 내비 위 팝업이 같이 쓰는 색 규칙.
- * 바탕은 늘 어두운 surface이고, 상태 색은 포인트(방향 그림 원, 행동 알약, 테두리, 왼쪽 기운)에만 쓴다.
+ * 카드는 흰 바탕에 검정 글자다. 상태 색은 칠할 수 있는 곳에 모두 쓴다:
+ * 굵은 테두리, 방향 그림 원, 행동 알약, 깜빡이 칩, 레버 그림, 카드 밑 한 줄 문구.
  *
- * | 모습 | 상태 색 | 방향 그림 원 | 행동 알약 아이콘 | 언제 |
+ * | 모습 | 테두리 | 방향 그림 원 | 행동 알약 | 언제 |
  * | --- | --- | --- | --- | --- |
- * | IDLE | 없음 (회색 테두리) | surface_2 + muted 그림 | 숨김 | 안내 대상 없음 |
- * | WARN | warn 주황 | 주황 원 + 어두운 그림 | ! | 지금 켜야 함 |
- * | OK | ok 파랑 | 파랑 원 + 어두운 그림 | ✓ | 켰음 |
- * | MISS | miss 빨강 | 빨강 원 + 어두운 그림 | X | 판정 지점을 꺼진 채 지남 ("다음엔 미리 켜요") |
+ * | IDLE | 연회색 | 연회색 원 + 회색 그림 | 숨김 | 안내 대상 없음 |
+ * | WARN | 진한 노랑 | 노랑 원 + 검정 그림 | 노랑 "! 지금 켜세요" | 지금 켜야 함 |
+ * | OK | 진한 파랑 | 파랑 원 + 검정 그림 | 파랑 "✓ 좋아요" | 켰음 |
+ * | MISS | 진한 빨강 | 빨강 원 + 검정 그림 | 빨강 "X 다음엔 미리 켜요" | 판정 지점을 꺼진 채 지남 |
  *
  * 색만으로 구분하지 않게 알약 아이콘이 상태마다 다르다.
  */
@@ -41,23 +42,24 @@ fun CardLook.badgeIconRes(): Int = when (this) {
 
 /**
  * 카드 한 장에 칠할 색.
- * accent = 상태 색 (그림 원, 알약, 켜진 깜빡이 칩, 레버 그림), edge = 카드 테두리,
- * tint = 카드 왼쪽 기운 (오른쪽은 surface), iconBg·iconInk = 방향 그림 원과 그림.
+ * accent = 상태 색 채움 (그림 원, 알약, 켜진 깜빡이 칩), edge = 흰 바탕에서 또렷한 진한 상태 색
+ * (카드 테두리, 꺼진 깜빡이 칩 테두리·화살표, 레버 그림), iconBg·iconInk = 방향 그림 원과 그림,
+ * note = 카드 밑 한 줄 문구 색 (어두운 화면 바탕 위).
  */
 data class CardPalette(
     val accent: Int,
     val edge: Int,
-    val tint: Int,
     val iconBg: Int,
     val iconInk: Int,
+    val note: Int,
 ) {
     /** 두 색 사이 중간값. fraction 0이면 this, 1이면 to. 상태가 바뀔 때 한 번 페이드하는 데 쓴다. */
     fun mix(to: CardPalette, fraction: Float) = CardPalette(
         accent = blend(accent, to.accent, fraction),
         edge = blend(edge, to.edge, fraction),
-        tint = blend(tint, to.tint, fraction),
         iconBg = blend(iconBg, to.iconBg, fraction),
         iconInk = blend(iconInk, to.iconInk, fraction),
+        note = blend(note, to.note, fraction),
     )
 
     private fun blend(a: Int, b: Int, fraction: Float) = ARGB.evaluate(fraction, a, b) as Int
@@ -69,23 +71,23 @@ data class CardPalette(
 
 fun Context.palette(look: CardLook): CardPalette = when (look) {
     CardLook.IDLE -> CardPalette(
-        accent = getColor(R.color.muted),
-        edge = getColor(R.color.line),
-        tint = getColor(R.color.surface),
-        iconBg = getColor(R.color.surface_2),
-        iconInk = getColor(R.color.muted),
+        accent = getColor(R.color.ink_soft),
+        edge = getColor(R.color.card_light_line),
+        iconBg = getColor(R.color.card_light_2),
+        iconInk = getColor(R.color.ink_soft),
+        note = getColor(R.color.text),
     )
-    CardLook.WARN -> accentPalette(R.color.warn, R.color.warn_tint)
-    CardLook.OK -> accentPalette(R.color.ok, R.color.ok_tint)
-    CardLook.MISS -> accentPalette(R.color.miss, R.color.miss_tint)
+    CardLook.WARN -> accentPalette(R.color.warn, R.color.warn_deep)
+    CardLook.OK -> accentPalette(R.color.ok, R.color.ok_deep)
+    CardLook.MISS -> accentPalette(R.color.miss, R.color.miss_deep)
 }
 
-private fun Context.accentPalette(accent: Int, tint: Int) = CardPalette(
+private fun Context.accentPalette(accent: Int, deep: Int) = CardPalette(
     accent = getColor(accent),
-    edge = getColor(accent),
-    tint = getColor(tint),
+    edge = getColor(deep),
     iconBg = getColor(accent),
-    iconInk = getColor(R.color.on_accent),
+    iconInk = getColor(R.color.ink_strong),
+    note = getColor(accent),
 )
 
 /** "60 m" → 숫자는 크게(numberEmphasis), 단위는 작고 흐리게(unitColor). */
@@ -97,6 +99,3 @@ fun distanceText(label: String, unitColor: Int): CharSequence {
     }
     return text
 }
-
-/** color의 RGB에 alphaFrom의 투명도를 씌운다. 반투명 팝업 바탕 위 그라데이션에 쓴다. */
-fun withAlphaOf(color: Int, alphaFrom: Int): Int = (color and 0x00FFFFFF) or (alphaFrom and 0xFF000000.toInt())

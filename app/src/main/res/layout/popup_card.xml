@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   내비 위에 잠깐 뜨는 안내 카드. 주행 화면 코치 카드(screen_drive.xml)와 같은 디자인 언어를 작게 줄였다:
-  [상태 색 원 + 방향 그림] [회전 이름(흐림) / 남은 거리(흰색, 숫자 크게)] [상태 색 알약 "! 지금 켜세요" / "✓ 좋아요"] [레버 그림(초보 기능만)].
-  바탕은 어두운 반투명(popup_scrim) + 왼쪽 상태 색 기운 + 상태 색 테두리 + 그림자. 내비 지도 위에서도 읽히게 한다.
+  [상태 색 원 + 방향 그림] [회전 이름(흐림) / 남은 거리(검정, 숫자 크게)] [상태 색 알약 "! 지금 켜세요" / "✓ 좋아요"] [레버 그림(초보 기능만)].
+  바탕은 흰색 95%(popup_light) + 굵은 상태 색 테두리 + 그림자. 내비 지도 위에서도 카드 경계가 또렷하게 한다.
   바깥 FrameLayout의 여백은 그림자가 겹침 창 밖으로 잘리지 않게 두는 자리다. 색은 코드에서 칠한다. 터치는 받지 않는다.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -24,7 +24,7 @@
         android:paddingEnd="28dp"
         android:paddingBottom="20dp">
 
-        <!-- 방향 그림: 상태 색 원 안에 대비색 그림. 가장 먼저 눈에 띄는 것. -->
+        <!-- 방향 그림: 상태 색 원 안에 검정 그림. 가장 먼저 눈에 띄는 것. -->
         <ImageView
             android:id="@+id/popupIcon"
             android:layout_width="104dp"
@@ -45,19 +45,19 @@
                 style="@style/Kk.Body"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:textColor="@color/muted"
+                android:textColor="@color/ink_soft"
                 android:textStyle="bold" />
 
-            <!-- 숫자는 크게 흰색, 단위(m)는 작고 흐리게 (distanceText). 거리가 없는 안내는 숨긴다. -->
+            <!-- 숫자는 크게 검정, 단위(m)는 작고 흐리게 (distanceText). 거리가 없는 안내는 숨긴다. -->
             <TextView
                 android:id="@+id/popupDistance"
                 style="@style/Kk.Display"
                 android:layout_marginTop="4dp"
                 android:maxLines="1"
-                android:textColor="@color/text" />
+                android:textColor="@color/ink_strong" />
         </LinearLayout>
 
-        <!-- 지금 할 일: 상태 색 알약에 대비 글자 -->
+        <!-- 지금 할 일: 상태 색 알약에 검정 글자 -->
         <LinearLayout
             android:id="@+id/popupBadge"
             android:layout_width="wrap_content"
@@ -82,7 +82,7 @@
                 style="@style/Kk.Title"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:textColor="@color/on_accent" />
+                android:textColor="@color/ink_strong" />
         </LinearLayout>
 
         <!-- "어떻게 켜는지" 레버 그림. 초보 기능 안내일 때만 보인다. -->

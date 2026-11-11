@@ -33,13 +33,13 @@ class CoachPopup(context: Context) : CoachNotifier {
     private val badgeIcon: ImageView = card.findViewById(R.id.popupBadgeIcon)
     private val headline: TextView = card.findViewById(R.id.popupHeadline)
     private val lever: LeverGuideView = card.findViewById(R.id.popupLever)
-    private val ink = this.context.getColor(R.color.on_accent)
-    private val muted = this.context.getColor(R.color.muted)
-    private val scrim = this.context.getColor(R.color.popup_scrim)
+    private val ink = this.context.getColor(R.color.ink_strong)
+    private val inkSoft = this.context.getColor(R.color.ink_soft)
 
     // 배경은 한 번만 만들고 색만 바꾼다.
-    // 카드 = 어두운 반투명 바탕 + 왼쪽 상태 색 기운 + 상태 색 테두리, 그림 원·알약 = 상태 색.
-    private val cardFill = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(scrim, scrim)).apply {
+    // 카드 = 흰색 95% 바탕 + 굵은 상태 색 테두리, 그림 원·알약 = 상태 색.
+    private val cardFill = GradientDrawable().apply {
+        setColor(this@CoachPopup.context.getColor(R.color.popup_light))
         cornerRadius = CARD_RADIUS_DP * density
     }
     private val iconCircle = GradientDrawable().apply { cornerRadius = PILL_RADIUS_DP * density }
@@ -54,7 +54,6 @@ class CoachPopup(context: Context) : CoachNotifier {
         card.background = cardFill
         icon.background = iconCircle
         card.findViewById<View>(R.id.popupBadge).background = badgeFill
-        icon.imageTintList = ColorStateList.valueOf(ink)
         badgeIcon.imageTintList = ColorStateList.valueOf(ink)
     }
 
@@ -97,12 +96,12 @@ class CoachPopup(context: Context) : CoachNotifier {
         val look = popup.tone.look()
         icon.setImageResource(guideIconRes(popup.kind, popup.right))
         turn.text = popup.turnLabel
-        distance.text = distanceText(popup.distanceLabel, muted)
+        distance.text = distanceText(popup.distanceLabel, inkSoft)
         distance.visibility = if (popup.distanceLabel.isEmpty()) View.GONE else View.VISIBLE
         headline.text = popup.headline
         badgeIcon.setImageResource(look.badgeIconRes())
         val target = context.palette(look)
-        lever.show(leverFor(popup.kind, popup.right, look == CardLook.WARN), target.accent)
+        lever.show(leverFor(popup.kind, popup.right, look == CardLook.WARN), target.edge)
         paint(target)
     }
 
@@ -123,10 +122,9 @@ class CoachPopup(context: Context) : CoachNotifier {
 
     private fun apply(palette: CardPalette) {
         painted = palette
-        // 기운도 바탕과 같은 투명도로 맞춰서 지도가 고르게 비치게 한다.
-        cardFill.colors = intArrayOf(withAlphaOf(palette.tint, scrim), scrim)
         cardFill.setStroke((CARD_EDGE_DP * density).toInt(), palette.edge)
         iconCircle.setColor(palette.iconBg)
+        icon.imageTintList = ColorStateList.valueOf(palette.iconInk)
         badgeFill.setColor(palette.accent)
     }
 
@@ -161,7 +159,8 @@ class CoachPopup(context: Context) : CoachNotifier {
         const val TAG = "KkamPopup"
         const val FADE_MS = 200L
         const val CARD_RADIUS_DP = 32
-        const val CARD_EDGE_DP = 3
+        /** 상태를 테두리로 보여주므로 굵게. */
+        const val CARD_EDGE_DP = 6
         const val PILL_RADIUS_DP = 999
     }
 }

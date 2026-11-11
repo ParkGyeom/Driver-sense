@@ -4,6 +4,7 @@ import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -14,16 +15,16 @@ import android.widget.TextView
  * 주행 화면 (기획서 UI-1, screen_drive.xml). 코치 카드, 한 줄 문구, 오늘 성적.
  * 터치할 것은 두지 않는다 (주행 중 터치 조작 없음, 기획서 5.4). 값은 모두 [CoachState]에서 온다.
  *
- * 카드 바탕은 늘 어두운 surface다. 상태 색([CardLook])은 포인트로만 쓴다:
- * 왼쪽에서 흐려지는 기운, 테두리, 방향 그림 원, 행동 알약, 켜진 깜빡이 칩.
+ * 카드는 흰 바탕에 검정 글자다. 상태 색([CardLook])은 칠할 수 있는 곳에 모두 쓴다.
  *
- * | 모습 | 방향 그림 | 큰 글자 | 행동 알약 | 깜빡이 칩 |
- * | --- | --- | --- | --- | --- |
- * | IDLE (대기) | 회색 원 + 경로 화살표 | "다음 회전 대기" + 안내 기다림 | 숨김 | 숨김 |
- * | WARN (켜세요) | 주황 원 + 방향 | 회전(흐림) + 거리(흰색) | 주황 "! 지금 켜세요" | 꺼짐: 테두리만 + 빈 화살표 |
- * | OK (좋아요) | 파랑 원 + 방향 | 회전(흐림) + 거리(흰색) | 파랑 "✓ 좋아요" | 켜짐: 파랑으로 채움 + 꽉 찬 화살표 |
- * | MISS (놓침) | 빨강 원 + 방향 | 회전(흐림) + 거리(흰색) | 빨강 "X 다음엔 미리 켜요" | 꺼짐: 테두리만 + 빈 화살표 |
+ * | 모습 | 테두리 | 방향 그림 | 행동 알약 | 깜빡이 칩 | 카드 밑 문구 |
+ * | --- | --- | --- | --- | --- | --- |
+ * | IDLE (대기) | 연회색 | 연회색 원 + 경로 화살표 | 숨김 | 숨김 | 흰 글자 |
+ * | WARN (켜세요) | 노랑 | 노랑 원 + 방향 | 노랑 "! 지금 켜세요" | 꺼짐: 노랑 테두리 + 빈 화살표 | 노랑 |
+ * | OK (좋아요) | 파랑 | 파랑 원 + 방향 | 파랑 "✓ 좋아요" | 켜짐: 파랑으로 채움 + 꽉 찬 화살표 | 파랑 |
+ * | MISS (놓침) | 빨강 | 빨강 원 + 방향 | 빨강 "X 다음엔 미리 켜요" | 꺼짐: 빨강 테두리 + 빈 화살표 | 빨강 |
  *
+ * 오늘 성적 링: 지킨 몫은 파랑, 놓친 몫은 빨강, 판정이 없으면 연회색.
  * 모습이 바뀔 때만 색을 [FADE_MS] 동안 한 번 바꾼다. 반복 애니메이션은 없다 (레버 그림 제외: 켜는 방법 안내).
  */
 class DriveScreen(private val activity: Activity) {
@@ -47,20 +48,18 @@ class DriveScreen(private val activity: Activity) {
     private val todayKept: TextView = activity.findViewById(R.id.todayKept)
     private val todayTotal: TextView = activity.findViewById(R.id.todayTotal)
 
-    private val surface = color(R.color.surface)
-    private val ink = color(R.color.on_accent)
-    private val text = color(R.color.text)
-    private val muted = color(R.color.muted)
-    private val clear = color(android.R.color.transparent)
+    private val ink = color(R.color.ink_strong)
+    private val inkSoft = color(R.color.ink_soft)
+    private val white = color(R.color.card_light)
 
     // 배경은 한 번만 만들고 색만 바꾼다 (애니메이션 중 매 프레임 새로 만들지 않게).
-    // 카드: 왼쪽(방향 그림 쪽) 상태 색 기운 → 오른쪽 surface 그라데이션 + 상태 색 테두리.
-    private val cardFill = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(surface, surface)).apply {
-        cornerRadius = activity.dp(CARD_RADIUS_DP).toFloat()
-    }
-    private val iconCircle = activity.pillBackground(surface)
-    private val badgeFill = activity.pillBackground(surface)
-    private val signalFill = activity.pillBackground(clear)
+    private val cardFill = activity.rounded(white, radiusDp = CARD_RADIUS_DP)
+    private val iconCircle = activity.pillBackground(white)
+    private val badgeFill = activity.pillBackground(white)
+    private val signalFill = activity.pillBackground(white)
+    /** 성적 링의 바탕 고리(지키지 못한 몫). 놓친 판정이 있으면 빨강. */
+    private val ringTrack = (scoreRing.progressDrawable.mutate() as LayerDrawable)
+        .findDrawableByLayerId(android.R.id.background) as GradientDrawable
 
     /** 지금 칠해진 색. 모습이 바뀌면 여기서 새 색까지 페이드한다. */
     private var painted: CardPalette? = null
@@ -72,9 +71,10 @@ class DriveScreen(private val activity: Activity) {
         turnIcon.background = iconCircle
         badgeBox.background = badgeFill
         signalBox.background = signalFill
-        activity.findViewById<View>(R.id.scoreCard).background = activity.cardBackground()
-        // 고정 색: 거리는 흰색, 알약 글자·그림은 상태 색 위 대비색.
-        distance.setTextColor(text)
+        activity.findViewById<View>(R.id.scoreCard).background =
+            activity.rounded(white, radiusDp = CARD_RADIUS_DP, strokeColor = color(R.color.card_light_line))
+        // 고정 색: 흰 카드 위 글자는 검정, 알약 글자·그림도 상태 색 위 검정.
+        distance.setTextColor(ink)
         badge.setTextColor(ink)
         badgeIcon.imageTintList = ColorStateList.valueOf(ink)
     }
@@ -101,12 +101,12 @@ class DriveScreen(private val activity: Activity) {
         turnIcon.setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
 
         turn.text = state.turnLabel
-        distance.text = distanceText(state.distanceLabel, muted)
+        distance.text = distanceText(state.distanceLabel, inkSoft)
         // 거리가 없는 안내(예: 와이퍼)는 거리 줄을 접어서 제목이 그림 옆 가운데에 오게 한다.
         distance.visibility = if (active && state.distanceLabel.isNotEmpty()) View.VISIBLE else View.GONE
         idleHint.visibility = if (active) View.GONE else View.VISIBLE
-        // 대기 중에는 제목이 주인공이라 흰색, 안내 중에는 거리가 주인공이라 제목을 흐리게.
-        turn.setTextColor(if (active) muted else text)
+        // 대기 중에는 제목이 주인공이라 검정, 안내 중에는 거리가 주인공이라 제목을 흐리게.
+        turn.setTextColor(if (active) inkSoft else ink)
 
         actionRow.visibility = if (active) View.VISIBLE else View.GONE
         badge.text = state.badge
@@ -119,6 +119,8 @@ class DriveScreen(private val activity: Activity) {
     private fun renderScore(state: CoachState) {
         val rate = if (state.total == 0) null else state.kept * 100 / state.total
         scoreRing.progress = rate ?: 0
+        // 링의 나머지(놓친 몫)는 놓친 판정이 있을 때만 빨강.
+        ringTrack.setColor(color(if (state.kept < state.total) R.color.miss else R.color.card_light_line))
         scoreRate.text = rate?.let { activity.getString(R.string.drive_today_rate, it) }
             ?: activity.getString(R.string.drive_today_none)
         todayKept.text = state.kept.toString()
@@ -131,7 +133,7 @@ class DriveScreen(private val activity: Activity) {
         val from = painted
         val lookChanged = paintedLook != null && paintedLook != look
         paintedLook = look
-        // 깜빡이 칩: 켜짐(파랑)은 상태 색으로 채우고, 꺼짐은 테두리만. 화살표 모양(꽉 참/빔)도 같이 바뀐다.
+        // 깜빡이 칩: 켜짐(파랑)은 상태 색으로 채우고, 꺼짐은 흰 바탕에 상태 색 테두리. 화살표 모양(꽉 참/빔)도 같이 바뀐다.
         val signalOn = look == CardLook.OK
         signalIcon.setImageResource(if (signalOn) R.drawable.ic_blinker_on else R.drawable.ic_blinker_off)
         // 레버 그림은 프레임마다 안내 종류가 바뀔 수 있어서 늘 다시 넘긴다.
@@ -151,16 +153,16 @@ class DriveScreen(private val activity: Activity) {
 
     private fun apply(palette: CardPalette, signalOn: Boolean, leverMotion: LeverMotion?) {
         painted = palette
-        cardFill.colors = intArrayOf(palette.tint, surface)
         cardFill.setStroke(activity.dp(CARD_EDGE_DP), palette.edge)
         iconCircle.setColor(palette.iconBg)
         turnIcon.imageTintList = ColorStateList.valueOf(palette.iconInk)
         badgeFill.setColor(palette.accent)
-        signalFill.setColor(if (signalOn) palette.accent else clear)
-        signalFill.setStroke(activity.dp(SIGNAL_EDGE_DP), palette.accent)
-        signal.setTextColor(if (signalOn) ink else text)
-        signalIcon.imageTintList = ColorStateList.valueOf(if (signalOn) ink else palette.accent)
-        lever.show(leverMotion, palette.accent)
+        signalFill.setColor(if (signalOn) palette.accent else white)
+        signalFill.setStroke(activity.dp(SIGNAL_EDGE_DP), palette.edge)
+        signal.setTextColor(ink)
+        signalIcon.imageTintList = ColorStateList.valueOf(if (signalOn) ink else palette.edge)
+        message.setTextColor(palette.note)
+        lever.show(leverMotion, palette.edge)
     }
 
     private fun color(id: Int) = activity.getColor(id)
@@ -168,7 +170,8 @@ class DriveScreen(private val activity: Activity) {
     private companion object {
         const val FADE_MS = 200L
         const val CARD_RADIUS_DP = 32
-        const val CARD_EDGE_DP = 3
+        /** 상태를 테두리로 보여주므로 굵게. */
+        const val CARD_EDGE_DP = 8
         const val SIGNAL_EDGE_DP = 3
         const val ACTIVE_ICON_PADDING_DP = 32
         const val IDLE_ICON_PADDING_DP = 52

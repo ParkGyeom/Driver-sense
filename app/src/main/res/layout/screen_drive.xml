@@ -2,8 +2,8 @@
 <!--
   주행 화면 (기획서 UI-1). 운전 중에 힐끗 보는 화면이라 3초 안에 위에서 아래로 읽히게 덩어리 셋만 둔다.
   1. 코치 카드: 무엇을(방향 그림 + 회전 + 남은 거리) → 지금 할 일(상태 배지) + 깜빡이 상태.
-     바탕은 어두운 surface, 상태 색(주황 = 켜세요, 파랑 = 좋아요, 빨강 = 놓침, 회색 = 대기)은 포인트로만 쓴다:
-     왼쪽 기운·테두리·방향 그림 원·행동 알약. 색만으로 구분하지 않게 알약 아이콘(! ✓ X)과 글자를 같이 쓴다.
+     흰 바탕에 검정 글자. 상태 색(노랑 = 켜세요, 파랑 = 좋아요, 빨강 = 놓침, 연회색 = 대기)은 굵은 테두리,
+     방향 그림 원, 행동 알약, 깜빡이 칩, 카드 밑 문구에 쓴다. 색만으로 구분하지 않게 알약 아이콘(! ✓ X)과 글자를 같이 쓴다.
   2. 한 줄 문구: 음성 안내나 판정 결과.
   3. 오늘 성적: 지킨 비율 링 + "지킴 n / 전체 m번".
   글자 크기는 거리(hero) > 상태 배지(display) > 회전·성적(title) > 문구(body) 순서. 읽는 순서를 크기로 정한다.
@@ -73,7 +73,7 @@
                     android:layout_marginTop="8dp"
                     android:maxLines="1"
                     android:text="@string/drive_idle_hint"
-                    android:textColor="@color/muted" />
+                    android:textColor="@color/ink_soft" />
             </LinearLayout>
 
             <!-- "어떻게 켜는지" 레버 그림. 초보 기능 안내(차선 변경, 전조등, 와이퍼)를 켜야 할 때만 보인다. -->
@@ -124,7 +124,7 @@
                 android:layout_height="0dp"
                 android:layout_weight="1" />
 
-            <!-- 깜빡이 상태: 켜짐은 상태 색으로 채운 칩 + 꽉 찬 화살표, 꺼짐은 테두리만 + 빈 화살표. -->
+            <!-- 깜빡이 상태: 켜짐은 상태 색으로 채운 칩 + 꽉 찬 화살표, 꺼짐은 흰 칩에 상태 색 테두리 + 빈 화살표. -->
             <LinearLayout
                 android:id="@+id/signalBox"
                 android:layout_width="wrap_content"
@@ -162,7 +162,7 @@
         android:maxLines="2"
         android:minLines="2" />
 
-    <!-- 3. 오늘 성적. 배경은 코드에서 cardBackground()로 칠한다. -->
+    <!-- 3. 오늘 성적. 흰 카드 (배경은 코드). 링은 지킨 몫 파랑, 놓친 몫 빨강. -->
     <LinearLayout
         android:id="@+id/scoreCard"
         style="@style/Kk.Card"
@@ -188,7 +188,7 @@
             <TextView
                 android:id="@+id/scoreRate"
                 style="@style/Kk.Caption"
-                android:textColor="@color/text"
+                android:textColor="@color/ink_strong"
                 android:layout_gravity="center"
                 android:textStyle="bold" />
         </FrameLayout>
@@ -202,7 +202,8 @@
 
             <TextView
                 style="@style/Kk.Caption"
-                android:text="@string/drive_today_title" />
+                android:text="@string/drive_today_title"
+                android:textColor="@color/ink_soft" />
 
             <!-- "지킴 3 / 전체 5번": 지킨 횟수만 크게. 글자 아래선(baseline)을 맞춘다. -->
             <LinearLayout
@@ -215,17 +216,18 @@
                     style="@style/Kk.Body"
                     android:layout_marginEnd="12dp"
                     android:text="@string/drive_today_kept"
-                    android:textColor="@color/muted" />
+                    android:textColor="@color/ink_soft" />
 
                 <TextView
                     android:id="@+id/todayKept"
-                    style="@style/Kk.Display" />
+                    style="@style/Kk.Display"
+                    android:textColor="@color/ink_strong" />
 
                 <TextView
                     android:id="@+id/todayTotal"
                     style="@style/Kk.Body"
                     android:layout_marginStart="12dp"
-                    android:textColor="@color/muted" />
+                    android:textColor="@color/ink_soft" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>

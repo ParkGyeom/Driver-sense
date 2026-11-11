@@ -23,6 +23,8 @@ class CoachSession(context: Context) {
     private val player = ScenarioPlayer(context)
     private val collector = SignalCollector(context)
     private val speaker = Speaker(context).apply { start() }
+    private val records = RecordStore(context)
+    private val modes = ModeStore(context)
     private var engine = Engine()
     private val listeners = mutableSetOf<Listener>()
     private val handler = Handler(Looper.getMainLooper())
@@ -40,7 +42,8 @@ class CoachSession(context: Context) {
         }
     }
 
-    var state = CoachState()
+    /** 앱·서비스를 다시 켜도 오늘 판정은 남는다. 날짜가 바뀌었으면 빈 상태로 시작한다. */
+    var state = restoredToday(records.load())
         private set
 
     /** 마지막 프레임. 화면이 새로 붙을 때 신호 칸과 기어를 맞추는 데 쓴다. */
@@ -131,6 +134,14 @@ class CoachSession(context: Context) {
     }
 
     private fun startDrive(label: String, key: String) {
+        // 켜 둔 채로 자정을 넘겼으면 어제 기록을 비우고 새 날로 시작한다.
+        if (records.dayChanged()) {
+            state = CoachState()
+            records.save(emptyList())
+        }
+        // TODO(엔진 모드 입력, spec v0.3 · AI 담당 P6): 나오면 modes.load()를 엔진에 넘긴다.
+        //  지금은 모드를 저장·표시만 하고, 안내는 모드와 관계없이 엔진이 내는 대로 읽는다.
+        Log.i(TAG, "주행 시작 모드: ${modes.load()}")
         engine = Engine()
         state = state.resetDrive(label)
         popup = null
@@ -142,7 +153,10 @@ class CoachSession(context: Context) {
         val outputs = engine.onFrame(frame)
         outputs.forEach { Log.i(TAG, "${frame.t} $it") }
         outputs.filterIsInstance<Guide>().forEach { speaker.speak(it.text) }
+        val eventsBefore = state.todayEvents.size
         state = state.next(frame, outputs)
+        // 판정이 새로 생겼을 때만 저장한다. 매 프레임 쓰지 않는다.
+        if (state.todayEvents.size != eventsBefore) records.save(state.todayEvents)
         updatePopup(outputs, frame)
         lastFrame = frame
         notifyChanged(frame)

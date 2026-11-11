@@ -1,91 +1,94 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   진단 리포트 (기획서 UI-3 앞부분). 기어 P일 때만 연다.
-  핵심 문구 한 줄, 상황별 준수율 막대(흰 선 = 전국 평균 75.7%), 습관 고르기 버튼.
-  막대 한 줄은 diagnose_row.xml을 코드에서 넣는다.
+  위: 제목 + 한 줄 요약(진단 기간).
+  히어로: 핵심 문구 한 줄 (가장 낮은 상황. 퍼센트는 크게, 평균보다 낮으면 주황 + ! 아이콘).
+  카드: 상황별 준수율 막대. 세로선 = 전국 평균 75.7%. 막대 한 줄은 diagnose_row.xml을 코드에서 넣는다.
+  아래: "고칠 습관 고르기" 버튼.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/diagnoseScreen"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:paddingHorizontal="32dp"
-    android:paddingTop="24dp"
-    android:paddingBottom="32dp"
+    android:padding="@dimen/kk_screen_padding"
     android:visibility="gone">
 
+    <!-- 머리: 제목 + 한 줄 요약 -->
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="56dp"
-        android:gravity="center_vertical"
-        android:text="@string/app_name"
-        android:textColor="@color/muted"
-        android:textSize="28sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/diagnose_title"
-        android:textColor="@color/text"
-        android:textSize="48sp"
-        android:textStyle="bold" />
+        style="@style/Kk.Title"
+        android:text="@string/diagnose_title" />
 
     <TextView
         android:id="@+id/diagnosePeriod"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="@color/muted"
-        android:textSize="24sp" />
+        style="@style/Kk.Caption"
+        android:layout_marginTop="4dp" />
 
-    <!-- 핵심 문구. 퍼센트 숫자만 코드에서 주황으로 칠한다. -->
-    <TextView
-        android:id="@+id/diagnoseHeadline"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="28dp"
-        android:paddingHorizontal="40dp"
-        android:paddingVertical="32dp"
-        android:textColor="@color/text"
-        android:textSize="52sp"
-        android:textStyle="bold" />
-
+    <!-- 히어로: 핵심 문구 -->
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="36dp"
+        android:id="@+id/diagnoseHero"
+        style="@style/Kk.Card"
+        android:layout_marginTop="@dimen/kk_gap_large"
         android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:paddingHorizontal="40dp">
 
+        <ImageView
+            android:id="@+id/diagnoseHeroIcon"
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:contentDescription="@null"
+            android:padding="22dp" />
+
+        <!-- 퍼센트 숫자만 코드에서 크게·색 칠한다 -->
         <TextView
+            android:id="@+id/diagnoseHeadline"
+            style="@style/Kk.Title"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/diagnose_rates"
-            android:textColor="@color/muted"
-            android:textSize="26sp" />
-
-        <View
-            android:layout_width="4dp"
-            android:layout_height="28dp"
-            android:layout_marginEnd="12dp"
-            android:background="@color/text" />
-
-        <TextView
-            android:id="@+id/diagnoseAverage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="@color/muted"
-            android:textSize="24sp" />
+            android:layout_marginStart="@dimen/kk_gap_large"
+            android:layout_weight="1" />
     </LinearLayout>
 
+    <!-- 상황별 준수율 -->
     <LinearLayout
-        android:id="@+id/diagnoseRows"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:orientation="vertical" />
+        android:id="@+id/diagnoseRatesCard"
+        style="@style/Kk.Card"
+        android:layout_marginTop="@dimen/kk_gap"
+        android:paddingHorizontal="40dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                style="@style/Kk.Body"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:text="@string/diagnose_rates"
+                android:textStyle="bold" />
+
+            <!-- 범례: 막대 위 세로선과 같은 모양 -->
+            <View
+                android:layout_width="6dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="12dp"
+                android:background="@color/text" />
+
+            <TextView
+                android:id="@+id/diagnoseAverage"
+                style="@style/Kk.Caption"
+                android:textColor="@color/text"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/diagnoseRows"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </LinearLayout>
 
     <Space
         android:layout_width="match_parent"
@@ -94,13 +97,11 @@
 
     <TextView
         android:id="@+id/diagnoseNext"
-        android:layout_width="wrap_content"
+        style="@style/Kk.Pill"
         android:layout_height="88dp"
         android:layout_gravity="end"
-        android:gravity="center"
         android:paddingHorizontal="48dp"
         android:text="@string/diagnose_next"
         android:textColor="@color/on_accent"
-        android:textSize="32sp"
-        android:textStyle="bold" />
+        android:textSize="@dimen/kk_text_body" />
 </LinearLayout>

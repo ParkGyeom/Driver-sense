@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  모드 설정 (F3. 기획서 4.3 진단·교정·연수·조용). 기어 P일 때만 보인다.
+  모드 카드(mode_card.xml) 4장을 2x2로 두고, 아래에 오늘 기록 저장 상태를 한 줄로 보여준다.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/modeScreen"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="@dimen/kk_screen_padding"
+    android:visibility="gone">
+
+    <TextView
+        style="@style/Kk.Title"
+        android:layout_marginTop="56dp"
+        android:text="@string/nav_mode_title" />
+
+    <TextView
+        style="@style/Kk.Caption"
+        android:layout_marginTop="8dp"
+        android:text="@string/mode_hint" />
+
+    <!-- 2x2 칸. 카드는 ModeScreen이 DriveMode 순서대로 채운다. -->
+    <LinearLayout
+        android:id="@+id/modeRowTop"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/kk_gap_large"
+        android:layout_weight="1"
+        android:orientation="horizontal" />
+
+    <LinearLayout
+        android:id="@+id/modeRowBottom"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/kk_gap"
+        android:layout_weight="1"
+        android:orientation="horizontal" />
+
+    <TextView
+        android:id="@+id/modeRecords"
+        style="@style/Kk.Body"
+        android:layout_marginTop="@dimen/kk_gap_large"
+        android:gravity="center_vertical" />
+</LinearLayout>

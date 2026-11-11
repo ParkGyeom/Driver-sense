@@ -208,6 +208,19 @@ private fun CoachState.guidedFor(target: Target): Boolean = when (guideAction) {
 fun CoachState.resetDrive(label: String): CoachState =
     CoachState(message = "", driveLabel = label, kept = kept, total = total, logs = logs, todayEvents = todayEvents)
 
+/**
+ * 앱을 다시 켰을 때 저장해 둔 오늘 판정으로 상태를 만든다 ([RecordStore]).
+ * 지킨 횟수와 기록 줄은 판정에서 다시 센다. 음성 안내 줄과 주행 이름(S2 등)은 저장하지 않아서 빠진다.
+ */
+fun restoredToday(events: List<Event>): CoachState {
+    val base = CoachState(todayEvents = events)
+    return base.copy(
+        kept = events.count { it.result == Result.KEPT },
+        total = events.size,
+        logs = events.map { base.logLine(it.t, "${it.title()} ${it.result.label()}") },
+    )
+}
+
 private fun CoachState.logLine(t: Long, text: String): String =
     listOf(driveLabel, t.timeLabel(), text).filter { it.isNotEmpty() }.joinToString(" ")
 

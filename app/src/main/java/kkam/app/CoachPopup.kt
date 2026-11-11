@@ -1,6 +1,8 @@
 package kkam.app
 
+import android.animation.ValueAnimator
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
@@ -25,10 +27,29 @@ class CoachPopup(context: Context) : CoachNotifier {
     private val card: View = LayoutInflater.from(this.context).inflate(R.layout.popup_card, null)
     private val icon: ImageView = card.findViewById(R.id.popupIcon)
     private val turn: TextView = card.findViewById(R.id.popupTurn)
+    private val distance: TextView = card.findViewById(R.id.popupDistance)
+    private val badgeIcon: ImageView = card.findViewById(R.id.popupBadgeIcon)
     private val headline: TextView = card.findViewById(R.id.popupHeadline)
     private val lever: LeverGuideView = card.findViewById(R.id.popupLever)
+    private val ink = this.context.getColor(R.color.on_accent)
+
+    // 배경은 한 번만 만들고 색만 바꾼다. 카드 = 상태 색, 배지 = 카드 색을 뒤집은 어두운 알약.
+    private val cardFill = GradientDrawable().apply { cornerRadius = 32 * density }
+    private val badgeFill = GradientDrawable().apply {
+        setColor(ink)
+        cornerRadius = BADGE_RADIUS_DP * density
+    }
     private var attached = false
     private var shown: Popup? = null
+    /** 지금 칠해진 카드 색. 주황 → 파랑처럼 색이 바뀔 때 한 번만 페이드한다. */
+    private var paintedFill: Int? = null
+    private var fade: ValueAnimator? = null
+
+    init {
+        card.background = cardFill
+        card.findViewById<View>(R.id.popupBadge).background = badgeFill
+        icon.imageTintList = ColorStateList.valueOf(ink)
+    }
 
     /** popup이 null이면 숨긴다. area는 앱 칸(내비 자리)의 크기. 모르면 화면 가운데. */
     override fun show(popup: Popup?, area: Rect?) {
@@ -58,22 +79,46 @@ class CoachPopup(context: Context) : CoachNotifier {
     }
 
     private fun hide() {
+        fade?.cancel()
         if (!attached) return
         runCatching { windowManager.removeView(card) }
         attached = false
     }
 
+    /** 주행 화면 코치 카드와 같은 순서: 방향 그림 → 회전·거리 → 상태 배지. */
     private fun draw(popup: Popup) {
         val fill = context.getColor(if (popup.tone == PopupTone.OK) R.color.ok else R.color.warn)
-        card.background = GradientDrawable().apply {
-            setColor(fill)
-            cornerRadius = 32 * density
-        }
         icon.setImageResource(guideIconRes(popup.kind, popup.right))
-        icon.setColorFilter(context.getColor(R.color.on_accent))
-        turn.text = listOf(popup.turnLabel, popup.distanceLabel).filter { it.isNotEmpty() }.joinToString(" ")
+        turn.text = popup.turnLabel
+        distance.text = numberEmphasis(popup.distanceLabel)
+        distance.visibility = if (popup.distanceLabel.isEmpty()) View.GONE else View.VISIBLE
         headline.text = popup.headline
-        lever.show(leverFor(popup.kind, popup.right, popup.tone == PopupTone.WARN), context.getColor(R.color.on_accent))
+        badgeIcon.setImageResource(if (popup.tone == PopupTone.OK) R.drawable.ic_check else R.drawable.ic_alert)
+        lever.show(leverFor(popup.kind, popup.right, popup.tone == PopupTone.WARN), ink)
+        paint(fill)
+    }
+
+    /** 카드 색. 이미 떠 있는 카드의 색이 바뀔 때(켜세요 → 좋아요)만 [FADE_MS] 동안 한 번 페이드한다. */
+    private fun paint(fill: Int) {
+        val from = paintedFill
+        fade?.cancel()
+        if (from == null || from == fill || !attached) {
+            applyFill(fill)
+            return
+        }
+        fade = ValueAnimator.ofArgb(from, fill).apply {
+            duration = FADE_MS
+            addUpdateListener { applyFill(it.animatedValue as Int) }
+            start()
+        }
+    }
+
+    private fun applyFill(fill: Int) {
+        paintedFill = fill
+        cardFill.setColor(fill)
+        // 배지 글자·그림은 카드 색을 뒤집어 쓴다.
+        headline.setTextColor(fill)
+        badgeIcon.imageTintList = ColorStateList.valueOf(fill)
     }
 
     /**
@@ -106,5 +151,6 @@ class CoachPopup(context: Context) : CoachNotifier {
         const val TAG = "KkamPopup"
         const val FADE_MS = 200L
         const val TOP_MARGIN_DP = 24
+        const val BADGE_RADIUS_DP = 999
     }
 }

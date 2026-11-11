@@ -35,6 +35,20 @@
             android:layout_weight="1"
             android:visibility="gone">
 
+            <!-- 경로 데모 속도. 계기판에는 0 km/h를 보내므로(앱 화면이 가려지지 않게) 속도는 지도에 보여준다. -->
+            <TextView
+                android:id="@+id/routeMapSpeed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|start"
+                android:layout_margin="@dimen/kk_gap"
+                android:background="@drawable/bg_map_speed"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="8dp"
+                android:textColor="#0B0E13"
+                android:textSize="40sp"
+                android:textStyle="bold" />
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

@@ -31,6 +31,7 @@
     <string name="route_report_empty">이번 경로에는 판정이 없어요</string>
 
     <!-- 앱 안 지도 출처 표시 (OpenStreetMap 이용 조건) -->
+    <string name="route_map_speed">%d km/h</string>
     <string name="route_map_attribution">© OpenStreetMap contributors</string>
 
     <!-- 데모 패널 -->

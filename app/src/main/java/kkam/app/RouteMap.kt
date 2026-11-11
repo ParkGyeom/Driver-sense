@@ -3,6 +3,7 @@ package kkam.app
 import android.app.Activity
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.TextView
 import kkam.engine.model.SignalFrame
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -12,6 +13,7 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 import java.io.File
+import kotlin.math.roundToInt
 
 /**
  * 경로 데모의 앱 안 지도 (osmdroid, OpenStreetMap 타일). 주행 화면 왼쪽 칸(routeMapPanel)에 그린다.
@@ -20,6 +22,7 @@ import java.io.File
  */
 class RouteMap(private val activity: Activity) {
     private val panel: FrameLayout = activity.findViewById(R.id.routeMapPanel)
+    private val speed: TextView = activity.findViewById(R.id.routeMapSpeed)
     private val map: MapView
     private val line = Polyline()
     private val car: Marker
@@ -80,6 +83,7 @@ class RouteMap(private val activity: Activity) {
             car.position = here
             map.mapOrientation = -frame.headingDeg.toFloat()
             map.controller.setCenter(here)
+            speed.text = activity.getString(R.string.route_map_speed, frame.speedKph.roundToInt())
         }
         map.invalidate()
     }

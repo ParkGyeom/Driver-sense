@@ -77,8 +77,13 @@ class MainActivity : Activity() {
     /** 안내 종류 미리보기에서 다음에 보여줄 종류. */
     private var previewIndex = 0
 
-    /** 데모: 시나리오를 틀면 내비를 앞으로 띄운다 (내비 위 팝업 시연용). */
-    private var naviAfterPlay = false
+    /**
+     * 데모: 시나리오를 틀면 내비를 앞으로 띄운다 (내비 위 팝업 시연용).
+     * 내비와 앱 칸이 바뀔 때 시스템이 이 화면을 다시 만들기 때문에, 변수에만 두면 "끔"으로 돌아간다. 그래서 저장해 둔다.
+     */
+    private var naviAfterPlay: Boolean
+        get() = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_NAVI_AFTER_PLAY, false)
+        set(value) = getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_NAVI_AFTER_PLAY, value).apply()
     /** 지금 screenSlot에 보이는 화면. 마지막 프레임의 기어로 정한다. */
     private var screen = Screen.DRIVE
     /** 마지막 프레임의 기어. 아직 프레임이 없으면 null. 진단·습관 선택은 P일 때만 연다. */
@@ -432,6 +437,7 @@ class MainActivity : Activity() {
         const val REQUEST_NOTIFY = 2
         const val PREFS = "kkam"
         const val KEY_OVERLAY_ASKED = "overlay_asked"
+        const val KEY_NAVI_AFTER_PLAY = "navi_after_play"
         val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")
         val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호", "전조등")
     }

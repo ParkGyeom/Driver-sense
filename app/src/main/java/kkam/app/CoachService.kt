@@ -30,6 +30,8 @@ class CoachService : Service() {
     private val binder = LocalBinder()
     private var bound = false
     private var lastGear: Gear? = null
+    /** 기어 P를 지난 뒤 아직 D로 출발하지 않았으면 true. P → R → D처럼 후진으로 빠져나와도 출발로 본다. */
+    private var waitingDeparture = false
     private val onSessionChanged = CoachSession.Listener { frame ->
         // 앱 화면이 보이면 코치 카드가 같은 내용을 보여주므로 팝업은 숨긴다.
         val shown = if (session.appVisible) null else session.popup
@@ -37,7 +39,7 @@ class CoachService : Service() {
         val (use, other) = if (Settings.canDrawOverlays(this)) popup to headsUp else headsUp to popup
         other.show(null, null)
         use.show(shown, session.appArea)
-        frame?.let { openAppWhenParked(it.gear) }
+        frame?.let { onGear(it.gear) }
         stopIfIdle()
     }
 
@@ -74,12 +76,21 @@ class CoachService : Service() {
         super.onDestroy()
     }
 
-    /** 주행 중 내비를 보다가 기어를 P로 바꾸면 우리 앱을 앞으로 띄워 리포트를 보여준다 (기획서 4.2의 5번). */
-    private fun openAppWhenParked(gear: Gear) {
+    /**
+     * 기어에 따라 앞에 둘 화면을 바꾼다 (기획서 4.2).
+     * - 주행 중 내비를 보다가 기어를 P로 바꾸면 우리 앱을 앞으로 띄워 리포트를 보여준다 (5번).
+     * - P에서 출발해 처음 D가 되면 내비를 앞으로 띄운다. 주행 중 평소 화면은 내비다 (1번).
+     */
+    private fun onGear(gear: Gear) {
         val parkedNow = gear == Gear.P && lastGear != null && lastGear != Gear.P
         lastGear = gear
+        if (gear == Gear.P) waitingDeparture = true
         if (parkedNow && !session.appVisible) {
             startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+        }
+        if (gear == Gear.D && waitingDeparture) {
+            waitingDeparture = false
+            if (session.appVisible) NaviLauncher.open(this)
         }
     }
 

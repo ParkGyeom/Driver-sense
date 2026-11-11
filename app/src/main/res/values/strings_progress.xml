@@ -6,8 +6,8 @@
     <!-- 예: "진단 때 62%보다 +15%p" -->
     <string name="progress_change_up">진단 때 %1$d%%보다 +%2$d%%p</string>
     <string name="progress_change_down">진단 때 %1$d%%보다 %2$d%%p</string>
-    <!-- 예: "선 = 진단 때 62%" -->
-    <string name="progress_diagnosis_line">선 = 진단 때 %d%%</string>
+    <!-- 예: "가로선 = 진단 때 62%" -->
+    <string name="progress_diagnosis_line">가로선 = 진단 때 %d%%</string>
     <string name="progress_today">오늘</string>
     <string name="progress_no_drive">–</string>
     <string name="progress_guide_conversion">안내 듣고 지킴</string>

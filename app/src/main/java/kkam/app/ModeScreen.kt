@@ -72,8 +72,8 @@ class ModeScreen(
         track.background = if (on) activity.pillBackground(ok) else activity.pillBackground(activity.getColor(R.color.surface_2), strokeColor = line)
         thumb.setText(if (on) R.string.mode_switch_on else R.string.mode_switch_off)
         thumb.setTextColor(activity.getColor(if (on) R.color.ok else R.color.muted))
-        // 켬: 파란 트랙 위 흰 손잡이에 파란 글자. text 색은 밝은 테마에서 검정이 되므로 on_accent(흰색)를 쓴다.
-        thumb.background = activity.pillBackground(activity.getColor(if (on) R.color.on_accent else R.color.line))
+        // 손잡이는 늘 흰 동그라미(surface). 켬이면 파란 트랙 위에 파란 글자, 끔이면 회색 테두리에 회색 글자.
+        thumb.background = activity.pillBackground(activity.getColor(R.color.surface), strokeColor = if (on) null else line)
         (thumb.layoutParams as FrameLayout.LayoutParams).gravity = Gravity.CENTER_VERTICAL or (if (on) Gravity.END else Gravity.START)
         thumb.requestLayout()
         card.contentDescription = activity.getString(if (on) R.string.mode_on_title else R.string.mode_off_title)

@@ -12,7 +12,7 @@ import kkam.engine.model.Result
 /**
  * 경로 리포트 (screen_route_report.xml). 경로가 끝나고 기어 P가 되면 보인다.
  * 이번 경로의 판정만 묶고, 잘못한 점(놓친 곳)을 먼저 보여준다. 카드 값은 [routeReportItems]에서 온다.
- * 오늘 리포트([ReportScreen])와 파일을 나눠 서로 디자인을 바꿔도 겹치지 않게 했다.
+ * 오늘 리포트([ReportScreen])와 화면·행 레이아웃 파일을 나눠 서로 디자인을 바꿔도 겹치지 않게 했다.
  */
 class RouteReportScreen(
     private val activity: Activity,
@@ -63,25 +63,25 @@ class RouteReportScreen(
         cards.forEachIndexed { index, item -> addItem(item, isLast = index == cards.lastIndex) }
     }
 
-    /** 판정 카드 한 장. 오늘 리포트와 같은 report_item.xml을 쓴다. 놓침 = 빨강 !, 지킴 = 파랑 ✓. */
+    /** 판정 카드 한 장. 경로 리포트 전용 route_report_item.xml을 쓴다. 놓침 = 빨강 !, 지킴 = 파랑 ✓. */
     private fun addItem(item: ReportItem, isLast: Boolean) {
-        val row = activity.layoutInflater.inflate(R.layout.report_item, items, false)
+        val row = activity.layoutInflater.inflate(R.layout.route_report_item, items, false)
         val tone = activity.getColor(if (item.kept) R.color.ok else R.color.miss)
         val toneSoft = activity.getColor(if (item.kept) R.color.ok_soft else R.color.miss_soft)
-        row.findViewById<ImageView>(R.id.itemIcon).apply {
+        row.findViewById<ImageView>(R.id.routeItemIcon).apply {
             setImageResource(if (item.kept) R.drawable.ic_kk_check else R.drawable.ic_kk_alert)
             imageTintList = ColorStateList.valueOf(tone)
             background = activity.rounded(toneSoft, radiusDp = 999)
         }
-        row.findViewById<View>(R.id.itemLine).visibility = if (isLast) View.INVISIBLE else View.VISIBLE
-        row.findViewById<View>(R.id.itemCard).background = activity.cardBackground()
-        row.findViewById<TextView>(R.id.itemTitle).apply {
+        row.findViewById<View>(R.id.routeItemLine).visibility = if (isLast) View.INVISIBLE else View.VISIBLE
+        row.findViewById<View>(R.id.routeItemCard).background = activity.cardBackground()
+        row.findViewById<TextView>(R.id.routeItemTitle).apply {
             text = item.title
             setTextColor(if (item.kept) activity.getColor(R.color.text) else tone)
         }
-        row.findViewById<TextView>(R.id.itemDetail).text = item.detail
-        row.findViewById<TextView>(R.id.itemArticle).chip(item.article, activity.getColor(R.color.surface_2))
-        row.findViewById<TextView>(R.id.itemPenalty).chip(item.penalty, if (item.kept) activity.getColor(R.color.surface_2) else toneSoft)
+        row.findViewById<TextView>(R.id.routeItemDetail).text = item.detail
+        row.findViewById<TextView>(R.id.routeItemArticle).chip(item.article, activity.getColor(R.color.surface_2))
+        row.findViewById<TextView>(R.id.routeItemPenalty).chip(item.penalty, if (item.kept) activity.getColor(R.color.surface_2) else toneSoft)
         items.addView(row)
     }
 

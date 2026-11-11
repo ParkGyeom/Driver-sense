@@ -3,7 +3,7 @@
   경로 리포트 (기어 P에서만). 내비 경로(또는 경로 데모)가 끝나면 오늘 리포트 대신 보여준다.
   위: "○○ 경로 리포트" + 한 줄 요약 ("도착했어요 · 4번 중 3번 지켰어요").
   왼쪽: 놓친 곳 수(크게), 지킨 곳 수, 아낀 범칙금.
-  오른쪽: 판정 카드(report_item.xml). 놓친 곳(잘못한 점)이 먼저 온다.
+  오른쪽: 판정 카드(route_report_item.xml). 놓친 곳(잘못한 점)이 먼저 온다.
   오늘 리포트(screen_report.xml)와 따로 둔다. 배경은 RouteReportScreen.kt에서 Ui.kt 헬퍼로 칠한다.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"

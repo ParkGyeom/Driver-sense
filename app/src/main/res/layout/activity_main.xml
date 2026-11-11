@@ -47,6 +47,8 @@
             <include layout="@layout/screen_qna" />
 
             <include layout="@layout/screen_mode" />
+
+            <include layout="@layout/screen_route_preview" />
         </FrameLayout>
     </LinearLayout>
 

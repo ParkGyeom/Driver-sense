@@ -1,6 +1,7 @@
 package kkam.app
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
@@ -26,6 +27,9 @@ class CoachSession(context: Context) {
     private val records = RecordStore(context)
     private val modes = ModeStore(context)
     private var engine = Engine()
+    /** 내비 경로 시작·끝을 듣는다. 경로가 시작되면 실제 신호 코치를 켜고 경로를 붙인다. */
+    private val routes = RouteWatcher(context, onStarted = ::onRouteStarted, onEnded = ::onRouteEnded).apply { start() }
+    private val appContext = context.applicationContext
     private val listeners = mutableSetOf<Listener>()
     private val handler = Handler(Looper.getMainLooper())
     private val hideOkPopup = Runnable {
@@ -87,6 +91,57 @@ class CoachSession(context: Context) {
         })
     }
 
+    /**
+     * PT용 경로 데모. 기존 시나리오 몇 개를 이어 한 경로처럼 재생한다 ([RouteDemo]).
+     * 출발 전 기어 P에서 경로 미리보기, 회전마다 코치, 도착하면 경로 리포트.
+     */
+    fun playRouteDemo() {
+        stopAll()
+        val run = RouteDemo.build(RouteDemo.LEGS.map(player::load))
+        startDrive(ROUTE_DEMO, ROUTE_DEMO)
+        attachRoute(run.plan)
+        player.playFrames(run.frames, onFrame = ::onFrame, onEnd = {
+            state = state.endRoute(RouteStatus.ARRIVED)
+            running = null
+            notifyChanged(null)
+        })
+    }
+
+    /**
+     * 내비 경로가 시작됐다 (전이표는 [routeStartAction]).
+     * 멈춰 있었으면 실제 신호 코치를 켠다. 위치·속도 권한이 없으면 켜지 않는다 (권한은 화면에서만 물을 수 있다).
+     */
+    private fun onRouteStarted(plan: RoutePlan) {
+        when (routeStartAction(running)) {
+            RouteStartAction.START_LIVE -> {
+                if (!hasLivePermissions()) {
+                    Log.w(TAG, "경로가 시작됐지만 위치·속도 권한이 없어 코치를 켜지 않음")
+                    return
+                }
+                startLive()
+            }
+            RouteStartAction.ATTACH -> Unit
+            RouteStartAction.IGNORE -> return
+        }
+        attachRoute(plan)
+    }
+
+    /** 내비 경로가 끝났다. 시나리오·경로 데모 재생 중이면 실제 내비 이벤트로 끝내지 않는다. */
+    private fun onRouteEnded(status: RouteStatus) {
+        if (running != LIVE && running != null) return
+        state = state.endRoute(status)
+        notifyChanged(null)
+    }
+
+    private fun attachRoute(plan: RoutePlan) {
+        state = state.startRoute(plan)
+        speaker.speak(state.message)
+        notifyChanged(null)
+    }
+
+    private fun hasLivePermissions(): Boolean =
+        LIVE_PERMISSIONS.all { appContext.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
+
     /** 실제 차량 신호로 주행을 시작한다. 권한 확인은 화면 쪽에서 먼저 한다. */
     fun startLive() {
         stopAll()
@@ -128,6 +183,7 @@ class CoachSession(context: Context) {
 
     fun release() {
         stopAll()
+        routes.release()
         handler.removeCallbacksAndMessages(null)
         speaker.release()
         listeners.clear()
@@ -178,6 +234,10 @@ class CoachSession(context: Context) {
 
     companion object {
         const val LIVE = "실차"
+        /** 경로 데모 재생 중일 때 [running] 값. 기록 앞에도 붙는다. */
+        const val ROUTE_DEMO = "경로"
+        /** 실제 차량 신호에 필요한 런타임 권한. 화면이 묻고, 경로 자동 시작은 있는지만 본다. */
+        val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")
         private const val OK_POPUP_MS = 3000L
         private const val PREVIEW_POPUP_MS = 6000L
         private const val TAG = "KkamCoach"

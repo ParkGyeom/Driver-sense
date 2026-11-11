@@ -18,10 +18,18 @@ class ScenarioPlayer(private val context: Context) {
         .filter { it.matches(Regex("""S\d+_.*\.json""")) }
         .sortedBy { it.drop(1).substringBefore('_').toInt() }
 
-    fun play(fileName: String, onFrame: (SignalFrame) -> Unit, onEnd: () -> Unit) {
-        stop()
+    /** 시나리오 파일의 프레임. 경로 데모가 여러 파일을 이어 붙일 때도 쓴다. */
+    fun load(fileName: String): List<SignalFrame> {
         val text = context.assets.open(fileName).bufferedReader().use { it.readText() }
-        val frames = json.decodeFromString(Scenario.serializer(), text).frames
+        return json.decodeFromString(Scenario.serializer(), text).frames
+    }
+
+    fun play(fileName: String, onFrame: (SignalFrame) -> Unit, onEnd: () -> Unit) =
+        playFrames(load(fileName), onFrame, onEnd)
+
+    /** 프레임을 t(0부터 ms)에 맞춰 내보낸다. 끝나고 [END_HOLD_MS] 뒤에 [onEnd]. */
+    fun playFrames(frames: List<SignalFrame>, onFrame: (SignalFrame) -> Unit, onEnd: () -> Unit) {
+        stop()
         for (frame in frames) {
             handler.postDelayed({ onFrame(frame) }, token, frame.t)
         }

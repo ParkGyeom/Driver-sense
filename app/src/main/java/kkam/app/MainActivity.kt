@@ -89,6 +89,9 @@ class MainActivity : Activity() {
     private lateinit var progressScreen: ProgressScreen
     private lateinit var qnaScreen: QnaScreen
     private lateinit var modeScreen: ModeScreen
+    private lateinit var routePreviewScreen: RoutePreviewScreen
+    /** 미리보기 화면을 이미 정한 경로. 같은 경로에서 미리보기를 다시 열지 않는다. */
+    private var routeHandled: RouteTrip? = null
     private lateinit var parkedNav: ParkedNav
     /** 진단 값. TODO(AI 담당 습관 인사이트, 12/1): 실제 계산 구현으로 바꾼다. */
     private val diagnosisSource: DiagnosisSource = DemoDiagnosisSource
@@ -111,6 +114,7 @@ class MainActivity : Activity() {
         addNaviButton()
         addPreviewButton()
         addLiveButton()
+        addButton(CoachSession.ROUTE_DEMO, getString(R.string.demo_route)) { playRouteDemo() }
         ScenarioPlayer(this).fileNames().forEach(::addScenarioButton)
         setUpDemoToggle()
         render()
@@ -215,6 +219,7 @@ class MainActivity : Activity() {
         progressScreen = ProgressScreen(this)
         qnaScreen = QnaScreen(this)
         modeScreen = ModeScreen(this)
+        routePreviewScreen = RoutePreviewScreen(this) { diagnosisSource.load() }
         parkedNav = ParkedNav(this, onSelect = ::showParked)
         habitScreens = HabitScreens(
             activity = this,
@@ -284,6 +289,14 @@ class MainActivity : Activity() {
         if (naviAfterPlay) NaviLauncher.open(this)
     }
 
+    /** 데모: 시나리오를 이어 한 경로처럼 재생한다 (출발 전 미리보기 → 회전마다 코치 → 도착 리포트). */
+    private fun playRouteDemo() {
+        val current = session ?: return
+        screen = Screen.DRIVE
+        current.playRouteDemo()
+        if (naviAfterPlay) NaviLauncher.open(this)
+    }
+
     /** 실제 차량 신호로 주행을 시작한다. 위치와 속도는 런타임 권한이 필요하다. */
     private fun toggleLive() {
         val current = session ?: return
@@ -314,9 +327,22 @@ class MainActivity : Activity() {
             gear = frame.gear
             screen = nextScreen(screen, frame.gear)
             showSignals(frame)
+            openRoutePreview(frame.gear)
         }
         highlight(session?.running)
         render()
+    }
+
+    /**
+     * 경로가 새로 붙은 뒤 첫 프레임에서 한 번만: 기어 P(출발 전)면 경로 미리보기를 연다.
+     * 경로를 붙인 순간의 기어는 앞 주행의 값일 수 있어서, 새 프레임의 기어로 정한다.
+     */
+    private fun openRoutePreview(frameGear: Gear) {
+        val trip = state.route ?: return
+        val handled = routeHandled
+        if (handled != null && trip.plan == handled.plan && trip.firstEventIndex == handled.firstEventIndex) return
+        screen = screenOnRouteStart(screen, frameGear) ?: return
+        routeHandled = trip
     }
 
     private fun showSignals(frame: SignalFrame) {
@@ -338,7 +364,9 @@ class MainActivity : Activity() {
         progressScreen.show(screen)
         qnaScreen.show(screen)
         modeScreen.show(screen)
+        routePreviewScreen.show(screen)
         if (screen == Screen.REPORT) reportScreen.render(state)
+        if (screen == Screen.ROUTE_PREVIEW) routePreviewScreen.render(state)
         driveScreen.render(state)
         view.logs.text = state.logs.takeLast(MAX_LOGS).reversed().joinToString("\n").ifEmpty { getString(R.string.demo_no_logs) }
     }
@@ -432,7 +460,7 @@ class MainActivity : Activity() {
         const val REQUEST_NOTIFY = 2
         const val PREFS = "kkam"
         const val KEY_OVERLAY_ASKED = "overlay_asked"
-        val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")
+        val LIVE_PERMISSIONS = CoachSession.LIVE_PERMISSIONS
         val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호", "전조등")
     }
 }

@@ -1,6 +1,7 @@
 package kkam.app
 
 import kkam.engine.model.Event
+import kkam.engine.model.LawEntry
 import kkam.engine.model.Result
 import kkam.engine.model.RuleId
 import kkam.engine.model.TurnType
@@ -185,6 +186,13 @@ fun routeStartAction(running: String?): RouteStartAction = when (running) {
 /** 경로를 붙인다. 이 시점까지의 오늘 판정은 이 경로 판정에서 뺀다. */
 fun CoachState.startRoute(plan: RoutePlan): CoachState =
     copy(route = RouteTrip(plan, firstEventIndex = todayEvents.size), message = routeStartMessage(plan))
+
+/**
+ * 경로 리포트 카드 목록. 이 경로의 판정만, 놓친 곳(잘못한 점)을 먼저, 그다음 지킨 곳. 같은 종류 안에서는 최근 것이 위.
+ * 카드 내용(제목, 조항, 처분)은 오늘 리포트와 같은 [buildReport]로 만든다.
+ */
+fun routeReportItems(trip: RouteTrip, todayEvents: List<Event>, laws: List<LawEntry> = emptyList()): List<ReportItem> =
+    buildReport(trip.events(todayEvents), laws).items.sortedBy { it.kept }
 
 /** 경로가 끝났다. 안내 중인 경로만 끝낸다 (끝난 경로에 도착이 또 와도 바꾸지 않는다). */
 fun CoachState.endRoute(status: RouteStatus): CoachState {

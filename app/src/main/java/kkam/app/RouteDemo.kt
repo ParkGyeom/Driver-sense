@@ -70,8 +70,8 @@ object RouteDemo {
 
     data class DemoRoute(val destination: String, val points: List<LatLon>, val maneuvers: List<Maneuver>)
 
-    /** 데모 한 번: 경로 정보와 재생할 프레임. */
-    data class Run(val plan: RoutePlan, val frames: List<SignalFrame>)
+    /** 데모 한 번: 경로 정보, 재생할 프레임, 도착 프레임의 시각 (이때 경로를 도착으로 끝낸다). */
+    data class Run(val plan: RoutePlan, val frames: List<SignalFrame>, val arriveAt: Long)
 
     /** assets의 경로 데모 JSON을 읽는다. 모양: {"destination", "points": [[lat, lon], ...], "maneuvers": [{"turn", "point"}]} */
     fun parse(text: String): DemoRoute {
@@ -115,6 +115,7 @@ object RouteDemo {
 
         // 도착: 멈추고 기어 P. 내비 안내도 끝난다.
         val end = path.length
+        val arriveAt = t
         frames += frame(t, path, end, 0.0, Gear.D, TurnSignal.OFF, brake = true, tbt = null)
         repeat(PARKED_FRAMES) {
             t += FRAME_MS
@@ -127,7 +128,7 @@ object RouteDemo {
             turns = route.maneuvers.map { it.turn },
             path = route.points,
         )
-        return Run(plan, frames)
+        return Run(plan, frames, arriveAt)
     }
 
     private data class Turn(val turn: TurnType, val atM: Double)

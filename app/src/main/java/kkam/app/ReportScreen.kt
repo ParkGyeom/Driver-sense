@@ -17,7 +17,6 @@ import kotlin.math.roundToInt
 
 /**
  * 오늘 주행 리포트 (기획서 UI-2, screen_report.xml). 기어 P일 때만 보인다.
- * 내비 경로를 따라 달렸으면 그 경로의 판정만 묶은 경로 리포트가 된다.
  * 값은 [buildReport]에서만 온다.
  *
  * 화면 구성
@@ -31,7 +30,6 @@ class ReportScreen(
     private val laws: () -> List<LawEntry>,
 ) {
     private val root: View = activity.findViewById(R.id.reportScreen)
-    private val title: TextView = activity.findViewById(R.id.reportTitle)
     private val summary: TextView = activity.findViewById(R.id.reportSummary)
     private val saved: TextView = activity.findViewById(R.id.reportSaved)
     private val ring: RateRingView = activity.findViewById(R.id.reportRing)
@@ -41,8 +39,8 @@ class ReportScreen(
     private val items: LinearLayout = activity.findViewById(R.id.reportItems)
     private val empty: View = activity.findViewById(R.id.reportEmpty)
 
-    /** 리포트를 마지막으로 그린 경로와 판정 목록. 같으면 다시 그리지 않는다. */
-    private var drawnFor: Pair<RouteTrip?, List<Event>>? = null
+    /** 리포트 카드를 마지막으로 그린 판정 목록. 같으면 다시 그리지 않는다. */
+    private var drawnFor: List<Event>? = null
 
     init {
         activity.findViewById<View>(R.id.reportHero).background = activity.cardBackground()
@@ -56,19 +54,11 @@ class ReportScreen(
         root.visibility = if (screen == Screen.REPORT) View.VISIBLE else View.GONE
     }
 
-    /**
-     * 판정 목록이나 경로가 바뀌었을 때만 다시 그린다.
-     * 내비 경로를 따라 달렸으면 그 경로의 판정만 묶어 "○○ 경로 리포트"로, 아니면 오늘 전체 리포트로 그린다.
-     */
+    /** 판정 목록이 바뀌었을 때만 다시 그린다. */
     fun render(state: CoachState) {
-        val key = state.route to state.todayEvents
-        if (drawnFor == key) return
-        drawnFor = key
-        val trip = state.route
-        draw(buildReport(trip?.events(state.todayEvents) ?: state.todayEvents, laws()))
-        title.text = trip?.let { activity.getString(R.string.route_report_title, it.plan.destination) }
-            ?: activity.getString(R.string.report_title)
-        if (trip != null) summary.text = routeSummary(trip, state.todayEvents)
+        if (drawnFor == state.todayEvents) return
+        drawnFor = state.todayEvents
+        draw(buildReport(state.todayEvents, laws()))
     }
 
     private fun draw(report: DriveReport) {

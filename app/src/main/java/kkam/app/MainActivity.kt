@@ -53,7 +53,7 @@ class MainActivity : Activity() {
             // 서비스가 먼저 돌고 있었으면 (내비를 보다가 돌아온 경우) 마지막 프레임으로 화면을 맞춘다.
             connected.lastFrame?.let { frame ->
                 gear = frame.gear
-                screen = nextScreen(screen, frame.gear)
+                screen = nextScreen(screen, frame.gear, connected.state.route)
                 showSignals(frame)
             }
             highlight(connected.running)
@@ -91,6 +91,7 @@ class MainActivity : Activity() {
     private lateinit var modeScreen: ModeScreen
     private lateinit var routePreviewScreen: RoutePreviewScreen
     private lateinit var routeMap: RouteMap
+    private lateinit var routeReportScreen: RouteReportScreen
     /** 미리보기 화면을 이미 정한 경로. 같은 경로에서 미리보기를 다시 열지 않는다. */
     private var routeHandled: RouteTrip? = null
     private lateinit var parkedNav: ParkedNav
@@ -229,6 +230,7 @@ class MainActivity : Activity() {
         modeScreen = ModeScreen(this)
         routePreviewScreen = RoutePreviewScreen(this) { diagnosisSource.load() }
         routeMap = RouteMap(this)
+        routeReportScreen = RouteReportScreen(this) { laws }
         parkedNav = ParkedNav(this, onSelect = ::showParked)
         habitScreens = HabitScreens(
             activity = this,
@@ -335,7 +337,7 @@ class MainActivity : Activity() {
         if (frame != null) {
             // 기어 P면 리포트(진단·습관 선택 중이면 그대로), 그 밖의 기어면 주행 화면 (기획서 5.4).
             gear = frame.gear
-            screen = nextScreen(screen, frame.gear)
+            screen = nextScreen(screen, frame.gear, state.route)
             showSignals(frame)
             openRoutePreview(frame.gear)
         }
@@ -375,6 +377,8 @@ class MainActivity : Activity() {
         qnaScreen.show(screen)
         modeScreen.show(screen)
         routePreviewScreen.show(screen)
+        routeReportScreen.show(screen)
+        if (screen == Screen.ROUTE_REPORT) routeReportScreen.render(state)
         if (screen == Screen.REPORT) reportScreen.render(state)
         if (screen == Screen.ROUTE_PREVIEW) routePreviewScreen.render(state)
         // 경로 좌표가 있으면(경로 데모) 주행 화면 왼쪽에 지도를 같이 보여준다.

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   오늘 주행 리포트 (기획서 UI-2). 기어 P일 때만 보인다.
-  위: 제목 + 한 줄 요약. 내비 경로를 따라 달렸으면 제목과 요약, 판정을 그 경로 것으로 바꾼다 (ReportScreen.render).
+  위: 제목 + 한 줄 요약.
   왼쪽: 히어로 카드(아낀 범칙금 큰 숫자) + 지킴률 카드(링, 지킴 n번·놓침 m번) + "AI에게 묻기".
   오른쪽: 판정 기록 타임라인 (report_item.xml을 코드에서 넣는다). 비었으면 아이콘+안내 문구.
   배경(둥근 모서리)은 ReportScreen.kt에서 Ui.kt 헬퍼로 칠한다.
@@ -16,7 +16,6 @@
 
     <!-- 머리: 제목 + 한 줄 요약 -->
     <TextView
-        android:id="@+id/reportTitle"
         style="@style/Kk.Title"
         android:text="@string/report_title" />
 

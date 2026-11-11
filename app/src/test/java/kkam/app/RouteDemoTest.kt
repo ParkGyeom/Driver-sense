@@ -31,6 +31,11 @@ class RouteDemoTest {
         assertEquals(Gear.P, run.frames.last().gear)
         assertEquals(null, run.frames.last().tbt)
         assertEquals(route.points.last(), LatLon(run.frames.last().lat, run.frames.last().lon))
+        // 도착 프레임은 기어 P 프레임보다 앞이다 (경로를 먼저 끝내야 P에서 경로 리포트가 열린다)
+        val arrive = run.frames.single { it.t == run.arriveAt }
+        assertEquals(Gear.D, arrive.gear)
+        assertEquals(null, arrive.tbt)
+        assertTrue(run.frames.filter { it.t > run.arriveAt }.all { it.gear == Gear.P })
     }
 
     @Test

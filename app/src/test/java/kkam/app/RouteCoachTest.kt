@@ -131,4 +131,30 @@ class RouteCoachTest {
         assertEquals(Screen.ROUTE_PREVIEW, nextScreen(Screen.ROUTE_PREVIEW, Gear.P))
         assertEquals(Screen.DRIVE, nextScreen(Screen.ROUTE_PREVIEW, Gear.D))
     }
+
+    @Test
+    fun `경로가 끝난 뒤 기어 P가 되면 경로 리포트, 경로 주행 중이거나 경로가 없으면 오늘 리포트`() {
+        val driving = RouteTrip(plan, firstEventIndex = 0)
+        val arrived = driving.copy(status = RouteStatus.ARRIVED)
+        val ended = driving.copy(status = RouteStatus.ENDED)
+
+        assertEquals(Screen.ROUTE_REPORT, nextScreen(Screen.DRIVE, Gear.P, arrived))
+        assertEquals(Screen.ROUTE_REPORT, nextScreen(Screen.DRIVE, Gear.P, ended))
+        assertEquals(Screen.REPORT, nextScreen(Screen.DRIVE, Gear.P, driving))
+        assertEquals(Screen.REPORT, nextScreen(Screen.DRIVE, Gear.P, null))
+        // 정차 화면을 보고 있으면 덮지 않고, D면 주행 화면
+        assertEquals(Screen.ROUTE_REPORT, nextScreen(Screen.ROUTE_REPORT, Gear.P, arrived))
+        assertEquals(Screen.QNA, nextScreen(Screen.QNA, Gear.P, arrived))
+        assertEquals(Screen.DRIVE, nextScreen(Screen.ROUTE_REPORT, Gear.D, arrived))
+    }
+
+    @Test
+    fun `경로 리포트는 놓친 곳을 먼저 보여준다`() {
+        val today = listOf(event("old", Result.MISSED), event("e1", Result.KEPT), event("e2", Result.MISSED), event("e3", Result.KEPT))
+        val trip = RouteTrip(plan, firstEventIndex = 1, status = RouteStatus.ARRIVED)
+
+        val items = routeReportItems(trip, today)
+        assertEquals(listOf(false, true, true), items.map { it.kept })
+        assertEquals(3, items.size) // 경로 전 판정(old)은 빠진다
+    }
 }

@@ -19,8 +19,16 @@
     <string name="route_preview_end">도착</string>
     <string name="route_preview_hint">기어를 D로 바꾸면 코치를 시작해요</string>
 
-    <!-- 경로 리포트 (기어 P 리포트 화면을 경로 판정으로) -->
+    <!-- 경로 리포트 (경로가 끝난 뒤 기어 P) -->
     <string name="route_report_title">%s 경로 리포트</string>
+    <string name="route_report_missed">이번 경로에서 놓친 곳</string>
+    <string name="route_report_missed_count">%d곳</string>
+    <string name="route_report_missed_none_hint">놓친 곳 없이 도착했어요</string>
+    <string name="route_report_missed_hint">다음에 같은 곳을 지나면 미리 알려줄게요</string>
+    <string name="route_report_kept_count">✓ 지킨 곳 %d곳</string>
+    <string name="route_report_saved">안내 듣고 지켜서 아낀 범칙금 %s</string>
+    <string name="route_report_timeline">잘못한 점부터 보여줘요</string>
+    <string name="route_report_empty">이번 경로에는 판정이 없어요</string>
 
     <!-- 앱 안 지도 출처 표시 (OpenStreetMap 이용 조건) -->
     <string name="route_map_attribution">© OpenStreetMap contributors</string>

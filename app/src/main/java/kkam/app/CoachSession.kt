@@ -114,11 +114,12 @@ class CoachSession(context: Context) {
             run.frames,
             onFrame = { frame ->
                 console.mirror(frame)
+                // 도착 프레임에서 경로를 끝낸다. 뒤따르는 기어 P 프레임에서 경로 리포트가 열린다.
+                if (frame.t == run.arriveAt) state = state.endRoute(RouteStatus.ARRIVED)
                 onFrame(frame)
             },
             onEnd = {
                 console.stop()
-                state = state.endRoute(RouteStatus.ARRIVED)
                 running = null
                 notifyChanged(null)
             },
@@ -132,6 +133,7 @@ class CoachSession(context: Context) {
     private fun onRouteStarted(plan: RoutePlan) {
         when (routeStartAction(running)) {
             RouteStartAction.START_LIVE -> {
+                // TODO(코치 켬/끔, 앱 담당 모드 설정 작업): 코치가 꺼져 있으면 자동으로 켜지 않는다. 켬/끔을 읽는 함수가 나오면 여기서 본다.
                 if (!hasLivePermissions()) {
                     Log.w(TAG, "경로가 시작됐지만 위치·속도 권한이 없어 코치를 켜지 않음")
                     return

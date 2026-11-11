@@ -70,6 +70,8 @@
             <include layout="@layout/screen_mode" />
 
             <include layout="@layout/screen_route_preview" />
+
+            <include layout="@layout/screen_route_report" />
         </FrameLayout>
     </LinearLayout>
 

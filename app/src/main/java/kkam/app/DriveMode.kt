@@ -3,46 +3,42 @@ package kkam.app
 import android.content.Context
 
 /**
- * 주행 모드 (기획서 4.3 모드 표, F3). 표의 한 행이 enum 값 하나다.
- * 판정 기록은 네 모드 모두 "전부"라서 따로 두지 않는다.
+ * 운전 코치 켬/끔. 사용자 요청으로 기획서 4.3의 4개 모드(진단·교정·연수·조용)를 이 두 값으로 줄였다.
+ * - 켬: 목적지까지 가는 동안 음성 안내와 판정을 한다. 도착하면 리포트를 보여준다(경로 리포트는 route-coach 세션).
+ * - 끔: 안내도 판정 기록도 하지 않는다.
  */
-enum class DriveMode(
-    /** 화면에 크게 보이는 이름. */
-    val label: String,
-    /** 표의 "대상" 칸. */
-    val target: String,
-    /** 표의 "주행 중 안내" 칸. */
-    val guideLabel: String,
-) {
-    DIAGNOSE("진단", "기존 운전자, 첫 2주", "없음"),
-    CORRECT("교정", "기존 운전자", "고른 습관만"),
-    TRAINING("연수", "초보 운전자", "모든 룰"),
-    QUIET("조용", "누구나", "없음"),
+enum class DriveMode {
+    ON,
+    OFF,
     ;
 
     companion object {
-        /**
-         * 처음 켰을 때 모드.
-         * TODO(기본 모드 질문): 기획서 3.1은 기존 운전자=진단, 초보=연수로 시작한다.
-         *  누구를 기본으로 할지 정해지기 전까지 지금 데모 흐름(습관 고르고 안내 듣기)과 맞는 교정을 쓴다.
-         */
-        val DEFAULT = CORRECT
+        /** 처음 켰을 때. 앱을 깔고 바로 코치를 받게 켬으로 둔다. */
+        val DEFAULT = ON
 
-        /** 저장된 이름을 모드로. 모르는 값이면 [DEFAULT]. */
-        fun fromName(name: String?): DriveMode = entries.firstOrNull { it.name == name } ?: DEFAULT
+        /**
+         * 저장된 이름을 값으로. 모르는 값이면 [DEFAULT].
+         * 예전 4개 모드 값은 "주행 중 음성 안내를 했는가"로 옮긴다:
+         * 교정·연수(안내함) → 켬, 진단·조용(안내 안 함) → 끔.
+         */
+        fun fromName(name: String?): DriveMode = when (name) {
+            ON.name, "CORRECT", "TRAINING" -> ON
+            OFF.name, "DIAGNOSE", "QUIET" -> OFF
+            else -> DEFAULT
+        }
     }
 }
 
-/** 주행 중에 음성 안내를 하는 모드인가. 진단·조용은 기록만 한다 (4.3 표). */
-fun guidesOn(mode: DriveMode): Boolean = when (mode) {
-    DriveMode.DIAGNOSE, DriveMode.QUIET -> false
-    DriveMode.CORRECT, DriveMode.TRAINING -> true
-}
+/** 주행 중에 음성 안내를 하는가. */
+fun guidesOn(mode: DriveMode): Boolean = mode == DriveMode.ON
+
+/** 판정을 오늘 기록에 남기는가. 끔이면 남기지 않는다. */
+fun recordsOn(mode: DriveMode): Boolean = mode == DriveMode.ON
 
 /**
- * 고른 모드를 SharedPreferences에 저장한다. 앱을 다시 켜도 남는다.
- * TODO(엔진 모드 입력, spec v0.3 · AI 담당 P6): 나오면 CoachSession이 주행을 시작할 때 [load] 값을 엔진에 넘긴다.
- *  지금은 저장과 화면 표시만 하고, 안내는 모드와 관계없이 엔진이 내는 대로 읽는다.
+ * 코치 켬/끔을 SharedPreferences에 저장한다. 앱을 다시 켜도 남는다.
+ * 세션은 프레임마다 [isCoachOn]을 읽으므로 주행 중에 바꿔도 바로 반영된다.
+ * TODO(엔진 모드 입력, spec v0.3 · AI 담당 P6): 엔진이 모드를 받게 되면 켬/끔을 어떻게 넘길지 맞춘다.
  */
 class ModeStore(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -52,6 +48,9 @@ class ModeStore(context: Context) {
     fun save(mode: DriveMode) {
         prefs.edit().putString(KEY_MODE, mode.name).apply()
     }
+
+    /** 코치가 켜져 있는가. 경로 코치(route-coach) 등 다른 곳에서는 이 함수만 쓰면 된다. */
+    fun isCoachOn(): Boolean = load() == DriveMode.ON
 
     private companion object {
         const val PREFS = "kkam_mode"

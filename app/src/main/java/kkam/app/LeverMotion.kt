@@ -38,6 +38,8 @@ fun leverMotion(kind: GuideKind, right: Boolean): LeverMotion? = when (kind) {
     GuideKind.HEADLIGHT -> LeverMotion.LEFT_TWIST
     GuideKind.WIPER -> LeverMotion.RIGHT_DOWN
     GuideKind.RED_RIGHT_TURN -> null
+    // 성에 제거·외기 순환은 레버가 아니라 공조 버튼이다. 버튼 위치가 차종마다 달라 그림은 아이콘 모양만 쓴다 (spec 13.3)
+    GuideKind.DEFOG -> null
 }
 
 /**

@@ -1,9 +1,14 @@
 <resources>
-    <!-- 모드 설정 화면 (F3, 기획서 4.3). 모드 이름·대상·안내 설명은 DriveMode.kt에 있다. -->
-    <string name="mode_hint">주행 중 음성 안내를 얼마나 할지 고릅니다. 판정 기록은 모든 모드에서 남습니다.</string>
-    <string name="mode_target">대상: %1$s</string>
-    <string name="mode_guide">주행 중 안내: %1$s</string>
-    <string name="mode_check">✓</string>
+    <!-- 운전 코치 켬/끔 화면 (사용자 요청으로 기획서 4.3의 4개 모드를 켬/끔 하나로 줄임). -->
+    <string name="mode_hint">카드를 누르면 켜고 끕니다.</string>
+    <string name="mode_on_title">코치 켜짐</string>
+    <string name="mode_off_title">코치 꺼짐</string>
+    <string name="mode_on_desc">목적지까지 코치하고, 도착하면 리포트를 보여줘요</string>
+    <string name="mode_off_desc">안내도 기록도 하지 않아요</string>
+    <string name="mode_on_detail">음성 안내 켬 · 판정 기록 켬</string>
+    <string name="mode_off_detail">음성 안내 끔 · 판정 기록 끔</string>
+    <string name="mode_switch_on">켬</string>
+    <string name="mode_switch_off">끔</string>
     <string name="mode_records_saved">오늘 기록 %1$d건 저장됨</string>
-    <string name="mode_records_empty">오늘 기록 없음. 판정이 나오면 바로 저장돼요</string>
+    <string name="mode_records_empty">오늘 기록 없음</string>
 </resources>

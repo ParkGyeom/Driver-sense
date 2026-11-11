@@ -139,9 +139,7 @@ class CoachSession(context: Context) {
             state = CoachState()
             records.save(emptyList())
         }
-        // TODO(엔진 모드 입력, spec v0.3 · AI 담당 P6): 나오면 modes.load()를 엔진에 넘긴다.
-        //  지금은 모드를 저장·표시만 하고, 안내는 모드와 관계없이 엔진이 내는 대로 읽는다.
-        Log.i(TAG, "주행 시작 모드: ${modes.load()}")
+        Log.i(TAG, "주행 시작 코치: ${modes.load()}")
         engine = Engine()
         state = state.resetDrive(label)
         popup = null
@@ -149,7 +147,18 @@ class CoachSession(context: Context) {
         notifyChanged(null)
     }
 
+    /** 운전 코치가 켜져 있는가 (코치 화면의 켬/끔). 경로 코치 등 다른 곳에서도 이 값을 읽는다. */
+    val coachOn: Boolean get() = modes.isCoachOn()
+
     private fun onFrame(frame: SignalFrame) {
+        // 코치 끔: 엔진을 돌리지 않는다. 안내(음성·카드·팝업)도 판정 기록도 없다.
+        // 기어 P 리포트로 바꾸는 데 필요한 마지막 프레임만 넘긴다. 주행 중에 바꿔도 다음 프레임부터 반영된다.
+        if (!coachOn) {
+            popup = null
+            lastFrame = frame
+            notifyChanged(frame)
+            return
+        }
         val outputs = engine.onFrame(frame)
         outputs.forEach { Log.i(TAG, "${frame.t} $it") }
         outputs.filterIsInstance<Guide>().forEach { speaker.speak(it.text) }

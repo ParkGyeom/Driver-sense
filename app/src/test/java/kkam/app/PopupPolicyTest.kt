@@ -113,4 +113,103 @@ class PopupPolicyTest {
         assertEquals(listOf(null, PopupTone.WARN, PopupTone.OK), tones)
         assertEquals(GuideKind.HEADLIGHT, popup?.kind)
     }
+
+    @Test
+    fun `S13 적색 우회전은 멈추라는 카드가 뜨고 멈추면 파랑으로 바뀐다`() {
+        val engine = Engine()
+        var state = CoachState()
+        var popup: Popup? = null
+        val seen = mutableListOf<Triple<PopupTone?, GuideKind?, String?>>()
+        val red = kkam.engine.model.TrafficLight(kkam.engine.model.LightPhase.RED, null)
+        for ((t, distance, speed) in listOf(
+            Triple(2000L, 90, 38.0),
+            Triple(4000L, 60, 32.0),
+            Triple(7000L, 28, 10.0),
+            Triple(8000L, 25, 0.0),
+            Triple(12000L, 15, 10.0),
+        )) {
+            val f = frame(TurnSignal.RIGHT, Tbt(TurnType.RIGHT, distance), t = t).copy(speedKph = speed, light = red)
+            val outputs = engine.onFrame(f)
+            state = state.next(f, outputs)
+            popup = nextPopup(popup, state, outputs, f)
+            seen += Triple(popup?.tone, popup?.kind, popup?.headline)
+        }
+
+        assertEquals(
+            listOf(
+                Triple(null, null, null),
+                Triple(PopupTone.WARN, GuideKind.RED_RIGHT_TURN, "멈췄다 가세요"),
+                Triple(PopupTone.WARN, GuideKind.RED_RIGHT_TURN, "멈췄다 가세요"),
+                Triple(PopupTone.OK, GuideKind.RED_RIGHT_TURN, "좋아요"),
+                // 한 번 멈췄으면 다시 움직여도 파랑을 유지한다 (엔진도 지킴으로 본다)
+                Triple(PopupTone.OK, GuideKind.RED_RIGHT_TURN, "좋아요"),
+            ),
+            seen,
+        )
+        assertEquals(true, popup?.right)
+        assertEquals("정지선에서 멈췄어요", state.message)
+    }
+
+    @Test
+    fun `S17 비 오는 중 와이퍼 카드가 뜨고 켜면 파랑으로 바뀐다`() {
+        val engine = Engine()
+        var state = CoachState()
+        var popup: Popup? = null
+        val seen = mutableListOf<Triple<PopupTone?, String?, String?>>()
+        for ((t, rain, wiper) in listOf(
+            Triple(5000L, true, kkam.engine.model.WiperMode.OFF),
+            Triple(10000L, true, kkam.engine.model.WiperMode.OFF),
+            Triple(13000L, true, kkam.engine.model.WiperMode.ON),
+        )) {
+            val f = frame(TurnSignal.OFF, Tbt(TurnType.STRAIGHT, 900), t = t).copy(speedKph = 50.0, rain = rain, wiper = wiper)
+            val outputs = engine.onFrame(f)
+            state = state.next(f, outputs)
+            popup = nextPopup(popup, state, outputs, f)
+            seen += Triple(popup?.tone, popup?.turnLabel, popup?.headline)
+        }
+
+        assertEquals(
+            listOf(
+                Triple(null, null, null),
+                Triple(PopupTone.WARN, "비 오는 중", "와이퍼 켜세요"),
+                Triple(PopupTone.OK, "비 오는 중", "좋아요"),
+            ),
+            seen,
+        )
+        assertEquals(GuideKind.WIPER, popup?.kind)
+        assertEquals(null, popup?.forTurn)
+        // 와이퍼는 법규 근거가 없어 오늘 성적(지킴률)에 세지 않는다
+        assertEquals(0 to 0, state.kept to state.total)
+        assertEquals("안내 듣고 와이퍼를 켰어요", state.message)
+    }
+
+    @Test
+    fun `S22 김서림 카드가 뜨고 성에 제거를 켜면 파랑으로 바뀐다`() {
+        val engine = Engine()
+        var state = CoachState()
+        var popup: Popup? = null
+        val seen = mutableListOf<Triple<PopupTone?, String?, String?>>()
+        for ((t, defroster) in listOf(0L to false, 10000L to false, 14000L to true)) {
+            val f = frame(TurnSignal.OFF, Tbt(TurnType.STRAIGHT, 900), t = t).copy(
+                speedKph = 40.0, rain = true, wiper = kkam.engine.model.WiperMode.ON, recirc = true, defroster = defroster,
+            )
+            val outputs = engine.onFrame(f)
+            state = state.next(f, outputs)
+            popup = nextPopup(popup, state, outputs, f)
+            seen += Triple(popup?.tone, popup?.turnLabel, popup?.headline)
+        }
+
+        assertEquals(
+            listOf(
+                Triple(null, null, null),
+                Triple(PopupTone.WARN, "김서림 주의", "성에 제거 켜세요"),
+                Triple(PopupTone.OK, "김서림 주의", "좋아요"),
+            ),
+            seen,
+        )
+        assertEquals(GuideKind.DEFOG, popup?.kind)
+        // 김서림은 법규 근거가 없어 오늘 성적에 세지 않는다
+        assertEquals(0 to 0, state.kept to state.total)
+        assertEquals("안내 듣고 김서림을 잡았어요", state.message)
+    }
 }

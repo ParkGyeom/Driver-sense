@@ -16,13 +16,15 @@ import java.io.File
 import kotlin.math.roundToInt
 
 /**
- * 경로 데모의 앱 안 지도 (osmdroid, OpenStreetMap 타일). 주행 화면 왼쪽 칸(routeMapPanel)에 그린다.
+ * 경로 데모의 앱 안 지도 (osmdroid, OpenStreetMap 타일). 주행 화면일 때 앱 칸 전체(routeMapPanel)에 그린다.
  * 경로선, 목적지, 차 위치를 보여주고, 진행 방향이 화면 위로 오게 지도를 돌린다 (내비처럼).
  * 주행 화면이라 터치로 지도를 움직이지 못하게 막는다 (기획서 5.4: 주행 중 터치 조작 없음).
  */
 class RouteMap(private val activity: Activity) {
     private val panel: FrameLayout = activity.findViewById(R.id.routeMapPanel)
     private val speed: TextView = activity.findViewById(R.id.routeMapSpeed)
+    /** 지도 위쪽 가운데 안내 카드. 내비 위 팝업과 같은 모양. */
+    private val popupCard = MapPopupCard(panel)
     private val map: MapView
     private val line = Polyline()
     private val car: Marker
@@ -70,8 +72,9 @@ class RouteMap(private val activity: Activity) {
         if (visible) map.onResume() else map.onPause()
     }
 
-    /** 경로선과 차 위치를 그린다. 차가 가운데, 진행 방향이 위. */
-    fun render(path: List<LatLon>, frame: SignalFrame?) {
+    /** 경로선과 차 위치, 안내 카드를 그린다. 차가 가운데, 진행 방향이 위. */
+    fun render(path: List<LatLon>, frame: SignalFrame?, popup: Popup?) {
+        popupCard.show(popup)
         if (path != drawnPath) {
             drawnPath = path
             line.setPoints(path.map { GeoPoint(it.lat, it.lon) })

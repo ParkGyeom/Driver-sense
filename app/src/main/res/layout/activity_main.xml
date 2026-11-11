@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   화면 뼈대.
-  - routeMapPanel: 경로 데모 지도. 주행 화면일 때 screenSlot 왼쪽에 반씩 나눠 보인다.
+  - routeMapPanel: 경로 데모 지도. 주행 화면일 때 screenSlot 대신 앱 칸 전체에 보이고, 안내는 지도 위 팝업 카드로 띄운다.
   - navRail: 기어 P 화면 왼쪽 레일(nav_rail). 리포트·진단·교정 진행·Q&A·모드를 오간다. 주행 화면에서는 숨긴다.
   - screenSlot: 지금 보여줄 화면 하나가 들어가는 자리. 화면마다 담당 클래스(DriveScreen, ReportScreen,
     HabitScreens, ProgressScreen, QnaScreen, ModeScreen)가 자기 화면의 보이기를 정한다.
@@ -27,7 +27,8 @@
 
         <include layout="@layout/nav_rail" />
 
-        <!-- 경로 데모의 앱 안 지도 (RouteMap). 경로가 있고 주행 화면일 때만 보인다. 지도 뷰는 코드에서 넣는다. -->
+        <!-- 경로 데모의 앱 안 지도 (RouteMap). 경로가 있고 주행 화면일 때만 보인다. 그때는 screenSlot을 숨겨 지도가 앱 칸 전체를 쓰고,
+             안내는 지도 위쪽 가운데 팝업 카드(MapPopupCard)로 띄운다. 지도 뷰와 카드는 코드에서 넣는다. -->
         <FrameLayout
             android:id="@+id/routeMapPanel"
             android:layout_width="0dp"
@@ -40,8 +41,9 @@
                 android:id="@+id/routeMapSpeed"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="top|start"
-                android:layout_margin="@dimen/kk_gap"
+                android:layout_gravity="bottom|start"
+                android:layout_marginStart="@dimen/kk_gap"
+                android:layout_marginBottom="40dp"
                 android:background="@drawable/bg_map_speed"
                 android:paddingHorizontal="20dp"
                 android:paddingVertical="8dp"

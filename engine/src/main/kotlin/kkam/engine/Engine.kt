@@ -1,8 +1,10 @@
 package kkam.engine
 
 import kkam.engine.model.EngineOutput
+import kkam.engine.model.Event
 import kkam.engine.model.SignalFrame
 import kkam.engine.rules.R1Rule
+import kkam.engine.rules.R2Rule
 import kkam.engine.rules.R3Rule
 import kkam.engine.rules.R4Rule
 import kkam.engine.rules.R5Rule
@@ -12,14 +14,29 @@ import kkam.engine.rules.R6Rule
 class Engine {
     private var eventCount = 0
     private val r1Rule = R1Rule(::nextEventId)
+    private val r2Rule = R2Rule(::nextEventId)
     private val r3Rule = R3Rule(::nextEventId)
     private val r4Rule = R4Rule(::nextEventId)
     private val r5Rule = R5Rule(::nextEventId)
     private val r6Rule = R6Rule(::nextEventId)
 
-    /** spec 2.4: 여러 룰이 한 프레임에 출력하면 룰 번호 순서로 담는다. */
-    fun onFrame(frame: SignalFrame): List<EngineOutput> =
-        r1Rule.onFrame(frame) + r3Rule.onFrame(frame) + r4Rule.onFrame(frame) + r5Rule.onFrame(frame) + r6Rule.onFrame(frame)
+    /** 마지막으로 R1·R4가 EVENT를 낸 프레임의 t. R2가 같은 회전을 두 번 세지 않게 쓴다 (spec 11.3 #2). */
+    private var lastR1R4EventT: Long? = null
+
+    /**
+     * spec 2.4: 여러 룰이 한 프레임에 출력하면 룰 번호 순서로 담는다.
+     * R2는 R1의 이 프레임 결과를 알아야 해서 R1 다음에 부른다.
+     * R4의 같은 프레임 EVENT는 나들목 300m 안이라는 조건(#2)이 이미 막는다.
+     */
+    fun onFrame(frame: SignalFrame): List<EngineOutput> {
+        val r1 = r1Rule.onFrame(frame)
+        if (r1.any { it is Event }) lastR1R4EventT = frame.t
+        val r2 = r2Rule.onFrame(frame, R2Rule.OtherRules(r1Active = r1Rule.isActive, lastEventT = lastR1R4EventT))
+        val r3 = r3Rule.onFrame(frame)
+        val r4 = r4Rule.onFrame(frame)
+        if (r4.any { it is Event }) lastR1R4EventT = frame.t
+        return r1 + r2 + r3 + r4 + r5Rule.onFrame(frame) + r6Rule.onFrame(frame)
+    }
 
     /** spec 2.3: 엔진 인스턴스 안에서 순서대로 evt-1, evt-2, ... */
     private fun nextEventId(): String {

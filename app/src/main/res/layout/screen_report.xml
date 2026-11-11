@@ -3,6 +3,7 @@
   오늘 주행 리포트 (기획서 UI-2). 기어 P일 때만 보인다.
   위: 제목 + 한 줄 요약.
   왼쪽: 히어로 카드(아낀 범칙금 큰 숫자) + 지킴률 카드(링, 지킴 n번·놓침 m번) + "AI에게 묻기".
+  큰 숫자와 지킴/놓침 횟수는 한 줄로 두고, 칸이 좁으면(데모 패널이 열렸을 때 등) 글자를 줄인다.
   오른쪽: 판정 기록 타임라인 (report_item.xml을 코드에서 넣는다). 비었으면 아이콘+안내 문구.
   배경(둥근 모서리)은 ReportScreen.kt에서 Ui.kt 헬퍼로 칠한다.
 -->
@@ -53,6 +54,11 @@
                 <TextView
                     android:id="@+id/reportSaved"
                     style="@style/Kk.Display"
+                    android:layout_width="match_parent"
+                    android:maxLines="1"
+                    android:autoSizeTextType="uniform"
+                    android:autoSizeMinTextSize="32sp"
+                    android:autoSizeMaxTextSize="@dimen/kk_text_hero"
                     android:layout_marginTop="8dp"
                     android:textColor="@color/ok"
                     android:textSize="@dimen/kk_text_hero" />
@@ -108,12 +114,26 @@
                     <TextView
                         android:id="@+id/reportKept"
                         style="@style/Kk.Body"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:gravity="center_vertical"
+                        android:maxLines="1"
+                        android:autoSizeTextType="uniform"
+                        android:autoSizeMinTextSize="14sp"
+                        android:autoSizeMaxTextSize="@dimen/kk_text_body"
                         android:textColor="@color/ok"
                         android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/reportMissed"
                         style="@style/Kk.Body"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:gravity="center_vertical"
+                        android:maxLines="1"
+                        android:autoSizeTextType="uniform"
+                        android:autoSizeMinTextSize="14sp"
+                        android:autoSizeMaxTextSize="@dimen/kk_text_body"
                         android:layout_marginTop="@dimen/kk_gap"
                         android:textColor="@color/miss"
                         android:textStyle="bold" />

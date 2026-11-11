@@ -1,83 +1,96 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  내비 위에 잠깐 뜨는 안내 카드. 주행 화면 코치 카드(screen_drive.xml)를 작게 줄인 같은 모양:
-  [방향 그림] [회전 이름 / 남은 거리(숫자 크게)] [상태 배지 "! 지금 켜세요" / "✓ 좋아요"] [레버 그림(초보 기능만)].
-  배경색(주황/파랑)은 코드에서 칠한다. 터치는 받지 않는다 (내비 조작을 막지 않음).
+  내비 위에 잠깐 뜨는 안내 카드. 주행 화면 코치 카드(screen_drive.xml)와 같은 디자인 언어를 작게 줄였다:
+  [상태 색 원 + 방향 그림] [회전 이름(흐림) / 남은 거리(흰색, 숫자 크게)] [상태 색 알약 "! 지금 켜세요" / "✓ 좋아요"] [레버 그림(초보 기능만)].
+  바탕은 어두운 반투명(popup_scrim) + 왼쪽 상태 색 기운 + 상태 색 테두리 + 그림자. 내비 지도 위에서도 읽히게 한다.
+  바깥 FrameLayout의 여백은 그림자가 겹침 창 밖으로 잘리지 않게 두는 자리다. 색은 코드에서 칠한다. 터치는 받지 않는다.
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:gravity="center_vertical"
-    android:minWidth="560dp"
-    android:orientation="horizontal"
-    android:paddingStart="28dp"
-    android:paddingTop="20dp"
-    android:paddingEnd="28dp"
-    android:paddingBottom="20dp">
+    android:clipToPadding="false"
+    android:padding="24dp">
 
-    <ImageView
-        android:id="@+id/popupIcon"
-        android:layout_width="104dp"
-        android:layout_height="104dp"
-        android:contentDescription="@null"
-        android:src="@drawable/ic_turn_left" />
-
-    <!-- 무엇을: 회전 이름 + 남은 거리 -->
     <LinearLayout
+        android:id="@+id/popupCard"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:orientation="vertical">
-
-        <TextView
-            android:id="@+id/popupTurn"
-            style="@style/Kk.Body"
-            android:includeFontPadding="false"
-            android:maxLines="1"
-            android:textColor="@color/on_accent"
-            android:textStyle="bold" />
-
-        <!-- 숫자는 크게, 단위(m)는 작게 (numberEmphasis). 거리가 없는 안내는 숨긴다. -->
-        <TextView
-            android:id="@+id/popupDistance"
-            style="@style/Kk.Display"
-            android:layout_marginTop="4dp"
-            android:maxLines="1"
-            android:textColor="@color/on_accent" />
-    </LinearLayout>
-
-    <!-- 지금 할 일: 카드 색을 뒤집은 알약 배지 -->
-    <LinearLayout
-        android:id="@+id/popupBadge"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="28dp"
+        android:elevation="16dp"
         android:gravity="center_vertical"
+        android:minWidth="560dp"
         android:orientation="horizontal"
-        android:paddingVertical="12dp"
-        android:paddingStart="16dp"
-        android:paddingEnd="28dp">
+        android:paddingStart="20dp"
+        android:paddingTop="20dp"
+        android:paddingEnd="28dp"
+        android:paddingBottom="20dp">
 
+        <!-- 방향 그림: 상태 색 원 안에 대비색 그림. 가장 먼저 눈에 띄는 것. -->
         <ImageView
-            android:id="@+id/popupBadgeIcon"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="8dp"
+            android:id="@+id/popupIcon"
+            android:layout_width="104dp"
+            android:layout_height="104dp"
             android:contentDescription="@null"
-            android:src="@drawable/ic_alert" />
+            android:padding="18dp"
+            android:src="@drawable/ic_turn_left" />
 
-        <TextView
-            android:id="@+id/popupHeadline"
-            style="@style/Kk.Title"
-            android:includeFontPadding="false"
-            android:maxLines="1" />
+        <!-- 무엇을: 회전 이름 + 남은 거리 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/popupTurn"
+                style="@style/Kk.Body"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:textColor="@color/muted"
+                android:textStyle="bold" />
+
+            <!-- 숫자는 크게 흰색, 단위(m)는 작고 흐리게 (distanceText). 거리가 없는 안내는 숨긴다. -->
+            <TextView
+                android:id="@+id/popupDistance"
+                style="@style/Kk.Display"
+                android:layout_marginTop="4dp"
+                android:maxLines="1"
+                android:textColor="@color/text" />
+        </LinearLayout>
+
+        <!-- 지금 할 일: 상태 색 알약에 대비 글자 -->
+        <LinearLayout
+            android:id="@+id/popupBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="28dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingVertical="12dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="28dp">
+
+            <ImageView
+                android:id="@+id/popupBadgeIcon"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_alert" />
+
+            <TextView
+                android:id="@+id/popupHeadline"
+                style="@style/Kk.Title"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:textColor="@color/on_accent" />
+        </LinearLayout>
+
+        <!-- "어떻게 켜는지" 레버 그림. 초보 기능 안내일 때만 보인다. -->
+        <kkam.app.LeverGuideView
+            android:id="@+id/popupLever"
+            android:layout_width="220dp"
+            android:layout_height="160dp"
+            android:layout_marginStart="24dp"
+            android:visibility="gone" />
     </LinearLayout>
-
-    <!-- "어떻게 켜는지" 레버 그림. 초보 기능 안내일 때만 보인다. -->
-    <kkam.app.LeverGuideView
-        android:id="@+id/popupLever"
-        android:layout_width="220dp"
-        android:layout_height="160dp"
-        android:layout_marginStart="24dp"
-        android:visibility="gone" />
-</LinearLayout>
+</FrameLayout>

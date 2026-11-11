@@ -16,6 +16,15 @@
     <color name="ok_soft">#334C8DFF</color>
     <color name="miss_soft">#33FF6B6B</color>
     <color name="on_accent">#0B0E13</color>
+    <!--
+      코치 카드 바탕에 까는 상태 색 기운. surface(#151A21)에 상태 색을 20% 섞은 불투명 색.
+      카드 왼쪽(방향 그림 쪽)에서 오른쪽 surface로 흐려지는 그라데이션 시작 색으로 쓴다.
+    -->
+    <color name="warn_tint">#443B2A</color>
+    <color name="ok_tint">#20314D</color>
+    <color name="miss_tint">#442A30</color>
+    <!-- 내비 지도 위 팝업 바탕: surface를 90% 불투명하게. 지도가 살짝 비치되 글자는 또렷하게. -->
+    <color name="popup_scrim">#E6151A21</color>
 
     <!-- 데모 패널 전용. 주행 상태 색(warn, ok)과 겹치지 않게 따로 둔다. -->
     <color name="panel">#10141A</color>

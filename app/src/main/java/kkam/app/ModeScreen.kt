@@ -72,7 +72,8 @@ class ModeScreen(
         track.background = if (on) activity.pillBackground(ok) else activity.pillBackground(activity.getColor(R.color.surface_2), strokeColor = line)
         thumb.setText(if (on) R.string.mode_switch_on else R.string.mode_switch_off)
         thumb.setTextColor(activity.getColor(if (on) R.color.ok else R.color.muted))
-        thumb.background = activity.pillBackground(activity.getColor(if (on) R.color.text else R.color.line))
+        // 손잡이는 늘 흰 동그라미(surface). 켬이면 파란 트랙 위에 파란 글자, 끔이면 회색 테두리에 회색 글자.
+        thumb.background = activity.pillBackground(activity.getColor(R.color.surface), strokeColor = if (on) null else line)
         (thumb.layoutParams as FrameLayout.LayoutParams).gravity = Gravity.CENTER_VERTICAL or (if (on) Gravity.END else Gravity.START)
         thumb.requestLayout()
         card.contentDescription = activity.getString(if (on) R.string.mode_on_title else R.string.mode_off_title)

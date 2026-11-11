@@ -64,6 +64,10 @@ class R1Rule(private val nextEventId: () -> String) {
 
     private var state: State = State.Idle
 
+    /** 회전 하나를 맡고 있는가 (IDLE이 아님). R2가 같은 회전을 두 번 기록하지 않도록 Engine이 본다 (spec 9.5). */
+    val isBusy: Boolean
+        get() = state !is State.Idle
+
     /** 프레임 하나를 처리한다. spec 3.3 전이표를 위에서부터 검사해 처음 맞는 행만 적용한다. */
     fun onFrame(frame: SignalFrame): List<EngineOutput> {
         val current = updateMovingTime(state, frame)

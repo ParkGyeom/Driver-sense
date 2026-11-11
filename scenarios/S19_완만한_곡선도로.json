@@ -1,0 +1,19 @@
+{
+  "name": "S19_완만한_곡선도로",
+  "description": "내비 없이 완만하게 굽은 도로(초당 4도)를 25km/h로 주행. 회전이 아니므로 출력 없음.",
+  "expect": [],
+  "frames": [
+    {"t": 0, "speedKph": 25.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.07, "headingDeg": 0.0, "tbt": null, "light": null},
+    {"t": 2000, "speedKph": 25.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0702, "headingDeg": 8.0, "tbt": null, "light": null},
+    {"t": 4000, "speedKph": 25.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0704, "headingDeg": 16.0, "tbt": null, "light": null},
+    {"t": 6000, "speedKph": 25.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0706, "headingDeg": 24.0, "tbt": null, "light": null},
+    {"t": 8000, "speedKph": 25.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0708, "headingDeg": 32.0, "tbt": null, "light": null},
+    {"t": 10000, "speedKph": 25.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.071, "headingDeg": 40.0, "tbt": null, "light": null},
+    {"t": 12000, "speedKph": 25.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.5512, "lon": 127.0712, "headingDeg": 48.0, "tbt": null, "light": null},
+    {"t": 14000, "speedKph": 25.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.5514, "lon": 127.0714, "headingDeg": 56.0, "tbt": null, "light": null},
+    {"t": 16000, "speedKph": 25.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.5516, "lon": 127.0716, "headingDeg": 64.0, "tbt": null, "light": null},
+    {"t": 18000, "speedKph": 25.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.5518, "lon": 127.0718, "headingDeg": 72.0, "tbt": null, "light": null},
+    {"t": 20000, "speedKph": 25.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.552, "lon": 127.072, "headingDeg": 80.0, "tbt": null, "light": null},
+    {"t": 22000, "speedKph": 25.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.5522, "lon": 127.0722, "headingDeg": 88.0, "tbt": null, "light": null}
+  ]
+}

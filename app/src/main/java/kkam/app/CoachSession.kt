@@ -1,6 +1,7 @@
 package kkam.app
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
@@ -26,6 +27,18 @@ class CoachSession(context: Context) {
     private val records = RecordStore(context)
     private val modes = ModeStore(context)
     private var engine = Engine()
+    /** 내비 경로 시작·끝을 듣는다. 경로가 시작되면 실제 신호 코치를 켜고 경로를 붙인다. */
+    private val routes = RouteWatcher(context, onStarted = ::onRouteStarted, onEnded = ::onRouteEnded).apply { start() }
+    private val appContext = context.applicationContext
+    /** 경로 데모 동안 기어·속도·깜빡이를 에뮬레이터 Virtual Console에 보내 차량 화면도 같이 움직인다. */
+    private val console = VehicleConsole()
+
+    /** 데모: 경로 데모 때 계기판 속도도 보낼지 ([VehicleConsole.sendSpeed]). 켜면 주행 중 제한으로 앱 화면이 가려진다. */
+    var consoleSpeed: Boolean
+        get() = console.sendSpeed
+        set(value) {
+            console.sendSpeed = value
+        }
     private val listeners = mutableSetOf<Listener>()
     private val handler = Handler(Looper.getMainLooper())
     private val hideOkPopup = Runnable {
@@ -87,6 +100,67 @@ class CoachSession(context: Context) {
         })
     }
 
+    /**
+     * PT용 경로 데모. 실제 도로 경로를 따라 달리는 프레임을 재생한다 ([RouteDemo]).
+     * 출발 전 기어 P에서 경로 미리보기, 회전마다 코치, 도착하면 경로 리포트.
+     */
+    fun playRouteDemo() {
+        stopAll()
+        val run = RouteDemo.build(RouteDemo.parse(player.readAsset(RouteDemo.ASSET)))
+        startDrive(ROUTE_DEMO, ROUTE_DEMO)
+        attachRoute(run.plan)
+        console.start()
+        player.playFrames(
+            run.frames,
+            onFrame = { frame ->
+                console.mirror(frame)
+                // 도착 프레임에서 경로를 끝낸다. 뒤따르는 기어 P 프레임에서 경로 리포트가 열린다.
+                if (frame.t == run.arriveAt) state = state.endRoute(RouteStatus.ARRIVED)
+                onFrame(frame)
+            },
+            onEnd = {
+                console.stop()
+                running = null
+                notifyChanged(null)
+            },
+        )
+    }
+
+    /**
+     * 내비 경로가 시작됐다 (전이표는 [routeStartAction]).
+     * 코치가 꺼져 있으면 아무것도 하지 않는다. 멈춰 있었으면 실제 신호 코치를 켠다. 위치·속도 권한이 없으면 켜지 않는다 (권한은 화면에서만 물을 수 있다).
+     */
+    private fun onRouteStarted(plan: RoutePlan) {
+        when (routeStartAction(running, coachOn)) {
+            RouteStartAction.START_LIVE -> {
+                if (!hasLivePermissions()) {
+                    Log.w(TAG, "경로가 시작됐지만 위치·속도 권한이 없어 코치를 켜지 않음")
+                    return
+                }
+                startLive()
+            }
+            RouteStartAction.ATTACH -> Unit
+            RouteStartAction.IGNORE -> return
+        }
+        attachRoute(plan)
+    }
+
+    /** 내비 경로가 끝났다. 시나리오·경로 데모 재생 중이면 실제 내비 이벤트로 끝내지 않는다. */
+    private fun onRouteEnded(status: RouteStatus) {
+        if (running != LIVE && running != null) return
+        state = state.endRoute(status)
+        notifyChanged(null)
+    }
+
+    private fun attachRoute(plan: RoutePlan) {
+        state = state.startRoute(plan)
+        speaker.speak(state.message)
+        notifyChanged(null)
+    }
+
+    private fun hasLivePermissions(): Boolean =
+        LIVE_PERMISSIONS.all { appContext.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
+
     /** 실제 차량 신호로 주행을 시작한다. 권한 확인은 화면 쪽에서 먼저 한다. */
     fun startLive() {
         stopAll()
@@ -97,6 +171,7 @@ class CoachSession(context: Context) {
     /** 재생, 실제 주행, 음성을 모두 멈춘다. 오늘 기록은 남긴다. */
     fun stopAll() {
         player.stop()
+        if (running == ROUTE_DEMO) console.stop()
         if (running == LIVE) collector.stop()
         speaker.stop()
         val wasRunning = running != null
@@ -128,6 +203,7 @@ class CoachSession(context: Context) {
 
     fun release() {
         stopAll()
+        routes.release()
         handler.removeCallbacksAndMessages(null)
         speaker.release()
         listeners.clear()
@@ -151,22 +227,18 @@ class CoachSession(context: Context) {
     val coachOn: Boolean get() = modes.isCoachOn()
 
     private fun onFrame(frame: SignalFrame) {
-        // 코치 끔: 엔진을 돌리지 않는다. 안내(음성·카드·팝업)도 판정 기록도 없다.
-        // 기어 P 리포트로 바꾸는 데 필요한 마지막 프레임만 넘긴다. 주행 중에 바꿔도 다음 프레임부터 반영된다.
-        if (!coachOn) {
-            popup = null
-            lastFrame = frame
-            notifyChanged(frame)
-            return
-        }
+        // 코치 끔은 '알림 끔'이다. 엔진은 계속 돌려 판정(KEPT/MISSED)은 기록하되,
+        // 끄면 음성·카드·팝업 같은 안내(GUIDE)만 내보내지 않는다. 기획서 진단→교정→졸업의 기록이 끊기지 않게 하려는 것이다.
+        // 주행 중에 바꿔도 다음 프레임부터 반영된다.
         val outputs = engine.onFrame(frame)
         outputs.forEach { Log.i(TAG, "${frame.t} $it") }
-        outputs.filterIsInstance<Guide>().forEach { speaker.speak(it.text) }
+        val shown = if (guidesOn(modes.load())) outputs else outputs.filterNot { it is Guide }
+        shown.filterIsInstance<Guide>().forEach { speaker.speak(it.text) }
         val eventsBefore = state.todayEvents.size
-        state = state.next(frame, outputs)
+        state = state.next(frame, shown)
         // 판정이 새로 생겼을 때만 저장한다. 매 프레임 쓰지 않는다.
         if (state.todayEvents.size != eventsBefore) records.save(state.todayEvents)
-        updatePopup(outputs, frame)
+        if (coachOn) updatePopup(shown, frame) else popup = null
         lastFrame = frame
         notifyChanged(frame)
     }
@@ -187,6 +259,10 @@ class CoachSession(context: Context) {
 
     companion object {
         const val LIVE = "실차"
+        /** 경로 데모 재생 중일 때 [running] 값. 기록 앞에도 붙는다. */
+        const val ROUTE_DEMO = "경로"
+        /** 실제 차량 신호에 필요한 런타임 권한. 화면이 묻고, 경로 자동 시작은 있는지만 본다. */
+        val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")
         private const val OK_POPUP_MS = 3000L
         private const val PREVIEW_POPUP_MS = 6000L
         private const val TAG = "KkamCoach"

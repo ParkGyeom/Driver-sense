@@ -54,7 +54,7 @@ class MainActivity : Activity() {
             // 서비스가 먼저 돌고 있었으면 (내비를 보다가 돌아온 경우) 마지막 프레임으로 화면을 맞춘다.
             connected.lastFrame?.let { frame ->
                 gear = frame.gear
-                screen = nextScreen(screen, frame.gear)
+                screen = nextScreen(screen, frame.gear, connected.state.route)
                 showSignals(frame)
             }
             highlight(connected.running)
@@ -95,6 +95,11 @@ class MainActivity : Activity() {
     private lateinit var progressScreen: ProgressScreen
     private lateinit var qnaScreen: QnaScreen
     private lateinit var modeScreen: ModeScreen
+    private lateinit var routePreviewScreen: RoutePreviewScreen
+    private lateinit var routeMap: RouteMap
+    private lateinit var routeReportScreen: RouteReportScreen
+    /** 미리보기 화면을 이미 정한 경로. 같은 경로에서 미리보기를 다시 열지 않는다. */
+    private var routeHandled: RouteTrip? = null
     private lateinit var parkedNav: ParkedNav
     /** 진단 값. TODO(AI 담당 습관 인사이트, 12/1): 실제 계산 구현으로 바꾼다. */
     private val diagnosisSource: DiagnosisSource = DemoDiagnosisSource
@@ -117,6 +122,14 @@ class MainActivity : Activity() {
         addNaviButton()
         addPreviewButton()
         addLiveButton()
+        addButton(CoachSession.ROUTE_DEMO, getString(R.string.demo_route)) { playRouteDemo() }
+        addButton(CONSOLE_SPEED_LABEL, getString(R.string.demo_console_speed_off)) {
+            val current = session ?: return@addButton
+            current.consoleSpeed = !current.consoleSpeed
+            buttons.getValue(CONSOLE_SPEED_LABEL).setText(
+                if (current.consoleSpeed) R.string.demo_console_speed_on else R.string.demo_console_speed_off,
+            )
+        }
         ScenarioPlayer(this).fileNames().forEach(::addScenarioButton)
         setUpDemoToggle()
         render()
@@ -221,6 +234,9 @@ class MainActivity : Activity() {
         progressScreen = ProgressScreen(this)
         qnaScreen = QnaScreen(this)
         modeScreen = ModeScreen(this)
+        routePreviewScreen = RoutePreviewScreen(this) { diagnosisSource.load() }
+        routeMap = RouteMap(this)
+        routeReportScreen = RouteReportScreen(this) { laws }
         parkedNav = ParkedNav(this, onSelect = ::showParked)
         habitScreens = HabitScreens(
             activity = this,
@@ -278,6 +294,7 @@ class MainActivity : Activity() {
         session?.removeListener(sessionListener)
         unbindService(connection)
         uxManager?.unregisterListener()
+        routeMap.release()
         car?.disconnect()
         session = null
         super.onDestroy()
@@ -287,6 +304,14 @@ class MainActivity : Activity() {
         val current = session ?: return
         screen = Screen.DRIVE
         current.play(fileName)
+        if (naviAfterPlay) NaviLauncher.open(this)
+    }
+
+    /** 데모: 시나리오를 이어 한 경로처럼 재생한다 (출발 전 미리보기 → 회전마다 코치 → 도착 리포트). */
+    private fun playRouteDemo() {
+        val current = session ?: return
+        screen = Screen.DRIVE
+        current.playRouteDemo()
         if (naviAfterPlay) NaviLauncher.open(this)
     }
 
@@ -318,11 +343,24 @@ class MainActivity : Activity() {
         if (frame != null) {
             // 기어 P면 리포트(진단·습관 선택 중이면 그대로), 그 밖의 기어면 주행 화면 (기획서 5.4).
             gear = frame.gear
-            screen = nextScreen(screen, frame.gear)
+            screen = nextScreen(screen, frame.gear, state.route)
             showSignals(frame)
+            openRoutePreview(frame.gear)
         }
         highlight(session?.running)
         render()
+    }
+
+    /**
+     * 경로가 새로 붙은 뒤 첫 프레임에서 한 번만: 기어 P(출발 전)면 경로 미리보기를 연다.
+     * 경로를 붙인 순간의 기어는 앞 주행의 값일 수 있어서, 새 프레임의 기어로 정한다.
+     */
+    private fun openRoutePreview(frameGear: Gear) {
+        val trip = state.route ?: return
+        val handled = routeHandled
+        if (handled != null && trip.plan == handled.plan && trip.firstEventIndex == handled.firstEventIndex) return
+        screen = screenOnRouteStart(screen, frameGear) ?: return
+        routeHandled = trip
     }
 
     private fun showSignals(frame: SignalFrame) {
@@ -349,7 +387,16 @@ class MainActivity : Activity() {
         progressScreen.show(screen)
         qnaScreen.show(screen)
         modeScreen.show(screen)
+        routePreviewScreen.show(screen)
+        routeReportScreen.show(screen)
+        if (screen == Screen.ROUTE_REPORT) routeReportScreen.render(state)
         if (screen == Screen.REPORT) reportScreen.render(state)
+        if (screen == Screen.ROUTE_PREVIEW) routePreviewScreen.render(state)
+        // 경로 좌표가 있으면(경로 데모) 주행 화면 왼쪽에 지도를 같이 보여준다.
+        val path = state.route?.plan?.path.orEmpty()
+        val mapVisible = screen == Screen.DRIVE && path.isNotEmpty()
+        routeMap.show(mapVisible)
+        if (mapVisible) routeMap.render(path, session?.lastFrame)
         driveScreen.render(state)
         view.logs.text = state.logs.takeLast(MAX_LOGS).reversed().joinToString("\n").ifEmpty { getString(R.string.demo_no_logs) }
     }
@@ -445,12 +492,13 @@ class MainActivity : Activity() {
         const val NAVI_LABEL = "내비"
         const val PREVIEW_LABEL = "미리보기"
         const val DIAGNOSE_LABEL = "진단"
+        const val CONSOLE_SPEED_LABEL = "계기판 속도"
         const val REQUEST_LIVE = 1
         const val REQUEST_NOTIFY = 2
         const val PREFS = "kkam"
         const val KEY_OVERLAY_ASKED = "overlay_asked"
         const val KEY_NAVI_AFTER_PLAY = "navi_after_play"
-        val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")
+        val LIVE_PERMISSIONS = CoachSession.LIVE_PERMISSIONS
         val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호", "전조등", "와이퍼·비", "성에·순환")
     }
 }

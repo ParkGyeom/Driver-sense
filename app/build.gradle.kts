@@ -32,6 +32,8 @@ dependencies {
     implementation("ai.pleos.playground:Vehicle:2.3.2")
     implementation("ai.pleos.playground:NaviHelper:3.0.5")
     implementation("ai.pleos.playground:FusedLocation:1.1.3")
+    // 경로 데모의 앱 안 지도 (OpenStreetMap 타일, API 키 없음). 앱 담당이 의존성 추가를 확인함.
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
 
     testImplementation(kotlin("test-junit5"))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

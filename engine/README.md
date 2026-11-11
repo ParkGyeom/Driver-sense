@@ -2,7 +2,7 @@
 
 차량 신호를 한 프레임씩 받아 안내 요청(GUIDE)과 판정 이벤트(EVENT)를 돌려주는 순수 Kotlin 라이브러리입니다. Android에 의존하지 않아서 에뮬레이터 없이 테스트할 수 있습니다.
 
-**현재 범위 (spec v0.3.2)**: R1(회전·유턴 전 깜빡이), R2(깜빡이 없이 회전, 기록만), R3(적색 신호 우회전 일시정지), R4(나들목 진출입 전 깜빡이), R5(터널 진입 전 전조등), R6(비 올 때 와이퍼), R7(앞유리 김서림)이 동작합니다. 회전교차로(R8)는 제안 단계입니다([docs/proposals/spec-new-rules.md](../docs/proposals/spec-new-rules.md)). 입출력 형식의 기준은 [docs/spec.md](../docs/spec.md)입니다.
+**현재 범위 (spec v0.3.2)**: R1(회전·유턴 전 깜빡이), R2(깜빡이 없이 회전, 기록만), R3(적색 신호 우회전 일시정지), R4(나들목 진출입 전 깜빡이), R5(터널 진입 전 전조등), R6(비 올 때 와이퍼), R7(앞유리 김서림)이 동작합니다. 회전교차로(R8)는 제안 단계입니다([docs/proposals/spec-new-rules.md](../docs/proposals/spec-new-rules.md)). 엔진 입력에 모드는 아직 없고, 안내 켬/끔은 앱이 GUIDE 출력을 거르는 방식으로 처리합니다. 입출력 형식의 기준은 [docs/spec.md](../docs/spec.md)입니다.
 
 ## 앱에서 쓰기
 
@@ -108,23 +108,23 @@ suspend fun replay(context: Context, fileName: String) {
 | S10 | 판정 후 회전 없이 주행 | 없음 |
 | S11 | 터널, 안내 듣고 전조등 켬 (R5) | GUIDE, KEPT |
 | S12 | 오른쪽 나들목, 안내 듣고 깜빡이 켬 (R4) | GUIDE, KEPT |
-| S13 | 적색우회전 멈춤 (R1·R3) | GUIDE, KEPT, KEPT |
-| S14 | 적색우회전 서행만 (R1·R3) | GUIDE, KEPT, MISSED |
-| S15 | 적색우회전 접근중 녹색 (R1) | KEPT |
-| S16 | 우회전 신호정보 없음 (R1) | KEPT |
-| S17 | 비 와이퍼 (R6) | GUIDE, KEPT |
-| S18 | 내비없이 좌회전 안켬 (R2) | MISSED |
-| S19 | 내비없이 좌회전 켬 (R2) | KEPT |
-| S20 | 완만한 커브 | 없음 |
-| S21 | 후진후 회전 | 없음 |
-| S22 | 비 내기순환 김서림 (R7) | GUIDE, KEPT |
-| S23 | 음성 앞이 뿌옇다 (R7) | GUIDE, KEPT |
-| S24 | 비 외기순환 | 없음 |
-| S25 | 유턴 안내후 켬 (R1) | GUIDE, KEPT |
-| S26 | 유턴 반대쪽 깜빡이 (R1) | GUIDE, MISSED |
-| S27 | 연속회전 좌후우 여유 (R1) | KEPT, GUIDE, KEPT |
-| S28 | 연속회전 좌후우 근접 (R1) | KEPT, KEPT |
-| S29 | 같은방향 연속 30m놓침 (R1) | GUIDE, GUIDE, MISSED |
+| S13 | 적색 우회전, 안내 듣고 정지선에서 멈춤 (R3, R1) | GUIDE, KEPT, KEPT |
+| S14 | 적색 우회전, 서행만 하고 멈추지 않음 (R3) | GUIDE, KEPT, MISSED |
+| S15 | 적색 우회전, 다가가는 중 녹색으로 바뀜 (R3) | KEPT (R1만) |
+| S16 | 우회전, 신호 정보 없음 (R3) | KEPT (R1만) |
+| S17 | 비 오는데 와이퍼 꺼짐, 안내 듣고 켬 (R6) | GUIDE, KEPT |
+| S18 | 내비 없이 좌회전, 깜빡이 안 켬 (R2) | MISSED |
+| S19 | 내비 없이 좌회전, 깜빡이 켬 (R2) | KEPT |
+| S20 | 완만한 커브 (R2 오탐 방지) | 없음 |
+| S21 | 후진 뒤 회전, 주차장으로 봄 (R2) | 없음 |
+| S22 | 비 오는데 내기 순환, 김서림 안내 후 성에 제거 켬 (R7) | GUIDE, KEPT |
+| S23 | 음성 "앞이 뿌옇다", 안내 후 성에 제거 켬 (R7) | GUIDE, KEPT |
+| S24 | 비 오는데 외기 순환 (R7) | 없음 |
+| S25 | 유턴, 안내 듣고 왼쪽 깜빡이 켬 (R1) | GUIDE, KEPT |
+| S26 | 유턴, 반대쪽(오른쪽) 깜빡이 (R1) | GUIDE, MISSED |
+| S27 | 좌회전 뒤 여유 있게 우회전 (R1 연속 회전) | KEPT, GUIDE, KEPT |
+| S28 | 좌회전 뒤 바로 우회전 (R1 연속 회전, 30m 안에서 처음 본 회전) | KEPT, KEPT |
+| S29 | 같은 방향 연속 회전, 두 번째는 30m에서 놓침 (R1) | GUIDE, GUIDE, MISSED |
 
 ## 개발
 

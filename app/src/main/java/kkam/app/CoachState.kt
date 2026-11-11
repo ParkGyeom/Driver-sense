@@ -57,6 +57,8 @@ data class CoachState(
     val logs: List<String> = emptyList(),
     /** 오늘 나온 판정 전체. 기어 P 주행 리포트에 쓴다. kept, total처럼 새 주행을 시작해도 남긴다. */
     val todayEvents: List<Event> = emptyList(),
+    /** 내비 경로를 따라 코치 중이거나 마지막으로 끝난 경로. 새 주행을 시작하면 비운다 (RouteCoach.kt). */
+    val route: RouteTrip? = null,
 )
 
 /**

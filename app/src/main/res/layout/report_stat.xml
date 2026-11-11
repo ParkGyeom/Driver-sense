@@ -32,7 +32,7 @@
             android:id="@+id/statLabel"
             style="@style/Kk.Caption"
             android:layout_marginStart="14dp"
-            android:textColor="@color/paper_text"
+            android:textColor="@color/text"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -48,5 +48,5 @@
         android:layout_marginTop="10dp"
         android:maxLines="1"
         android:ellipsize="end"
-        android:textColor="@color/paper_muted" />
+        android:textColor="@color/muted" />
 </LinearLayout>

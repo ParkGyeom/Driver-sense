@@ -17,7 +17,7 @@
         style="@style/Kk.Body"
         android:layout_width="120dp"
         android:fontFeatureSettings="tnum"
-        android:textColor="@color/paper_muted" />
+        android:textColor="@color/muted" />
 
     <LinearLayout
         android:layout_width="0dp"
@@ -28,28 +28,28 @@
         <TextView
             android:id="@+id/itemTitle"
             style="@style/Kk.Body"
-            android:textColor="@color/paper_text"
+            android:textColor="@color/text"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/itemDetail"
             style="@style/Kk.Caption"
             android:layout_marginTop="4dp"
-            android:textColor="@color/paper_muted" />
+            android:textColor="@color/muted" />
 
         <!-- 조항. 룰 테이블에 없으면 숨긴다. -->
         <TextView
             android:id="@+id/itemArticle"
             style="@style/Kk.Caption"
             android:layout_marginTop="14dp"
-            android:textColor="@color/paper_text" />
+            android:textColor="@color/text" />
 
         <!-- 처분. 놓침이면 빨강. -->
         <TextView
             android:id="@+id/itemPenalty"
             style="@style/Kk.Caption"
             android:layout_marginTop="4dp"
-            android:textColor="@color/paper_muted" />
+            android:textColor="@color/muted" />
     </LinearLayout>
 
     <!-- 결과 칩: 기호 + 글자 -->

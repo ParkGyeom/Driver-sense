@@ -21,20 +21,4 @@
     <color name="panel">#10141A</color>
     <color name="demo_active">#3A4352</color>
 
-    <!--
-      흰 배경 화면(오늘 주행 리포트) 전용. 앱의 나머지는 어두운 테마 그대로.
-      흰 바탕에서 글자 대비 4.5:1 이상이 되게 상태 색을 한 단계 진하게 따로 둔다.
-    -->
-    <color name="paper">#F4F6F9</color>          <!-- 화면 바탕 -->
-    <color name="paper_card">#FFFFFF</color>     <!-- 카드 -->
-    <color name="paper_line">#E1E5EB</color>     <!-- 카드 테두리, 구분선 -->
-    <color name="paper_text">#151A21</color>     <!-- 본문 (흰 카드 대비 17.5:1) -->
-    <color name="paper_muted">#5B6676</color>    <!-- 보조 글자 (대비 5.8:1) -->
-    <color name="paper_ok">#1F5FD1</color>       <!-- 지킴 (대비 5.8:1) -->
-    <color name="paper_miss">#C62F2F</color>     <!-- 놓침 (대비 5.5:1) -->
-    <color name="paper_warn">#9A5B00</color>     <!-- 할 일 (대비 5.4:1) -->
-    <!-- 옅은 칩 바탕. 위 진한 색 글자를 얹어도 대비 4.6:1 이상. -->
-    <color name="paper_ok_soft">#E7EFFC</color>
-    <color name="paper_miss_soft">#FBE9E9</color>
-    <color name="paper_warn_soft">#FDF1DE</color>
 </resources>

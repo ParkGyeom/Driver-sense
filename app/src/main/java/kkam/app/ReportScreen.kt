@@ -13,7 +13,7 @@ import kotlin.math.roundToInt
 
 /**
  * 오늘 주행 리포트 (기획서 UI-2, screen_report.xml). 기어 P일 때만 보인다.
- * 값은 [buildReport]에서만 온다. 앱에서 이 화면만 흰 배경이라 색은 모두 paper_* 를 쓴다.
+ * 값은 [buildReport]에서만 온다. 색은 다른 화면과 같은 어두운 토큰을 쓴다.
  *
  * 화면 구성 (읽는 순서)
  * 1. 제목 + 핵심 요약 한 줄
@@ -37,16 +37,16 @@ class ReportScreen(
     private var drawnFor: List<Event>? = null
 
     init {
-        listOf(statKept, statMissed, statSaved).forEach { it.background = paperCard() }
-        activity.findViewById<View>(R.id.reportListCard).background = paperCard()
-        activity.findViewById<View>(R.id.reportEmptyIcon).background = activity.rounded(color(R.color.paper), radiusDp = 999)
+        listOf(statKept, statMissed, statSaved).forEach { it.background = activity.cardBackground() }
+        activity.findViewById<View>(R.id.reportListCard).background = activity.cardBackground()
+        activity.findViewById<View>(R.id.reportEmptyIcon).background = activity.rounded(color(R.color.surface_2), radiusDp = 999)
         activity.findViewById<View>(R.id.reportAsk).background =
-            activity.pillBackground(color(R.color.paper_card), strokeColor = color(R.color.paper_line))
+            activity.pillBackground(color(R.color.surface), strokeColor = color(R.color.line))
 
         // 수치 카드의 고정 부분: 기호, 라벨, 숫자 색
-        statKept.setStatHead("✓", R.string.report_kept, R.color.paper_ok, R.color.paper_ok_soft)
-        statMissed.setStatHead("!", R.string.report_missed, R.color.paper_miss, R.color.paper_miss_soft)
-        statSaved.setStatHead("₩", R.string.report_saved, R.color.paper_text, R.color.paper)
+        statKept.setStatHead("✓", R.string.report_kept, R.color.ok, R.color.ok_soft)
+        statMissed.setStatHead("!", R.string.report_missed, R.color.miss, R.color.miss_soft)
+        statSaved.setStatHead("₩", R.string.report_saved, R.color.text, R.color.surface_2)
     }
 
     fun show(screen: Screen) {
@@ -90,7 +90,7 @@ class ReportScreen(
         )
         // 놓침 0번은 나쁜 소식이 아니므로 빨강 대신 회색 숫자로
         statMissed.findViewById<TextView>(R.id.statValue)
-            .setTextColor(color(if (report.missed == 0) R.color.paper_muted else R.color.paper_miss))
+            .setTextColor(color(if (report.missed == 0) R.color.muted else R.color.miss))
         statSaved.setStatBody(value = savedLabel, caption = activity.getString(R.string.parked_report_saved_caption))
 
         // 3. 판정 기록
@@ -122,7 +122,7 @@ class ReportScreen(
     /** 판정 한 줄: 시간 | 상황 + 설명 | 결과 칩, 아래 조항·처분. */
     private fun addItem(item: ReportItem, t: Long?) {
         val row = activity.layoutInflater.inflate(R.layout.report_item, items, false)
-        val tone = color(if (item.kept) R.color.paper_ok else R.color.paper_miss)
+        val tone = color(if (item.kept) R.color.ok else R.color.miss)
 
         row.findViewById<TextView>(R.id.itemTime).text = t?.let(::timeLabel).orEmpty()
         // 결과는 오른쪽 칩이 말하므로 제목에서는 "지킴"/"놓침"을 뗀다. 예: "좌회전 깜빡이 지킴" → "좌회전 깜빡이"
@@ -131,12 +131,12 @@ class ReportScreen(
         row.findViewById<TextView>(R.id.itemResult).apply {
             setText(if (item.kept) R.string.parked_report_kept_chip else R.string.parked_report_missed_chip)
             setTextColor(tone)
-            background = activity.pillBackground(color(if (item.kept) R.color.paper_ok_soft else R.color.paper_miss_soft))
+            background = activity.pillBackground(color(if (item.kept) R.color.ok_soft else R.color.miss_soft))
         }
         row.findViewById<TextView>(R.id.itemArticle).showOrHide(item.article)
         row.findViewById<TextView>(R.id.itemPenalty).apply {
             showOrHide(item.penalty)
-            setTextColor(if (item.kept) color(R.color.paper_muted) else tone)
+            setTextColor(if (item.kept) color(R.color.muted) else tone)
         }
         items.addView(row)
     }
@@ -144,12 +144,8 @@ class ReportScreen(
     /** 판정 줄 사이 구분선. */
     private fun divider() = View(activity).apply {
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, activity.dp(1))
-        setBackgroundColor(color(R.color.paper_line))
+        setBackgroundColor(color(R.color.line))
     }
-
-    /** 흰 카드 + 얇은 테두리. */
-    private fun paperCard() =
-        activity.rounded(color(R.color.paper_card), radiusDp = PAPER_RADIUS_DP, strokeColor = color(R.color.paper_line))
 
     /** 글자가 비었으면(룰 테이블에 없음) 줄을 숨긴다. */
     private fun TextView.showOrHide(label: String) {
@@ -162,7 +158,6 @@ class ReportScreen(
     private fun color(id: Int) = activity.getColor(id)
 
     private companion object {
-        const val PAPER_RADIUS_DP = 24
         const val ZERO_WON = "0 원"
 
         /** 이보다 작은 t는 시나리오 시각(0부터 ms), 크면 실제 시각(epoch ms). CoachState의 판정 기록과 같은 기준. */

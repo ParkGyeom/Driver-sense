@@ -25,7 +25,7 @@ AI 담당 · AI(판정 엔진·AI 기능) · 11/5 ~ 12/1
 | 8 | 앱에 넘기기 | P3 | 11/10 |
 | 9 | 기획서 기술·AI 파트 초안 | P4 | 11/11 |
 | 10 | 법규 룰 테이블 초안 | P5 | 11/13~14 |
-| 11 | 모드 입력 추가 (spec v0.3) | P6 | 11/15~16 |
+| 11 | 모드 입력 추가 (spec v0.4) | P6 | 11/15~16 |
 | 12 | R2 구현 | P7 | 11/17~19 |
 | 13 | R3 구현 | P8 | 11/20~23 |
 | 14 | 적응형 안내·습관 졸업 | P9 | 11/24~25 |
@@ -226,10 +226,10 @@ docs/proposal.md 5.2와 12장 P5를 보고 법규 룰 테이블 초안을 data/l
 
 ---
 
-## 단계 11. 모드 입력 추가, spec v0.3 (11/15~16) · P6
+## 단계 11. 모드 입력 추가, spec v0.4 (11/15~16) · P6
 
 ```
-docs/proposal.md 4.3(모드)과 12장 P6를 보고 docs/spec.md를 v0.3으로 고치는 안을 먼저 보여줘. 코드는 내 확인 후에.
+docs/proposal.md 4.3(모드)과 12장 P6를 보고 docs/spec.md를 v0.4로 고치는 안을 먼저 보여줘. 코드는 내 확인 후에.
 - Engine을 만들 때 CoachingConfig를 받는다: mode(DIAGNOSE, CORRECT, TRAINING, QUIET), selectedRules(교정 모드에서 안내할 룰), 룰별 guideEvery(1이면 매번, 2면 두 번에 한 번, 0이면 끔)
 - 모드별 GUIDE: DIAGNOSE·QUIET는 없음, CORRECT는 selectedRules만, TRAINING은 전부. EVENT는 모든 모드에서 기록.
 - guideEvery가 2면 그 룰의 안내 기회를 1번째, 3번째, 5번째...에만 안내. 랜덤 쓰지 마.
@@ -242,7 +242,7 @@ docs/proposal.md 4.3(모드)과 12장 P6를 보고 docs/spec.md를 v0.3으로 �
 spec을 확인한 뒤:
 
 ```
-spec v0.3대로 코드와 기존 시나리오를 고쳐줘. 그리고 S2와 같은 주행을 모드만 바꿔 4개(DIAGNOSE, CORRECT+R1 선택, CORRECT+R1 미선택, QUIET) 시나리오로 추가하고 통과시켜줘.
+spec v0.4대로 코드와 기존 시나리오를 고쳐줘. 그리고 S2와 같은 주행을 모드만 바꿔 4개(DIAGNOSE, CORRECT+R1 선택, CORRECT+R1 미선택, QUIET) 시나리오로 추가하고 통과시켜줘.
 ```
 
 **완료 기준**: 모든 시나리오 통과, 커밋. 앱 담당에게 config 사용법 공유.

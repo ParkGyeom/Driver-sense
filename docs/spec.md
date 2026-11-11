@@ -1,12 +1,13 @@
 # 깜빡코치 판정 엔진 명세
 
-v0.3 · 2026-11-11 R2(깜빡이 없이 회전)·R3(적색 신호 우회전 일시정지)·R6(비 올 때 와이퍼) 추가 · 담당 AI
+v0.3.1 · 2026-11-11 R7(앞유리 김서림) 추가 · 담당 AI
 
 | 버전 | 바뀐 것 |
 | --- | --- |
 | v0.1 (11-06) | R1 상태 머신, S1~S10 |
 | v0.2 (11-09) | R4·R5 추가(시연용 최소 범위), 입력 `headlight`, tbt.turn에 `RAMP_LEFT`·`RAMP_RIGHT`·`TUNNEL`, GUIDE에 `action`, EVENT의 `turn`은 null 허용, S11·S12 |
 | v0.3 (11-11) | R2·R3·R6 추가, 입력 `wiper`·`rain`, action `STOP`·`WIPER_ON`, S13~S21, 보조 지표(급정거·급출발) 자리. 모드는 v0.4로 미룬다 |
+| v0.3.1 (11-11) | R7 앞유리 김서림 추가(13장), 입력 `defroster`·`recirc`·`fogReported`, action `DEFOG`, S22~S24 |
 
 이 문서가 기준이다. 코드와 다르면 이 문서를 먼저 고친다.
 
@@ -27,6 +28,7 @@ v0.3 · 2026-11-11 R2(깜빡이 없이 회전)·R3(적색 신호 우회전 일�
 | R4 | 나들목 진출입 전 깜빡이 (안내 중심) | v0.2 (7장) |
 | R5 | 터널 진입 전 전조등 (안내 중심) | v0.2 (8장) |
 | R6 | 비 올 때 와이퍼 (안내 중심, 법규 근거 없음) | v0.3 (10장) |
+| R7 | 앞유리 김서림 (안내 중심, 법규 근거 없음) | v0.3.1 (13장) |
 
 급정거·급출발은 룰이 아니라 보조 지표다. 지킴·놓침, 범칙금, 음성 안내 없이 정차 리포트에 횟수만 보여준다(12장).
 
@@ -74,9 +76,12 @@ R4·R5는 PT 시연용 최소 범위다. 놓침(MISSED)은 내지 않고, 안내
 | light | TrafficLight? | 전방 차량 신호 | 서버(공공 신호 API) → 앱 | 정보 없으면 null. R3에서만 사용 |
 | headlight | enum? | 전조등(하향등) 상태 | Vehicle SDK Light (아래 변환표) | 직전 값 유지. 한 번도 값이 없으면 null. R5에서만 사용 |
 | wiper | enum? | 앞 유리 와이퍼 상태 | Vehicle SDK Wiper (아래 변환표) | 직전 값 유지. 한 번도 값이 없으면 null. R6에서만 사용 |
-| rain | Boolean? | 지금 비가 오는가 | 시연은 시나리오 값. 실제 주행은 서버 날씨(서버 담당)가 붙으면 앱이 넣는다 | 모르면 null. R6에서만 사용 |
+| rain | Boolean? | 지금 비가 오는가 | 시연은 시나리오 값. 실제 주행은 서버 날씨(서버 담당)가 붙으면 앱이 넣는다 | 모르면 null. R6·R7에서 사용 |
+| defroster | Boolean? | 앞유리 성에 제거가 켜져 있는가 | Vehicle SDK HVAC `getHvacDefrosterState`·`registerHvacDefrosterState` (앞 유리) | 직전 값 유지. 한 번도 값이 없으면 null. R7에서만 사용 |
+| recirc | Boolean? | 내기 순환이 켜져 있는가 (false면 외기) | Vehicle SDK HVAC `getHvacRecirculationState`·`registerHvacRecirculationState` (좌석 묶음 영역) | 직전 값 유지. 한 번도 값이 없으면 null. R7에서만 사용 |
+| fogReported | Boolean? | 운전자가 이 프레임에 "앞이 뿌옇다"고 말했는가 | 앱 음성 인식(STT). 말한 프레임 하나에만 true | 그 밖에는 null. R7에서만 사용 |
 
-- headlight, wiper, rain은 Kotlin에서 기본값 `= null`을 준다. 이 필드가 없는 시나리오도 그대로 읽히게 하기 위해서다.
+- headlight, wiper, rain, defroster, recirc, fogReported는 Kotlin에서 기본값 `= null`을 준다. 이 필드가 없는 시나리오도 그대로 읽히게 하기 위해서다.
 - 앱은 이 값들이 없다는 이유로 프레임을 막지 않는다. null이면 그 값을 쓰는 룰만 아무것도 하지 않는다.
 
 enum 값
@@ -119,7 +124,9 @@ Tbt: `{ "turn": "LEFT", "distanceM": 48 }` (distanceM은 Int, 미터. SDK의 dis
 - R1은 `LEFT`, `RIGHT`만 보므로 새 값이 생겨도 R1 판정은 그대로다. 앱의 `TurnType`을 쓰는 `when`은 새 값을 처리해야 컴파일된다.
 - `DAYTIME_RUNNING`(주간주행등)은 터널 안을 밝히는 등화로 보지 않고 `OFF`로 둔다. 실제 차량 동작은 확인하지 못했다(5장).
 - Light API 권한은 `pleos.car.permission.CAR_LIGHTS`이며 앱 매니페스트에 이미 있다.
-- Wiper API 권한은 `pleos.car.permission.CAR_WINDOWS`이며 앱 매니페스트에 추가해야 한다.
+- Wiper API 권한은 `pleos.car.permission.CAR_WINDOWS`이며 앱 매니페스트에 있다.
+- HVAC API 권한은 `pleos.car.permission.CAR_CLIMATE`이며 앱 매니페스트에 추가해야 한다.
+- 내기 순환은 좌석 영역으로 읽는다. 에뮬레이터는 1열 좌·우와 2열 좌·중·우를 묶은 영역(area ID 117)만 지원한다. 운전석 하나만 지정하면 오류가 난다 (11/11 확인).
 
 TrafficLight: `{ "phase": "RED", "remainSec": 12 }` (remainSec는 Int?, 모르면 null)
 
@@ -140,6 +147,7 @@ TrafficLight: `{ "phase": "RED", "remainSec": 12 }` (remainSec는 Int?, 모르�
 | `HEADLIGHT_ON` | R5 | headlight가 ON 또는 AUTO |
 | `STOP` | R3 | speedKph ≤ STOP_KPH (9.1) |
 | `WIPER_ON` | R6 | wiper가 ON 또는 AUTO |
+| `DEFOG` | R7 | defroster == true, 또는 안내 때 켜져 있던 내기 순환이 꺼짐(외기) |
 
 - action이 있으면 앱은 재탐색으로 tbt가 바뀌어도 안내한 방향을 잃지 않는다.
 - 시나리오 비교 항목에는 넣지 않는다(4.1).
@@ -165,13 +173,13 @@ TrafficLight: `{ "phase": "RED", "remainSec": 12 }` (remainSec는 Int?, 모르�
 | id | 엔진 인스턴스 안에서 순서대로 `evt-1`, `evt-2` … (테스트 재현성 때문에 UUID를 쓰지 않는다) |
 | t | 이벤트가 나온 프레임의 시각 |
 | rule | `R1`, `R2`, `R3`, `R4`, `R5`, `R6` |
-| result | `KEPT`(지킴), `MISSED`(놓침). R4·R5·R6은 `KEPT`만 낸다 |
+| result | `KEPT`(지킴), `MISSED`(놓침). R4·R5·R6·R7은 `KEPT`만 낸다 |
 | guided | 이 판정 전에 예방 안내(GUIDE)가 나갔는지. 앱의 "아낀 범칙금" 계산에 쓴다. R2는 안내가 없어 항상 false |
-| turn | `LEFT`, `RIGHT`, 또는 null. R1·R2·R4는 회전 방향, R3는 `RIGHT`, R5·R6은 null |
+| turn | `LEFT`, `RIGHT`, 또는 null. R1·R2·R4는 회전 방향, R3는 `RIGHT`, R5·R6·R7은 null |
 | lat, lon | 이벤트가 나온 프레임의 위치 |
 
 - `turn`이 null일 수 있으므로 앱과 서버는 null을 처리해야 한다.
-- R6은 법규 근거가 없어 리포트의 준수율과 아낀 범칙금에서는 뺀다. 기록은 남긴다.
+- R6·R7은 법규 근거가 없어 리포트의 준수율과 아낀 범칙금에서는 뺀다. 기록은 남긴다.
 
 ### 2.4 앱에서 쓰는 방법
 
@@ -189,7 +197,7 @@ for (out in outputs) {
 ```
 
 - 엔진은 한 스레드에서만 호출한다고 가정한다.
-- 한 프레임에서 출력이 0개, 1개, 여러 개 나올 수 있다. 여러 룰이 한 프레임에 출력하면 룰 번호 순서(R1, R2, R3, R4, R5, R6)로 담는다.
+- 한 프레임에서 출력이 0개, 1개, 여러 개 나올 수 있다. 여러 룰이 한 프레임에 출력하면 룰 번호 순서(R1, R2, R3, R4, R5, R6, R7)로 담는다.
 - 적색 우회전에서는 R1(깜빡이)과 R3(멈춤) 안내가 같은 회전에 나올 수 있다. 엔진은 둘 다 내고, 앱은 R3 문장을 먼저 읽는다.
 - R5는 안내 직후 운전자가 전조등을 켜면 그 프레임에 EVENT가 바로 나온다. 앱이 "EVENT가 오면 안내 표시를 숨김"으로 처리하면 따랐다는 표시가 보이지 않을 수 있다. 표시 유지 시간은 앱(앱 담당)이 정한다.
 
@@ -288,7 +296,7 @@ TURNING에서는 전이표를 검사하기 전에 프레임마다 시간을 먼�
 
 - `expect`에는 엔진이 내보내야 하는 출력 **전체**를 순서대로 적는다. 개수가 다르면 실패다.
 - 비교 항목: `type`, `t`, `rule`, 그리고 EVENT면 `result`, `guided`. `id`, `text`, 위치는 비교하지 않는다.
-- 표에 없는 필드의 공통값: `gear` = D, `brake` = false, `steeringDeg` = 0.0, `light` = null, `headlight`·`wiper`·`rain`은 적지 않음(null), `lat`/`lon` = 37.5500/127.0700 근처에서 조금씩 움직이는 값.
+- 표에 없는 필드의 공통값: `gear` = D, `brake` = false, `steeringDeg` = 0.0, `light` = null, `headlight`·`wiper`·`rain`·`defroster`·`recirc`·`fogReported`는 적지 않음(null), `lat`/`lon` = 37.5500/127.0700 근처에서 조금씩 움직이는 값.
 - `steeringDeg` = 0.0은 회전 중인 프레임에도 그대로 쓴다. R1은 핸들 각도를 쓰지 않고 좌우 부호도 미정이다. 실제 값은 R2 시나리오부터 넣는다.
 - 표의 "다음 안내"는 `tbt = { "turn": "STRAIGHT", "distanceM": 500 }`, 그 다음 프레임은 `distanceM: 480`.
 
@@ -357,6 +365,9 @@ S2와 같고, turnSignal만 모든 프레임에서 OFF.
 | S19_내비없이_좌회전_켬 | S18과 같되 turnSignal은 t=2000~8000에 LEFT | EVENT t=8000 R2 KEPT guided=false |
 | S20_완만한_커브 | 4.17 표 | 출력 없음 |
 | S21_후진후_회전 | 4.18 표 | 출력 없음 |
+| S22_비_내기순환_김서림 | 4.19 표 | GUIDE t=10000 R7, EVENT t=14000 R7 KEPT guided=true |
+| S23_음성_앞이_뿌옇다 | 4.20 표 | GUIDE t=3000 R7, EVENT t=6000 R7 KEPT guided=true |
+| S24_비_외기순환 | S22와 같되 recirc는 모든 프레임에서 false | 출력 없음 |
 
 R2를 넣어도 S1~S12의 기대 출력은 바뀌지 않아야 한다. 이 시나리오들의 회전은 모두 R1이 판정하므로 R2는 쉰다(11.3 #2).
 
@@ -547,6 +558,28 @@ tbt는 null, turnSignal은 OFF. 후진(t=0) 뒤 30초가 안 지나서 회전해
 | 6000 | D | 12 | 60 |
 | 8000 | D | 10 | 20 |
 
+### 4.19 S22: 비 오는데 내기 순환, 김서림 안내 (R7)
+
+40km/h로 직진(tbt = STRAIGHT 900m, headingDeg 90, turnSignal OFF). 비가 오지만 와이퍼는 처음부터 켜 두어 R6는 조용하다. 내기 순환 + 성에 제거 꺼짐이 10초 이어진 t=10000에 안내하고, t=14000에 성에 제거를 켜 KEPT.
+
+| t (ms) | rain | wiper | recirc | defroster |
+| --- | --- | --- | --- | --- |
+| 0 | true | ON | true | false |
+| 5000 | true | ON | true | false |
+| 10000 | true | ON | true | false |
+| 14000 | true | ON | true | true |
+| 20000 | true | ON | true | true |
+
+### 4.20 S23: 음성으로 "앞이 뿌옇다" (R7)
+
+40km/h로 직진, 비 없음(rain false), 외기 순환(recirc false), 성에 제거 꺼짐. t=3000에 운전자가 말해 바로 안내하고, t=6000에 성에 제거를 켜 KEPT.
+
+| t (ms) | fogReported | defroster |
+| --- | --- | --- |
+| 0 | null | false |
+| 3000 | true | false |
+| 6000 | null | true |
+
 ---
 
 ## 5. 아직 정하지 않은 것
@@ -573,6 +606,9 @@ tbt는 null, turnSignal은 OFF. 후진(t=0) 뒤 30초가 안 지나서 회전해
 - [ ] 보조 지표(12장): 한 번 센 뒤 다시 세지 않는 시간
 - [ ] 보조 지표(12장): 계산 위치. 엔진에 룰과 분리된 계산기를 둘지, 앱이나 습관 인사이트 라이브러리에서 할지. EVENT 형식과 시나리오 기대값은 바꾸지 않는다
 - [ ] 보조 지표(12장): R3 리포트에 "적색 신호 앞 급정거"를 함께 보여줄지
+- [ ] R7 FOG_HOLD_MS 10초는 시연용 초안이다. 실제로 김이 서리기 시작하는 시간과 맞는 근거가 없다 (v0.3.1)
+- [ ] R7 조건에 바깥 기온(겨울철)을 넣을지. AAOS 속성 `ENV_OUTSIDE_TEMPERATURE`는 에뮬레이터 차량 시스템에 있지만 앱에서 읽히는지 확인하지 않았다 (v0.3.1)
+- [ ] R7 음성 요청(`fogReported`)을 앱 STT에서 어떤 문장으로 알아들을지. 앱의 STT 연결이 먼저 필요하다 (v0.3.1)
 
 ---
 
@@ -835,3 +871,54 @@ R2는 상태 대신 최근 프레임 기록을 갖는다.
 - **룰로 만들지 않는 이유**: 단독 범칙금이 없다(난폭운전 제46조의3은 여러 행위가 반복돼야 성립한다). 공모전 예시 "안전운전 점수 앱"과 겹친다. 속도가 1초에 한 번만 들어와 추정이 거칠다.
 - **계산 방식 (초안)**: 연속한 두 프레임의 속도 차이를 시간 차이로 나눠 가속도를 추정한다. 감속이 기준보다 크면 급정거, 가속이 기준보다 크면 급출발로 한 번 센다. 한 번 센 뒤 짧은 시간 동안은 다시 세지 않는다.
 - R3·R6·R2 구현 뒤에 한다. 아래가 정해지기 전에는 구현하지 않는다(5장).
+
+---
+
+## 13. 룰 R7: 앞유리 김서림
+
+**근거**: 법규표에 해당 조항이 없다. 초보 운전자가 김이 서릴 때 어떤 버튼을 눌러야 하는지 몰라 시야를 잃는 문제를 돕는 안전 안내다. R6처럼 EVENT는 남기지만 리포트의 준수율과 아낀 범칙금에서는 뺀다 (2.3).
+
+**MVP 단순화**
+
+- 차량은 습기나 김서림을 직접 알려주지 않는다. 그래서 두 가지로 안내 시점을 정한다.
+  1. 상황 추정: 비가 오고, 내기 순환이 켜져 있고, 성에 제거가 꺼진 채 주행이 FOG_HOLD_MS 이어지면 김이 서리기 쉬운 상황으로 본다.
+  2. 음성 요청: 운전자가 "앞이 뿌옇다"고 말하면(`fogReported`) 바로 안내한다. 앱 STT가 붙어야 실제로 들어온다.
+- 시연은 1번 상황 추정으로 한다.
+- 성에 제거를 켜거나, 안내 때 켜져 있던 내기 순환을 끄면(외기) KEPT. 끝까지 안 해도 MISSED는 내지 않는다.
+- R6(와이퍼) 안내가 진행 중이면 R7은 기다린다. 비가 올 때 두 문장을 한꺼번에 읽지 않기 위해서다.
+- defroster가 null이면 아무것도 하지 않는다.
+
+### 13.1 파라미터
+
+| 이름 | 값 | 뜻 |
+| --- | --- | --- |
+| FOG_HOLD_MS | 10000 | 상황 추정 조건이 이만큼 이어지면 안내한다. 시연용 초안이다(5장) |
+
+### 13.2 상태
+
+| 상태 | 뜻 | 기억하는 값 |
+| --- | --- | --- |
+| IDLE | 대기 | 없음 |
+| WAITING | 김이 서리기 쉬운 상황이 이어져 시간을 재는 중 | since |
+| WATCHING | 안내했고 운전자가 따르길 기다리는 중 | recircAtGuide (안내 때 내기 순환이 켜져 있었는가) |
+| DONE | 이번 상황은 끝남 | 없음 |
+
+### 13.3 전이표
+
+"김서림 상황"은 rain == true 이고 recirc == true 이고 defroster == false 이고 speedKph > 0 인 프레임이다.
+"R6 진행 중"은 R6이 WAITING 또는 WATCHING인 상태다.
+
+| # | 현재 | 조건 | 다음 | 출력 |
+| --- | --- | --- | --- | --- |
+| 0 | 모든 상태 | gear가 P 또는 R | IDLE | 없음 |
+| 1 | IDLE | fogReported == true 이고 defroster == false | WATCHING (recircAtGuide = recirc == true) | GUIDE |
+| 2 | IDLE | 김서림 상황이고 R6 진행 중이 아님 | WAITING (since = t) | 없음 |
+| 3 | WAITING | 김서림 상황이 아니거나 R6 진행 중 | IDLE | 없음 |
+| 4 | WAITING | t − since ≥ FOG_HOLD_MS | WATCHING (recircAtGuide = true) | GUIDE |
+| 5 | WATCHING | defroster == true, 또는 recircAtGuide 이고 recirc == false | DONE | EVENT (KEPT, guided = true, turn = null) |
+| 6 | DONE | rain ≠ true 이고 recirc ≠ true | IDLE | 없음 |
+
+- WATCHING은 운전자가 따르거나 기어가 P·R이 될 때까지 유지한다. 같은 주행에서 안내를 반복하지 않기 위해서다.
+- GUIDE 문구: `앞유리가 뿌예질 수 있어요, 성에 제거를 켜고 외기로 바꾸세요`. action: `DEFOG`.
+- 앱의 "어떻게 하는지" 그림은 성에 제거(부채꼴)와 외기 순환 버튼 모양만 보여주고 위치는 말하지 않는다. 버튼 위치가 차종마다 다르기 때문이다.
+

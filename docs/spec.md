@@ -6,7 +6,7 @@ v0.3 · 2026-11-11 새 코치 상황 추가 (제안서 `docs/proposals/spec-new-
 | --- | --- |
 | v0.1 (11-06) | R1 상태 머신, S1~S10 |
 | v0.2 (11-09) | R4·R5 추가(시연용 최소 범위), 입력 `headlight`, tbt.turn에 `RAMP_LEFT`·`RAMP_RIGHT`·`TUNNEL`, GUIDE에 `action`, EVENT의 `turn`은 null 허용, S11·S12 |
-| v0.3 (11-11) | R1이 유턴(`UTURN`)도 감시, EVENT의 `turn`에 `UTURN`, S22·S23 |
+| v0.3 (11-11) | R1이 유턴(`UTURN`)도 감시, EVENT의 `turn`에 `UTURN`, S22·S23. R1 연속 회전 보완(전이표 #1a·#2a, `TBT_JUMP_M`), S24~S26 |
 
 이 문서가 기준이다. 코드와 다르면 이 문서를 먼저 고친다.
 
@@ -202,6 +202,7 @@ for (out in outputs) {
 | CHECK_AT_M | 30 | 판정 지점 |
 | TURN_DONE_DEG | 60 | 진행 방향이 이만큼 바뀌면 회전이 끝난 것으로 본다 |
 | TURN_TIMEOUT_MS | 30000 | 판정 후 주행 시간(speedKph > 0)이 이만큼 쌓여도 회전이 안 끝나면 기록 없이 취소한다 |
+| TBT_JUMP_M | 20 | 다가가는 중 TBT 거리가 직전보다 이만큼 넘게 커지면 다음 회전으로 본다 (v0.3) |
 
 안내 거리: guideDistance(speedKph) = CHECK_AT_M + speedKph ÷ 3.6 × GUIDE_LEAD_MS ÷ 1000 을 GUIDE_MIN_M 이상 GUIDE_MAX_M 이하로 자른 값.
 
@@ -218,13 +219,14 @@ for (out in outputs) {
 | 상태 | 뜻 | 기억하는 값 |
 | --- | --- | --- |
 | IDLE | 대기 | 없음 |
-| APPROACHING | 회전 지점에 다가가는 중 | targetTurn(LEFT/RIGHT/UTURN), guided |
+| APPROACHING | 회전 지점에 다가가는 중 | targetTurn(LEFT/RIGHT/UTURN), guided, lastDistanceM |
 | TURNING | 판정을 마치고 회전이 끝나길 기다리는 중 | targetTurn, guided, signalOk, startHeading, movingMs, lastT |
 
 - signalOk: 30m 지점에서 해당 방향 깜빡이가 켜져 있었는가
 - startHeading: 30m 판정을 한 프레임의 headingDeg. 회전 전 곡선 구간의 영향을 줄이기 위해 판정 시점 값을 쓴다
 - movingMs: 판정 후 쌓인 주행 시간. 신호 대기 시간은 세지 않는다
 - lastT: 직전 프레임의 t
+- lastDistanceM: APPROACHING에서 직전 프레임의 tbt.distanceM. APPROACHING에 머무는 모든 프레임(#4와 맞는 행이 없을 때)에서 이번 값으로 바꾼다
 
 TURNING에서는 전이표를 검사하기 전에 프레임마다 시간을 먼저 갱신한다. speedKph > 0이면 movingMs에 (t − lastT)를 더하고, 속도와 상관없이 lastT = t로 바꾼다.
 
@@ -235,8 +237,10 @@ TURNING에서는 전이표를 검사하기 전에 프레임마다 시간을 먼�
 | # | 현재 | 조건 | 다음 | 출력 |
 | --- | --- | --- | --- | --- |
 | 0 | 모든 상태 | gear가 P 또는 R | IDLE | 없음 (주차·후진으로 보고 취소) |
-| 1 | IDLE | tbt.turn이 LEFT, RIGHT, UTURN 중 하나이고 tbt.distanceM ≤ 100 | APPROACHING (targetTurn = tbt.turn, guided = false) | 없음 |
+| 1a | IDLE | tbt.turn이 LEFT, RIGHT, UTURN 중 하나이고 tbt.distanceM ≤ 30 | TURNING (#3과 같은 값, guided = false) | 없음 (처음 본 회전이 이미 판정 지점 안. 연속 회전) |
+| 1 | IDLE | tbt.turn이 LEFT, RIGHT, UTURN 중 하나이고 tbt.distanceM ≤ 100 | APPROACHING (targetTurn = tbt.turn, guided = false, lastDistanceM = tbt.distanceM) | 없음 |
 | 2 | APPROACHING | tbt가 null이거나 tbt.turn ≠ targetTurn | IDLE | 없음 (경로 재탐색으로 보고 취소) |
+| 2a | APPROACHING | tbt.distanceM > lastDistanceM + 20 | APPROACHING (targetTurn = tbt.turn, guided = false, lastDistanceM = tbt.distanceM) | 없음 (같은 방향 다음 회전. 앞 회전은 30m 프레임을 못 봐서 기록하지 않음) |
 | 3 | APPROACHING | tbt.distanceM ≤ 30 | TURNING (signalOk = turnSignal가 targetTurn과 같은 방향, startHeading = headingDeg, movingMs = 0, lastT = t) | 없음 |
 | 4 | APPROACHING | 30 < tbt.distanceM ≤ guideDistance(speedKph) 이고 turnSignal이 targetTurn과 다르고 guided == false | APPROACHING (guided = true) | GUIDE |
 | 5 | TURNING | headingDiff(startHeading, headingDeg) ≥ 60 | IDLE | EVENT (result = signalOk면 KEPT 아니면 MISSED, guided 그대로) |
@@ -246,6 +250,8 @@ TURNING에서는 전이표를 검사하기 전에 프레임마다 시간을 먼�
 - TURNING에서는 tbt를 보지 않는다. 회전 지점을 지나면 내비가 다음 안내로 바뀌기 때문이다.
 - headingDiff(a, b) = | ((b − a + 540) mod 360) − 180 |. 예: 90 → 30 이면 60, 350 → 10 이면 20.
 - 유턴은 진행 방향이 180° 바뀌므로 #5의 60° 기준을 반드시 넘는다.
+- #1a, #2a는 연속 회전 때문에 넣었다(v0.3). #1a가 없으면 앞 회전이 끝난 프레임에 다음 회전이 이미 30m 안일 때 다음 회전을 놓친다(S25). #2a가 없으면 같은 방향 회전이 이어질 때 앞 회전의 guided가 남아 다음 회전 안내가 나가지 않는다(S26).
+- #1a는 안내 기회 없이 MISSED가 나올 수 있다. 법 기준(30m 전 점등)에는 맞는다.
 - GUIDE 문구: LEFT면 `좌회전 곧이에요, 깜빡이 켜세요`, RIGHT면 `우회전 곧이에요, 깜빡이 켜세요`, UTURN이면 `유턴 곧이에요, 왼쪽 깜빡이 켜세요`.
 - GUIDE action: LEFT·UTURN이면 `SIGNAL_LEFT`, RIGHT면 `SIGNAL_RIGHT`.
 
@@ -338,6 +344,9 @@ S2와 같고, turnSignal만 모든 프레임에서 OFF.
 | S12_나들목_안내후_켬 | 4.11 표 | GUIDE t=15000 R4, EVENT t=18000 R4 KEPT guided=true |
 | S22_유턴_안내후_켬 | S2와 같되 tbt는 UTURN, headingDeg는 90(6프레임) → 80 → 30 → 270 | GUIDE t=4000 R1, EVENT t=11000 R1 KEPT guided=true |
 | S23_유턴_반대쪽_깜빡이 | S22와 같되 t=6000~11000에 RIGHT를 켬 | GUIDE t=4000 R1, EVENT t=11000 R1 MISSED guided=true |
+| S24_연속회전_좌후우_여유 | 4.12 표 | EVENT t=11000 R1 KEPT guided=false, GUIDE t=15000 R1, EVENT t=21000 R1 KEPT guided=true |
+| S25_연속회전_좌후우_근접 | 4.12 표 | EVENT t=11000 R1 KEPT guided=false, EVENT t=15000 R1 KEPT guided=false |
+| S26_같은방향_연속_30m놓침 | 4.12 표 | GUIDE t=4000 R1, GUIDE t=10000 R1, EVENT t=14000 R1 MISSED guided=true |
 
 ### 4.6 S7: 판정 후 신호 대기
 
@@ -434,6 +443,44 @@ S2와 같고, turnSignal만 모든 프레임에서 OFF.
 1. GUIDE t=15000, R4
 2. EVENT t=18000, R4, KEPT, guided = true
 
+### 4.12 S24~S26: 연속 회전 (R1)
+
+S24·S25는 t=0~9000이 같다: LEFT 120·90·60·28·10m, 속도 40·38·32·22·15, turnSignal LEFT, headingDeg 90(4프레임) → 80.
+
+S24 (다음 우회전까지 여유)
+
+| t (ms) | tbt | speedKph | turnSignal | headingDeg |
+| --- | --- | --- | --- | --- |
+| 11000 | RIGHT 90m | 15 | LEFT | 30 |
+| 13000 | RIGHT 70m | 25 | OFF | 0 |
+| 15000 | RIGHT 50m | 25 | OFF | 0 |
+| 16000 | RIGHT 40m | 22 | RIGHT | 0 |
+| 17000 | RIGHT 28m | 20 | RIGHT | 0 |
+| 19000 | RIGHT 10m | 15 | RIGHT | 20 |
+| 21000 | 다음 안내 | 15 | RIGHT | 70 |
+
+S25 (좌회전이 끝나는 프레임에 우회전이 이미 25m 앞. #1a 검증)
+
+| t (ms) | tbt | speedKph | turnSignal | headingDeg |
+| --- | --- | --- | --- | --- |
+| 11000 | RIGHT 25m | 15 | RIGHT | 30 |
+| 13000 | RIGHT 8m | 12 | RIGHT | 0 |
+| 15000 | 다음 안내 | 15 | RIGHT | 70 |
+| 17000 | 다음 안내 (480m) | 25 | OFF | 90 |
+
+S26 (같은 방향 좌회전 두 번, 첫 회전의 30m 프레임 없음. #2a 검증)
+
+| t (ms) | tbt | speedKph | turnSignal | headingDeg |
+| --- | --- | --- | --- | --- |
+| 0 | LEFT 120m | 40 | OFF | 90 |
+| 2000 | LEFT 90m | 38 | OFF | 90 |
+| 4000 | LEFT 60m | 32 | OFF | 90 |
+| 6000 | LEFT 35m | 26 | OFF | 90 |
+| 8000 | LEFT 90m | 25 | OFF | 30 |
+| 10000 | LEFT 60m | 30 | OFF | 30 |
+| 12000 | LEFT 28m | 22 | OFF | 30 |
+| 14000 | 다음 안내 | 15 | OFF | 330 |
+
 ---
 
 ## 5. 아직 정하지 않은 것
@@ -444,7 +491,7 @@ S2와 같고, turnSignal만 모든 프레임에서 OFF.
 - [x] 핸들 각도가 SDK에서 숫자로 나오는가: 에뮬레이터에서 Float로 나온다
 - [ ] 핸들 각도의 좌우 부호. 콘솔에 -90을 넣으면 SDK는 +90을 준다. 실제 왼쪽이 어느 쪽인지 확인 필요. R1은 진행 방향만 쓰므로 영향 없음. R2 설계 전에 정한다
 - [ ] TBT 남은 거리가 몇 초마다 갱신되는가. 에뮬레이터 내비는 위치가 움직이지 않아 측정 불가. 재현 방법을 주최측에 문의한다. 너무 드물면 50m·30m 지점을 건너뛸 수 있음
-- [ ] 회전 완료를 진행 방향 변화 대신 TBT 변화로 볼지
+- [ ] 회전 완료를 진행 방향 변화 대신 TBT 변화로 볼지. 비스듬한 교차로(진행 방향이 60°까지 안 바뀜) 직후 다음 회전이 오면 R1이 TURNING에 묶여 두 회전 모두 기록하지 않는다(v0.3 제안서 S27, 시나리오는 이 질문이 정해진 뒤 만든다)
 - [ ] 실제 headingDeg 기준(북쪽 0°, 시계 방향)이 Fused Location과 같은가. 에뮬레이터에서는 위치를 움직여도 0.0으로만 나와 측정 불가. 재현 방법을 주최측에 문의한다
 - [ ] TBT 남은 거리의 기준점이 무엇인가. 에뮬레이터에서 측정 불가, 공개 문서에도 없다. 제출과 시연에 꼭 필요하지 않아 주최측 문의에서는 뺐다. 법령의 30m 기준점은 교차로 가장자리(시행령 별표 2)라서 기준점이 교차로 중심이면 판정이 늦어진다
 - [ ] 비상등 입력원. Vehicle SDK에서 찾지 못했다. R1은 HAZARD와 OFF를 똑같이 처리하므로 영향 없음

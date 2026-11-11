@@ -227,22 +227,18 @@ class CoachSession(context: Context) {
     val coachOn: Boolean get() = modes.isCoachOn()
 
     private fun onFrame(frame: SignalFrame) {
-        // 코치 끔: 엔진을 돌리지 않는다. 안내(음성·카드·팝업)도 판정 기록도 없다.
-        // 기어 P 리포트로 바꾸는 데 필요한 마지막 프레임만 넘긴다. 주행 중에 바꿔도 다음 프레임부터 반영된다.
-        if (!coachOn) {
-            popup = null
-            lastFrame = frame
-            notifyChanged(frame)
-            return
-        }
+        // 코치 끔은 '알림 끔'이다. 엔진은 계속 돌려 판정(KEPT/MISSED)은 기록하되,
+        // 끄면 음성·카드·팝업 같은 안내(GUIDE)만 내보내지 않는다. 기획서 진단→교정→졸업의 기록이 끊기지 않게 하려는 것이다.
+        // 주행 중에 바꿔도 다음 프레임부터 반영된다.
         val outputs = engine.onFrame(frame)
         outputs.forEach { Log.i(TAG, "${frame.t} $it") }
-        outputs.filterIsInstance<Guide>().forEach { speaker.speak(it.text) }
+        val shown = if (guidesOn(modes.load())) outputs else outputs.filterNot { it is Guide }
+        shown.filterIsInstance<Guide>().forEach { speaker.speak(it.text) }
         val eventsBefore = state.todayEvents.size
-        state = state.next(frame, outputs)
+        state = state.next(frame, shown)
         // 판정이 새로 생겼을 때만 저장한다. 매 프레임 쓰지 않는다.
         if (state.todayEvents.size != eventsBefore) records.save(state.todayEvents)
-        updatePopup(outputs, frame)
+        if (coachOn) updatePopup(shown, frame) else popup = null
         lastFrame = frame
         notifyChanged(frame)
     }

@@ -1,5 +1,5 @@
 {
-  "name": "S24_연속회전_좌후우_여유",
+  "name": "S27_연속회전_좌후우_여유",
   "description": "좌회전 직후 90m 앞 우회전. 두 회전을 각각 판정한다.",
   "expect": [
     {"type": "EVENT", "t": 11000, "rule": "R1", "result": "KEPT", "guided": false},

@@ -5,8 +5,11 @@ import ai.pleos.playground.vehicle.constant.area.TurnSignalValue
 import ai.pleos.playground.vehicle.constant.control.LightState
 import ai.pleos.playground.vehicle.constant.control.LightSwitch
 import ai.pleos.playground.vehicle.constant.control.VehicleGear
+import ai.pleos.playground.vehicle.constant.control.WiperState
+import ai.pleos.playground.vehicle.constant.control.WiperSwitch
 import kkam.engine.model.Gear
 import kkam.engine.model.HeadlightState
+import kkam.engine.model.WiperMode
 import kkam.engine.model.Tbt
 import kkam.engine.model.TurnSignal
 import kkam.engine.model.TurnType
@@ -62,6 +65,15 @@ class SdkMappingTest {
         assertEquals(TurnType.RAMP_RIGHT, NaviTurnType.TURN_EXIT_IC_R.toEngineTurnType())
         assertEquals(TurnType.OTHER, NaviTurnType.TURN_EXIT_IC_C.toEngineTurnType())
         assertEquals(TurnType.TUNNEL, NaviTurnType.TURN_TUNNEL.toEngineTurnType())
+    }
+
+    @Test
+    fun `와이퍼는 스위치 자동이면 AUTO, 상태 켜짐·꺼짐은 그대로, 그 밖은 모름`() {
+        assertEquals(WiperMode.AUTO, wiperOf(WiperState.OFF, WiperSwitch.AUTO))
+        assertEquals(WiperMode.ON, wiperOf(WiperState.ON, WiperSwitch.CONTINUOUS_LEVEL_2))
+        assertEquals(WiperMode.OFF, wiperOf(WiperState.OFF, WiperSwitch.OFF))
+        assertNull(wiperOf(WiperState.SERVICE, null))
+        assertNull(wiperOf(null, null))
     }
 
     @Test

@@ -1,5 +1,5 @@
 {
-  "name": "S25_연속회전_좌후우_근접",
+  "name": "S28_연속회전_좌후우_근접",
   "description": "좌회전이 끝나는 프레임에 다음 우회전이 이미 25m 앞. 두 번째 회전도 판정한다.",
   "expect": [
     {"type": "EVENT", "t": 11000, "rule": "R1", "result": "KEPT", "guided": false},

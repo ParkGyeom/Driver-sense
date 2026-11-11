@@ -9,167 +9,133 @@ import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnSignal
 import kkam.engine.model.TurnType
 
-// spec 9.2 파라미터 (TURN_DONE_DEG는 R1과 같은 값을 쓴다)
-const val R2_MIN_SPEED_KPH = 5.0
-const val R2_MAX_SPEED_KPH = 30.0
-const val R2_TURN_RATE_DPS = 8.0
+// spec 11.1 파라미터
+const val R2_TURN_DEG = 60.0
 const val R2_TURN_WINDOW_MS = 10000L
-const val SIGNAL_LOOKBACK_MS = 5000L
-const val R2_AFTER_PARK_MS = 60000L
-const val R2_HANDOFF_MS = 10000L
-
-private const val MS_PER_SECOND = 1000.0
-
-/** 부호 있는 진행 방향 차이 (-180~180°). 양수면 시계 방향(오른쪽), 음수면 왼쪽. 예: 350 → 10 이면 +20. */
-fun signedHeadingDiff(from: Double, to: Double): Double =
-    (to - from + 540).mod(360.0) - 180
+const val R2_TURN_MAX_KPH = 30.0
+const val R2_SIGNAL_LOOKBACK_MS = 5000L
+const val R2_REVERSE_SKIP_MS = 30000L
+const val R2_OTHER_RULE_SKIP_MS = 10000L
 
 /**
- * R2: 깜빡이 없이 회전 (spec 9장).
+ * R2: 깜빡이 없이 회전 (spec 11장).
  *
- * 내비 안내(tbt)를 쓰지 않고 진행 방향 변화로 회전을 잡는다. 안내는 하지 않고 기록만 한다.
- * 다른 룰(R1)이 회전을 맡고 있으면 같은 회전을 두 번 기록하지 않도록 쉰다.
+ * 내비 안내 없이 최근 프레임의 진행 방향 변화로 회전을 찾고, 깜빡이를 켰는지로 KEPT·MISSED를 기록한다.
+ * 안내(GUIDE)는 없다. 다른 룰(R1·R4)이 보는 회전은 판정하지 않는다.
  *
  * @param nextEventId 엔진 전체에서 순서대로 이벤트 id를 만들어주는 함수
  */
 class R2Rule(private val nextEventId: () -> String) {
-    private sealed class State {
-        /** 회전을 기다리며 달리는 중. 처음 상태. */
-        data object Cruising : State()
+    /** history에 남기는 프레임 한 장. 판정에 필요한 값만 둔다. */
+    private data class Sample(
+        val t: Long,
+        val headingDeg: Double,
+        val speedKph: Double,
+        val turnSignal: TurnSignal,
+    )
 
-        data class Turning(
-            /** 회전이 시작되기 직전 프레임의 진행 방향 */
-            val startHeading: Double,
-            val startT: Long,
-            /** LEFT 또는 RIGHT */
-            val direction: TurnType,
-            /** 회전 시작 전 SIGNAL_LOOKBACK_MS 안에 그 방향 깜빡이가 켜졌었는가 */
-            val signalOk: Boolean,
-        ) : State()
+    /** 다른 룰이 지금 이 회전을 보고 있는지 알려주는 값. 엔진이 채워 넘긴다. */
+    data class OtherRules(
+        /** R1이 IDLE이 아니면 true (회전에 다가가거나 회전 중) */
+        val r1Active: Boolean,
+        /** 마지막으로 R1·R4가 EVENT를 낸 프레임의 t. 이 프레임 것도 포함한다. 없으면 null */
+        val lastEventT: Long?,
+    )
 
-        /** 판정하지 않고 쉬는 중 (주차·후진 직후, 다른 룰이 회전을 맡음). */
-        data class Cooldown(
-            /** 앞으로 더 쉬어야 하는 주행 시간 (ms) */
-            val remainMs: Long,
-        ) : State()
-    }
+    /** spec 11.2: 최근 15초의 프레임. 오래된 것이 앞에 있다. */
+    private val history = ArrayDeque<Sample>()
+    private var lastReverseT: Long? = null
 
-    private var state: State = State.Cruising
-
-    // spec 9.4: 상태와 상관없이 프레임마다 기억하는 값
-    private var prevHeading: Double? = null
-    private var prevT: Long? = null
-    private var lastLeftT: Long? = null
-    private var lastRightT: Long? = null
-
-    /**
-     * 프레임 하나를 처리한다. spec 9.5 전이표를 위에서부터 검사해 처음 맞는 행만 적용한다.
-     *
-     * @param otherRuleBusy 다른 룰(R1)이 이 프레임 처리 전이나 후에 회전을 맡고 있는가. Engine이 계산한다.
-     */
-    fun onFrame(frame: SignalFrame, otherRuleBusy: Boolean): List<EngineOutput> {
-        // spec 9.4: 전이표를 보기 전에 기억값을 먼저 갱신한다
-        val previousHeading = prevHeading
-        val elapsedMs = prevT?.let { frame.t - it } ?: 0
-        val turnRate = turnRate(previousHeading, frame.headingDeg, elapsedMs)
-        rememberFrame(frame)
-        val current = updateCooldown(state, frame.speedKph, elapsedMs)
+    /** 프레임 하나를 처리한다. spec 11.3 판정 순서를 위에서부터 검사해 처음 맞는 행만 적용한다. */
+    fun onFrame(frame: SignalFrame, others: OtherRules): List<EngineOutput> {
+        val t = frame.t
 
         when {
-            // 전이표 #0: 주차·후진. 주차장 안 회전을 거르려고 한동안 쉰다
+            // 판정 순서 #0: 주차·후진. 기록을 비우고 후진 시각을 기억한다
             frame.gear == Gear.P || frame.gear == Gear.R -> {
-                state = State.Cooldown(remainMs = R2_AFTER_PARK_MS)
+                if (frame.gear == Gear.R) lastReverseT = t
+                history.clear()
                 return emptyList()
             }
 
-            // 전이표 #1: 다른 룰이 이 회전을 맡음. 끝난 뒤에도 남은 회전을 새 회전으로 잡지 않도록 더 쉰다
-            otherRuleBusy -> {
-                val remain = if (current is State.Cooldown) current.remainMs else 0
-                state = State.Cooldown(remainMs = maxOf(remain, R2_HANDOFF_MS))
+            // 판정 순서 #1: 후진한 지 30초가 안 됨. 주차장으로 보고 판정하지 않는다
+            lastReverseT?.let { t - it < R2_REVERSE_SKIP_MS } == true -> {
+                history.clear()
                 return emptyList()
             }
 
-            // 전이표 #2: 다 쉬었으면 다시 회전을 기다린다
-            current is State.Cooldown && current.remainMs <= 0 -> {
-                state = State.Cruising
-                return emptyList()
-            }
-
-            // 전이표 #3: 저속에서 진행 방향이 빠르게 바뀌기 시작함 = 회전 시작
-            current is State.Cruising && previousHeading != null &&
-                frame.speedKph >= R2_MIN_SPEED_KPH && frame.speedKph <= R2_MAX_SPEED_KPH &&
-                turnRate >= R2_TURN_RATE_DPS -> {
-                val direction =
-                    if (signedHeadingDiff(previousHeading, frame.headingDeg) > 0) TurnType.RIGHT else TurnType.LEFT
-                state = State.Turning(
-                    startHeading = previousHeading,
-                    startT = frame.t,
-                    direction = direction,
-                    signalOk = signaledRecently(direction, frame.t),
-                )
-                return emptyList()
-            }
-
-            // 전이표 #4: 진행 방향이 충분히 바뀌어 회전이 끝남. 이때 기록한다
-            current is State.Turning &&
-                headingDiff(current.startHeading, frame.headingDeg) >= TURN_DONE_DEG -> {
-                state = State.Cruising
-                return listOf(
-                    Event(
-                        id = nextEventId(),
-                        t = frame.t,
-                        rule = RuleId.R2,
-                        result = if (current.signalOk) Result.KEPT else Result.MISSED,
-                        guided = false,
-                        turn = current.direction,
-                        lat = frame.lat,
-                        lon = frame.lon,
-                    ),
-                )
-            }
-
-            // 전이표 #5: 시간 안에 60°가 안 됨. 굽은 도로로 보고 취소
-            current is State.Turning && frame.t - current.startT > R2_TURN_WINDOW_MS -> {
-                state = State.Cruising
-                return emptyList()
-            }
-
-            // 맞는 행이 없으면 상태를 유지한다
-            else -> {
-                state = current
+            // 판정 순서 #2: 다른 룰이 이 회전을 본다. 같은 회전을 두 번 세지 않는다
+            otherRuleWatches(frame, others) -> {
+                history.clear()
                 return emptyList()
             }
         }
-    }
 
-    /** 직전 프레임 대비 초당 진행 방향 변화 (°/s). 첫 프레임이거나 시간이 안 흘렀으면 0. */
-    private fun turnRate(previousHeading: Double?, heading: Double, elapsedMs: Long): Double {
-        if (previousHeading == null || elapsedMs <= 0) {
-            return 0.0
+        history.addLast(Sample(t, frame.headingDeg, frame.speedKph, frame.turnSignal))
+
+        // 판정 순서 #3: 10초 안에 60° 이상, 그 구간 내내 30km/h 이하면 회전으로 본다
+        val turnStart = findTurnStart(t, frame.headingDeg)
+        if (turnStart != null) {
+            val direction = turnDirection(turnStart.headingDeg, frame.headingDeg)
+            val signalOk = history.any { it.t >= turnStart.t - R2_SIGNAL_LOOKBACK_MS && isSameDirection(it.turnSignal, direction) }
+            history.clear()
+            return listOf(
+                Event(
+                    id = nextEventId(),
+                    t = t,
+                    rule = RuleId.R2,
+                    result = if (signalOk) Result.KEPT else Result.MISSED,
+                    guided = false,
+                    turn = direction,
+                    lat = frame.lat,
+                    lon = frame.lon,
+                ),
+            )
         }
-        return headingDiff(previousHeading, heading) / (elapsedMs / MS_PER_SECOND)
-    }
 
-    private fun rememberFrame(frame: SignalFrame) {
-        prevHeading = frame.headingDeg
-        prevT = frame.t
-        when (frame.turnSignal) {
-            TurnSignal.LEFT -> lastLeftT = frame.t
-            TurnSignal.RIGHT -> lastRightT = frame.t
-            else -> Unit // OFF, HAZARD는 깜빡이로 치지 않는다
+        // 판정 순서 #4: 15초보다 오래된 프레임을 지운다
+        while (history.first().t < t - R2_TURN_WINDOW_MS - R2_SIGNAL_LOOKBACK_MS) {
+            history.removeFirst()
         }
+        return emptyList()
     }
 
-    /** spec 9.4: COOLDOWN이면 주행 시간(speedKph > 0)만큼 쉬는 시간을 줄인다. */
-    private fun updateCooldown(state: State, speedKph: Double, elapsedMs: Long): State {
-        if (state !is State.Cooldown || speedKph <= 0) {
-            return state
+    /** spec 11.3 #2의 "다른 룰이 이 회전을 본다". */
+    private fun otherRuleWatches(frame: SignalFrame, others: OtherRules): Boolean {
+        val tbt = frame.tbt
+        val turnNear = tbt != null && (tbt.turn == TurnType.LEFT || tbt.turn == TurnType.RIGHT) &&
+            tbt.distanceM <= APPROACH_START_M
+        val rampNear = tbt != null && (tbt.turn == TurnType.RAMP_LEFT || tbt.turn == TurnType.RAMP_RIGHT) &&
+            tbt.distanceM <= LANE_START_M
+        val recentEvent = others.lastEventT?.let { frame.t - it < R2_OTHER_RULE_SKIP_MS } == true
+        return others.r1Active || turnNear || rampNear || recentEvent
+    }
+
+    /**
+     * 최근 10초 안의 프레임 중 지금과 진행 방향이 60° 이상 차이 나고, 그 프레임부터 지금까지 모두 30km/h 이하인
+     * 가장 이른 프레임. 없으면 null.
+     */
+    private fun findTurnStart(now: Long, nowHeading: Double): Sample? {
+        val window = history.filter { it.t >= now - R2_TURN_WINDOW_MS }
+        // 뒤에서부터 "이 프레임부터 지금까지 가장 빠른 속도"를 미리 구해 둔다
+        val maxSpeedFrom = DoubleArray(window.size)
+        var max = 0.0
+        for (i in window.indices.reversed()) {
+            max = maxOf(max, window[i].speedKph)
+            maxSpeedFrom[i] = max
         }
-        return state.copy(remainMs = state.remainMs - elapsedMs)
+        return window.indices.firstOrNull { i ->
+            headingDiff(window[i].headingDeg, nowHeading) >= R2_TURN_DEG && maxSpeedFrom[i] <= R2_TURN_MAX_KPH
+        }?.let { window[it] }
     }
 
-    private fun signaledRecently(direction: TurnType, t: Long): Boolean {
-        val lastT = if (direction == TurnType.LEFT) lastLeftT else lastRightT
-        return lastT != null && lastT >= t - SIGNAL_LOOKBACK_MS
+    /** 부호 있는 변화가 양수면 시계 방향(RIGHT), 음수면 LEFT. */
+    private fun turnDirection(from: Double, to: Double): TurnType {
+        val signed = (to - from + 540).mod(360.0) - 180
+        return if (signed > 0) TurnType.RIGHT else TurnType.LEFT
     }
+
+    /** HAZARD(비상등)는 같은 방향으로 치지 않는다. */
+    private fun isSameDirection(signal: TurnSignal, turn: TurnType): Boolean =
+        (turn == TurnType.LEFT && signal == TurnSignal.LEFT) || (turn == TurnType.RIGHT && signal == TurnSignal.RIGHT)
 }

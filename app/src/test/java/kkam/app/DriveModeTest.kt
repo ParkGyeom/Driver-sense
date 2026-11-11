@@ -7,29 +7,30 @@ import kotlin.test.assertTrue
 
 class DriveModeTest {
     @Test
-    fun `진단과 조용 모드는 주행 중 안내를 하지 않는다`() {
-        assertFalse(guidesOn(DriveMode.DIAGNOSE))
-        assertFalse(guidesOn(DriveMode.QUIET))
+    fun `켬이면 안내하고 기록한다`() {
+        assertTrue(guidesOn(DriveMode.ON))
+        assertTrue(recordsOn(DriveMode.ON))
     }
 
     @Test
-    fun `교정과 연수 모드는 주행 중 안내를 한다`() {
-        assertTrue(guidesOn(DriveMode.CORRECT))
-        assertTrue(guidesOn(DriveMode.TRAINING))
+    fun `끔이면 안내도 기록도 하지 않는다`() {
+        assertFalse(guidesOn(DriveMode.OFF))
+        assertFalse(recordsOn(DriveMode.OFF))
     }
 
     @Test
-    fun `안내 설명은 기획서 4_3 표와 같다`() {
-        assertEquals(
-            listOf("없음", "고른 습관만", "모든 룰", "없음"),
-            DriveMode.entries.map { it.guideLabel },
-        )
+    fun `저장된 켬 끔을 되찾고 모르는 값이면 켬`() {
+        assertEquals(DriveMode.ON, DriveMode.fromName("ON"))
+        assertEquals(DriveMode.OFF, DriveMode.fromName("OFF"))
+        assertEquals(DriveMode.ON, DriveMode.fromName(null))
+        assertEquals(DriveMode.ON, DriveMode.fromName("SPORT"))
     }
 
     @Test
-    fun `저장된 이름으로 모드를 되찾고 모르는 값이면 기본 모드`() {
-        assertEquals(DriveMode.TRAINING, DriveMode.fromName("TRAINING"))
-        assertEquals(DriveMode.DEFAULT, DriveMode.fromName(null))
-        assertEquals(DriveMode.DEFAULT, DriveMode.fromName("SPORT"))
+    fun `예전 4개 모드는 음성 안내를 했는지로 옮긴다`() {
+        assertEquals(DriveMode.ON, DriveMode.fromName("CORRECT"))
+        assertEquals(DriveMode.ON, DriveMode.fromName("TRAINING"))
+        assertEquals(DriveMode.OFF, DriveMode.fromName("DIAGNOSE"))
+        assertEquals(DriveMode.OFF, DriveMode.fromName("QUIET"))
     }
 }

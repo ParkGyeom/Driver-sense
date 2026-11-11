@@ -177,4 +177,14 @@ class CoachStateTest {
         assertEquals("안내 듣고 전조등을 켰어요", state.message)
         assertEquals(listOf("14초 터널 전조등 지킴"), state.logs)
     }
+
+    @Test
+    fun `적색 우회전 판정 문구`() {
+        val kept = Event("evt-1", 14000, RuleId.R3, Result.KEPT, true, TurnType.RIGHT, 37.55, 127.07)
+
+        val state = CoachState().next(frame(TurnSignal.RIGHT, null), listOf(kept, kept.copy(result = Result.MISSED)))
+
+        assertEquals(listOf("14초 적색 우회전 일시정지 지킴", "14초 적색 우회전 일시정지 놓침"), state.logs)
+        assertEquals("이번 우회전은 멈추지 않았어요", state.message)
+    }
 }

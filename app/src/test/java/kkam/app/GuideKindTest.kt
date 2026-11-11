@@ -26,10 +26,13 @@ class GuideKindTest {
 
     @Test
     fun `음성 안내의 룰로 안내 종류를 정하고 팝업에도 넘긴다`() {
-        val state = CoachState().next(frame, listOf(Guide(4000, RuleId.R3, "전방 적색이에요, 정지선에서 멈췄다 가세요", GuideAction.SIGNAL_RIGHT)))
+        // R3 안내는 적색 우회전에서만 나온다
+        val right = frame.copy(tbt = Tbt(TurnType.RIGHT, 60))
+        val guide = Guide(4000, RuleId.R3, "전방 적색이에요, 정지선에서 멈췄다 가세요", GuideAction.STOP)
+        val state = CoachState().next(right, listOf(guide))
 
         assertEquals(GuideKind.RED_RIGHT_TURN, state.guideKind)
-        assertEquals(GuideKind.RED_RIGHT_TURN, nextPopup(null, state, listOf(Guide(4000, RuleId.R3, "", GuideAction.SIGNAL_RIGHT)), frame)?.kind)
+        assertEquals(GuideKind.RED_RIGHT_TURN, nextPopup(null, state, listOf(guide), right)?.kind)
     }
 
     @Test

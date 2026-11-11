@@ -113,4 +113,40 @@ class PopupPolicyTest {
         assertEquals(listOf(null, PopupTone.WARN, PopupTone.OK), tones)
         assertEquals(GuideKind.HEADLIGHT, popup?.kind)
     }
+
+    @Test
+    fun `S13 적색 우회전은 멈추라는 카드가 뜨고 멈추면 파랑으로 바뀐다`() {
+        val engine = Engine()
+        var state = CoachState()
+        var popup: Popup? = null
+        val seen = mutableListOf<Triple<PopupTone?, GuideKind?, String?>>()
+        val red = kkam.engine.model.TrafficLight(kkam.engine.model.LightPhase.RED, null)
+        for ((t, distance, speed) in listOf(
+            Triple(2000L, 90, 38.0),
+            Triple(4000L, 60, 32.0),
+            Triple(7000L, 28, 10.0),
+            Triple(8000L, 25, 0.0),
+            Triple(12000L, 15, 10.0),
+        )) {
+            val f = frame(TurnSignal.RIGHT, Tbt(TurnType.RIGHT, distance), t = t).copy(speedKph = speed, light = red)
+            val outputs = engine.onFrame(f)
+            state = state.next(f, outputs)
+            popup = nextPopup(popup, state, outputs, f)
+            seen += Triple(popup?.tone, popup?.kind, popup?.headline)
+        }
+
+        assertEquals(
+            listOf(
+                Triple(null, null, null),
+                Triple(PopupTone.WARN, GuideKind.RED_RIGHT_TURN, "멈췄다 가세요"),
+                Triple(PopupTone.WARN, GuideKind.RED_RIGHT_TURN, "멈췄다 가세요"),
+                Triple(PopupTone.OK, GuideKind.RED_RIGHT_TURN, "좋아요"),
+                // 한 번 멈췄으면 다시 움직여도 파랑을 유지한다 (엔진도 지킴으로 본다)
+                Triple(PopupTone.OK, GuideKind.RED_RIGHT_TURN, "좋아요"),
+            ),
+            seen,
+        )
+        assertEquals(true, popup?.right)
+        assertEquals("정지선에서 멈췄어요", state.message)
+    }
 }

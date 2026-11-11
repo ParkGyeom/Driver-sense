@@ -10,7 +10,15 @@ Spring 서버를 이 폴더에 만듭니다. 판정 이벤트 저장, 리포트 
 엔진은 `server/settings.gradle.kts`에서 `../engine`을 하위 프로젝트로 포함해 참조합니다.
 `engine/`과 루트 빌드 파일은 수정하지 않습니다.
 
-실행: IntelliJ에서 `ServerApplication.kt` 실행 후 `localhost:8080`.
+실행:
+- IntelliJ: `ServerApplication.kt` 실행
+- 명령어 (`server/` 폴더에서):
+  - Windows: `.\gradlew.bat bootRun`
+  - Mac/Linux: `./gradlew bootRun`
+
+실행 후 `localhost:8080`으로 접속합니다.
+
+테스트: Windows `.\gradlew.bat test`, Mac/Linux `./gradlew test`
 
 ## 먼저 정할 것
 

@@ -37,7 +37,7 @@ data class Event(
     val result: Result,
     /** 이 판정 전에 GUIDE가 나갔는가. */
     val guided: Boolean,
-    /** R1·R4는 LEFT 또는 RIGHT, R5는 null. */
+    /** R1은 LEFT, RIGHT, UTURN. R4는 LEFT 또는 RIGHT. R5는 null. */
     val turn: TurnType?,
     val lat: Double,
     val lon: Double,

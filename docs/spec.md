@@ -1,11 +1,12 @@
 # 깜빡코치 판정 엔진 명세
 
-v0.2 · 2026-11-09 시연용 R4(나들목 깜빡이)·R5(터널 전조등) 추가 · 담당 AI
+v0.3 · 2026-11-11 새 코치 상황 추가 (제안서 `docs/proposals/spec-new-rules.md`, AI 담당 확인) · 담당 AI
 
 | 버전 | 바뀐 것 |
 | --- | --- |
 | v0.1 (11-06) | R1 상태 머신, S1~S10 |
 | v0.2 (11-09) | R4·R5 추가(시연용 최소 범위), 입력 `headlight`, tbt.turn에 `RAMP_LEFT`·`RAMP_RIGHT`·`TUNNEL`, GUIDE에 `action`, EVENT의 `turn`은 null 허용, S11·S12 |
+| v0.3 (11-11) | R1이 유턴(`UTURN`)도 감시, EVENT의 `turn`에 `UTURN`, S22·S23 |
 
 이 문서가 기준이다. 코드와 다르면 이 문서를 먼저 고친다.
 
@@ -20,7 +21,7 @@ v0.2 · 2026-11-09 시연용 R4(나들목 깜빡이)·R5(터널 전조등) 추�
 
 | 룰 | 내용 | 구현 시기 |
 | --- | --- | --- |
-| R1 | 회전 전 깜빡이 | 지금 (11/10까지) |
+| R1 | 회전·유턴 전 깜빡이 | 지금 (11/10까지). 유턴은 v0.3 |
 | R2 | 깜빡이 없이 회전 | 11/15 이후 |
 | R3 | 적색 신호 우회전 일시정지 | 11/15 이후 |
 | R4 | 나들목 진출입 전 깜빡이 (안내 중심) | R3 다음 (일정은 tasks에서 정한다) |
@@ -153,9 +154,9 @@ TrafficLight: `{ "phase": "RED", "remainSec": 12 }` (remainSec는 Int?, 모르�
 | rule | `R1`, `R2`, `R3`, `R4`, `R5` |
 | result | `KEPT`(지킴), `MISSED`(놓침). R4·R5는 `KEPT`만 낸다 |
 | guided | 이 판정 전에 예방 안내(GUIDE)가 나갔는지. 앱의 "아낀 범칙금" 계산에 쓴다 |
-| turn | `LEFT`, `RIGHT`, 또는 null. R1·R4는 방향을 넣고, R5는 null |
+| turn | `LEFT`, `RIGHT`, `UTURN`, 또는 null. R1은 `LEFT`·`RIGHT`·`UTURN`, R4는 방향, R5는 null |
 
-- `turn`이 null일 수 있으므로 앱과 서버는 null을 처리해야 한다.
+- `turn`이 null일 수 있으므로 앱과 서버는 null을 처리해야 한다. R1의 유턴은 `UTURN`으로 온다(v0.3).
 | lat, lon | 이벤트가 나온 프레임의 위치 |
 
 ### 2.4 앱에서 쓰는 방법
@@ -179,9 +180,11 @@ for (out in outputs) {
 
 ---
 
-## 3. 룰 R1: 회전 전 깜빡이
+## 3. 룰 R1: 회전·유턴 전 깜빡이
 
-**법 근거**: 도로교통법 제38조. 좌·우회전할 때 일반도로는 회전 지점 30m 전부터(고속도로는 100m 전부터), 동작이 끝날 때까지 방향지시등을 켜야 한다. 승용차 기준 현장 적발 범칙금 3만 원, 공익신고 과태료 4만 원.
+**법 근거**: 도로교통법 제38조. 좌·우회전할 때 일반도로는 회전 지점 30m 전부터(고속도로는 100m 전부터), 동작이 끝날 때까지 방향지시등을 켜야 한다. 유턴도 같은 조항이며 왼쪽 방향지시등을 30m 전부터 켠다(시행령 별표 2 1호, 법규표 LAW-03). 승용차 기준 현장 적발 범칙금 3만 원, 공익신고 과태료 4만 원.
+
+유턴을 새 룰로 두지 않고 R1에 넣은 이유: 판정 방식(30m 지점, 회전 완료)이 좌회전과 완전히 같다. 유턴만 따로 집계하려면 EVENT의 `turn == UTURN`으로 나눈다(v0.3).
 
 **MVP 단순화**
 
@@ -215,7 +218,7 @@ for (out in outputs) {
 | 상태 | 뜻 | 기억하는 값 |
 | --- | --- | --- |
 | IDLE | 대기 | 없음 |
-| APPROACHING | 회전 지점에 다가가는 중 | targetTurn(LEFT/RIGHT), guided |
+| APPROACHING | 회전 지점에 다가가는 중 | targetTurn(LEFT/RIGHT/UTURN), guided |
 | TURNING | 판정을 마치고 회전이 끝나길 기다리는 중 | targetTurn, guided, signalOk, startHeading, movingMs, lastT |
 
 - signalOk: 30m 지점에서 해당 방향 깜빡이가 켜져 있었는가
@@ -232,18 +235,19 @@ TURNING에서는 전이표를 검사하기 전에 프레임마다 시간을 먼�
 | # | 현재 | 조건 | 다음 | 출력 |
 | --- | --- | --- | --- | --- |
 | 0 | 모든 상태 | gear가 P 또는 R | IDLE | 없음 (주차·후진으로 보고 취소) |
-| 1 | IDLE | tbt.turn이 LEFT 또는 RIGHT이고 tbt.distanceM ≤ 100 | APPROACHING (targetTurn = tbt.turn, guided = false) | 없음 |
+| 1 | IDLE | tbt.turn이 LEFT, RIGHT, UTURN 중 하나이고 tbt.distanceM ≤ 100 | APPROACHING (targetTurn = tbt.turn, guided = false) | 없음 |
 | 2 | APPROACHING | tbt가 null이거나 tbt.turn ≠ targetTurn | IDLE | 없음 (경로 재탐색으로 보고 취소) |
 | 3 | APPROACHING | tbt.distanceM ≤ 30 | TURNING (signalOk = turnSignal가 targetTurn과 같은 방향, startHeading = headingDeg, movingMs = 0, lastT = t) | 없음 |
 | 4 | APPROACHING | 30 < tbt.distanceM ≤ guideDistance(speedKph) 이고 turnSignal이 targetTurn과 다르고 guided == false | APPROACHING (guided = true) | GUIDE |
 | 5 | TURNING | headingDiff(startHeading, headingDeg) ≥ 60 | IDLE | EVENT (result = signalOk면 KEPT 아니면 MISSED, guided 그대로) |
 | 6 | TURNING | movingMs > 30000 | IDLE | 없음 (회전하지 않은 것으로 보고 취소) |
 
-- "turnSignal이 targetTurn과 같은 방향": targetTurn이 LEFT면 turnSignal == LEFT, RIGHT면 turnSignal == RIGHT. HAZARD(비상등)는 같은 방향으로 치지 않는다.
+- "turnSignal이 targetTurn과 같은 방향": targetTurn이 LEFT 또는 UTURN이면 turnSignal == LEFT, RIGHT면 turnSignal == RIGHT. HAZARD(비상등)는 같은 방향으로 치지 않는다.
 - TURNING에서는 tbt를 보지 않는다. 회전 지점을 지나면 내비가 다음 안내로 바뀌기 때문이다.
 - headingDiff(a, b) = | ((b − a + 540) mod 360) − 180 |. 예: 90 → 30 이면 60, 350 → 10 이면 20.
-- GUIDE 문구: LEFT면 `좌회전 곧이에요, 깜빡이 켜세요`, RIGHT면 `우회전 곧이에요, 깜빡이 켜세요`.
-- GUIDE action: LEFT면 `SIGNAL_LEFT`, RIGHT면 `SIGNAL_RIGHT`.
+- 유턴은 진행 방향이 180° 바뀌므로 #5의 60° 기준을 반드시 넘는다.
+- GUIDE 문구: LEFT면 `좌회전 곧이에요, 깜빡이 켜세요`, RIGHT면 `우회전 곧이에요, 깜빡이 켜세요`, UTURN이면 `유턴 곧이에요, 왼쪽 깜빡이 켜세요`.
+- GUIDE action: LEFT·UTURN이면 `SIGNAL_LEFT`, RIGHT면 `SIGNAL_RIGHT`.
 
 ### 3.4 예시 흐름 (시나리오 S2)
 
@@ -332,6 +336,8 @@ S2와 같고, turnSignal만 모든 프레임에서 OFF.
 | S10_판정후_회전없이_주행 | 4.9 표 | 출력 없음 |
 | S11_터널_전조등 | 4.10 표 | GUIDE t=11000 R5, EVENT t=14000 R5 KEPT guided=true |
 | S12_나들목_안내후_켬 | 4.11 표 | GUIDE t=15000 R4, EVENT t=18000 R4 KEPT guided=true |
+| S22_유턴_안내후_켬 | S2와 같되 tbt는 UTURN, headingDeg는 90(6프레임) → 80 → 30 → 270 | GUIDE t=4000 R1, EVENT t=11000 R1 KEPT guided=true |
+| S23_유턴_반대쪽_깜빡이 | S22와 같되 t=6000~11000에 RIGHT를 켬 | GUIDE t=4000 R1, EVENT t=11000 R1 MISSED guided=true |
 
 ### 4.6 S7: 판정 후 신호 대기
 

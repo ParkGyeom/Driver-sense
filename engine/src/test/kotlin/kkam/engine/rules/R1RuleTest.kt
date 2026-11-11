@@ -72,6 +72,24 @@ class R1RuleTest {
     }
 
     @Test
+    fun uTurnAsksForLeftSignal() {
+        val guide = firstGuide(TurnType.UTURN)
+
+        assertEquals("유턴 곧이에요, 왼쪽 깜빡이 켜세요", guide.text)
+        assertEquals(GuideAction.SIGNAL_LEFT, guide.action)
+    }
+
+    @Test
+    fun uTurnEventKeepsUTurnAndNeedsLeftSignal() {
+        val kept = driveTurn(Engine(), TurnType.UTURN, signal = TurnSignal.LEFT, startT = 0)
+        val missed = driveTurn(Engine(), TurnType.UTURN, signal = TurnSignal.RIGHT, startT = 0)
+
+        assertEquals(TurnType.UTURN, kept.turn)
+        assertEquals(Result.KEPT, kept.result)
+        assertEquals(Result.MISSED, missed.result)
+    }
+
+    @Test
     fun hazardDoesNotCountAsTurnSignal() {
         val event = driveTurn(Engine(), TurnType.LEFT, signal = TurnSignal.HAZARD, startT = 0)
 

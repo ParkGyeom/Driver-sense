@@ -36,7 +36,7 @@ fun guideDistance(speedKph: Double): Double {
 }
 
 /**
- * R1: 회전 전 깜빡이 (spec 3장).
+ * R1: 회전·유턴 전 깜빡이 (spec 3장).
  *
  * @param nextEventId 엔진 전체에서 순서대로 이벤트 id를 만들어주는 함수
  */
@@ -151,19 +151,23 @@ class R1Rule(private val nextEventId: () -> String) {
         return state.copy(movingMs = state.movingMs + elapsedMs, lastT = frame.t)
     }
 
+    /** R1이 감시하는 안내: 좌회전, 우회전, 유턴 (spec 3장). */
     private fun isTurn(turn: TurnType): Boolean =
-        turn == TurnType.LEFT || turn == TurnType.RIGHT
+        turn == TurnType.LEFT || turn == TurnType.RIGHT || turn == TurnType.UTURN
 
-    /** HAZARD(비상등)는 같은 방향으로 치지 않는다. */
+    /** 유턴은 왼쪽 깜빡이가 맞다 (시행령 별표 2 1호). HAZARD(비상등)는 같은 방향으로 치지 않는다. */
     private fun isSameDirection(signal: TurnSignal, turn: TurnType): Boolean = when (turn) {
-        TurnType.LEFT -> signal == TurnSignal.LEFT
+        TurnType.LEFT, TurnType.UTURN -> signal == TurnSignal.LEFT
         TurnType.RIGHT -> signal == TurnSignal.RIGHT
         else -> false
     }
 
     private fun guideAction(turn: TurnType): GuideAction =
-        if (turn == TurnType.LEFT) GuideAction.SIGNAL_LEFT else GuideAction.SIGNAL_RIGHT
+        if (turn == TurnType.RIGHT) GuideAction.SIGNAL_RIGHT else GuideAction.SIGNAL_LEFT
 
-    private fun guideText(turn: TurnType): String =
-        if (turn == TurnType.LEFT) "좌회전 곧이에요, 깜빡이 켜세요" else "우회전 곧이에요, 깜빡이 켜세요"
+    private fun guideText(turn: TurnType): String = when (turn) {
+        TurnType.UTURN -> "유턴 곧이에요, 왼쪽 깜빡이 켜세요"
+        TurnType.RIGHT -> "우회전 곧이에요, 깜빡이 켜세요"
+        else -> "좌회전 곧이에요, 깜빡이 켜세요"
+    }
 }

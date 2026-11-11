@@ -10,6 +10,9 @@ import kotlin.math.roundToInt
 // 이 파일은 Android에 의존하지 않아서 JVM 테스트로 확인한다 (RouteCoachTest).
 // 내비 SDK 이벤트를 받는 쪽은 RouteWatcher, 세션에 붙이는 쪽은 CoachSession이다.
 
+/** 위도·경도 한 점. */
+data class LatLon(val lat: Double, val lon: Double)
+
 /** 내비 경로 하나. 경로 안내가 시작될 때 만든다. */
 data class RoutePlan(
     /** 목적지 이름. 내비가 이름을 안 주면 "목적지". */
@@ -18,6 +21,8 @@ data class RoutePlan(
     val distanceM: Int,
     /** 경로 위 회전 안내 순서. 내비 TBT 목록을 엔진 값으로 바꾼 것. */
     val turns: List<TurnType>,
+    /** 경로 좌표. 앱 지도에 경로선을 그린다. 내비 SDK는 좌표를 주지 않아서 경로 데모에만 있다. */
+    val path: List<LatLon> = emptyList(),
 )
 
 /** 경로 주행 상태. */

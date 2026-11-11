@@ -90,6 +90,7 @@ class MainActivity : Activity() {
     private lateinit var qnaScreen: QnaScreen
     private lateinit var modeScreen: ModeScreen
     private lateinit var routePreviewScreen: RoutePreviewScreen
+    private lateinit var routeMap: RouteMap
     /** 미리보기 화면을 이미 정한 경로. 같은 경로에서 미리보기를 다시 열지 않는다. */
     private var routeHandled: RouteTrip? = null
     private lateinit var parkedNav: ParkedNav
@@ -115,6 +116,13 @@ class MainActivity : Activity() {
         addPreviewButton()
         addLiveButton()
         addButton(CoachSession.ROUTE_DEMO, getString(R.string.demo_route)) { playRouteDemo() }
+        addButton(CONSOLE_SPEED_LABEL, getString(R.string.demo_console_speed_off)) {
+            val current = session ?: return@addButton
+            current.consoleSpeed = !current.consoleSpeed
+            buttons.getValue(CONSOLE_SPEED_LABEL).setText(
+                if (current.consoleSpeed) R.string.demo_console_speed_on else R.string.demo_console_speed_off,
+            )
+        }
         ScenarioPlayer(this).fileNames().forEach(::addScenarioButton)
         setUpDemoToggle()
         render()
@@ -220,6 +228,7 @@ class MainActivity : Activity() {
         qnaScreen = QnaScreen(this)
         modeScreen = ModeScreen(this)
         routePreviewScreen = RoutePreviewScreen(this) { diagnosisSource.load() }
+        routeMap = RouteMap(this)
         parkedNav = ParkedNav(this, onSelect = ::showParked)
         habitScreens = HabitScreens(
             activity = this,
@@ -277,6 +286,7 @@ class MainActivity : Activity() {
         session?.removeListener(sessionListener)
         unbindService(connection)
         uxManager?.unregisterListener()
+        routeMap.release()
         car?.disconnect()
         session = null
         super.onDestroy()
@@ -367,6 +377,11 @@ class MainActivity : Activity() {
         routePreviewScreen.show(screen)
         if (screen == Screen.REPORT) reportScreen.render(state)
         if (screen == Screen.ROUTE_PREVIEW) routePreviewScreen.render(state)
+        // 경로 좌표가 있으면(경로 데모) 주행 화면 왼쪽에 지도를 같이 보여준다.
+        val path = state.route?.plan?.path.orEmpty()
+        val mapVisible = screen == Screen.DRIVE && path.isNotEmpty()
+        routeMap.show(mapVisible)
+        if (mapVisible) routeMap.render(path, session?.lastFrame)
         driveScreen.render(state)
         view.logs.text = state.logs.takeLast(MAX_LOGS).reversed().joinToString("\n").ifEmpty { getString(R.string.demo_no_logs) }
     }
@@ -456,6 +471,7 @@ class MainActivity : Activity() {
         const val NAVI_LABEL = "내비"
         const val PREVIEW_LABEL = "미리보기"
         const val DIAGNOSE_LABEL = "진단"
+        const val CONSOLE_SPEED_LABEL = "계기판 속도"
         const val REQUEST_LIVE = 1
         const val REQUEST_NOTIFY = 2
         const val PREFS = "kkam"

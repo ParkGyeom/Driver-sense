@@ -22,6 +22,11 @@
     <!-- 경로 리포트 (기어 P 리포트 화면을 경로 판정으로) -->
     <string name="route_report_title">%s 경로 리포트</string>
 
+    <!-- 앱 안 지도 출처 표시 (OpenStreetMap 이용 조건) -->
+    <string name="route_map_attribution">© OpenStreetMap contributors</string>
+
     <!-- 데모 패널 -->
     <string name="demo_route">경로 데모 (출발 → 도착)</string>
+    <string name="demo_console_speed_off">경로 데모 계기판 속도: 끔 (앱 지도 보임)</string>
+    <string name="demo_console_speed_on">경로 데모 계기판 속도: 켬 (주행 중 앱 가려짐)</string>
 </resources>

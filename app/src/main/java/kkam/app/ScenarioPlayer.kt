@@ -18,11 +18,12 @@ class ScenarioPlayer(private val context: Context) {
         .filter { it.matches(Regex("""S\d+_.*\.json""")) }
         .sortedBy { it.drop(1).substringBefore('_').toInt() }
 
-    /** 시나리오 파일의 프레임. 경로 데모가 여러 파일을 이어 붙일 때도 쓴다. */
-    fun load(fileName: String): List<SignalFrame> {
-        val text = context.assets.open(fileName).bufferedReader().use { it.readText() }
-        return json.decodeFromString(Scenario.serializer(), text).frames
-    }
+    /** assets 파일 글자. 경로 데모 파일도 이것으로 읽는다. */
+    fun readAsset(fileName: String): String = context.assets.open(fileName).bufferedReader().use { it.readText() }
+
+    /** 시나리오 파일의 프레임. */
+    fun load(fileName: String): List<SignalFrame> =
+        json.decodeFromString(Scenario.serializer(), readAsset(fileName)).frames
 
     fun play(fileName: String, onFrame: (SignalFrame) -> Unit, onEnd: () -> Unit) =
         playFrames(load(fileName), onFrame, onEnd)

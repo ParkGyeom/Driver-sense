@@ -30,6 +30,15 @@ class CoachSession(context: Context) {
     /** 내비 경로 시작·끝을 듣는다. 경로가 시작되면 실제 신호 코치를 켜고 경로를 붙인다. */
     private val routes = RouteWatcher(context, onStarted = ::onRouteStarted, onEnded = ::onRouteEnded).apply { start() }
     private val appContext = context.applicationContext
+    /** 경로 데모 동안 기어·속도·깜빡이를 에뮬레이터 Virtual Console에 보내 차량 화면도 같이 움직인다. */
+    private val console = VehicleConsole()
+
+    /** 데모: 경로 데모 때 계기판 속도도 보낼지 ([VehicleConsole.sendSpeed]). 켜면 주행 중 제한으로 앱 화면이 가려진다. */
+    var consoleSpeed: Boolean
+        get() = console.sendSpeed
+        set(value) {
+            console.sendSpeed = value
+        }
     private val listeners = mutableSetOf<Listener>()
     private val handler = Handler(Looper.getMainLooper())
     private val hideOkPopup = Runnable {
@@ -92,19 +101,28 @@ class CoachSession(context: Context) {
     }
 
     /**
-     * PT용 경로 데모. 기존 시나리오 몇 개를 이어 한 경로처럼 재생한다 ([RouteDemo]).
+     * PT용 경로 데모. 실제 도로 경로를 따라 달리는 프레임을 재생한다 ([RouteDemo]).
      * 출발 전 기어 P에서 경로 미리보기, 회전마다 코치, 도착하면 경로 리포트.
      */
     fun playRouteDemo() {
         stopAll()
-        val run = RouteDemo.build(RouteDemo.LEGS.map(player::load))
+        val run = RouteDemo.build(RouteDemo.parse(player.readAsset(RouteDemo.ASSET)))
         startDrive(ROUTE_DEMO, ROUTE_DEMO)
         attachRoute(run.plan)
-        player.playFrames(run.frames, onFrame = ::onFrame, onEnd = {
-            state = state.endRoute(RouteStatus.ARRIVED)
-            running = null
-            notifyChanged(null)
-        })
+        console.start()
+        player.playFrames(
+            run.frames,
+            onFrame = { frame ->
+                console.mirror(frame)
+                onFrame(frame)
+            },
+            onEnd = {
+                console.stop()
+                state = state.endRoute(RouteStatus.ARRIVED)
+                running = null
+                notifyChanged(null)
+            },
+        )
     }
 
     /**
@@ -152,6 +170,7 @@ class CoachSession(context: Context) {
     /** 재생, 실제 주행, 음성을 모두 멈춘다. 오늘 기록은 남긴다. */
     fun stopAll() {
         player.stop()
+        if (running == ROUTE_DEMO) console.stop()
         if (running == LIVE) collector.stop()
         speaker.stop()
         val wasRunning = running != null

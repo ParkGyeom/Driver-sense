@@ -34,6 +34,17 @@ class CoachStateTest {
         Event("evt-1", 11000, RuleId.R1, result, guided, TurnType.LEFT, 37.55, 127.07)
 
     @Test
+    fun `조용히 하면 카드는 대기로 두고 판정 기록은 쌓는다`() {
+        val near = frame(TurnSignal.OFF, Tbt(TurnType.LEFT, 48))
+        val state = CoachState().next(near, listOf(event(Result.MISSED, guided = true)), quiet = true)
+
+        assertEquals(Tone.IDLE, state.tone)
+        assertEquals(1, state.total)
+        assertEquals(0, state.kept)
+        assertEquals(1, state.todayEvents.size)
+    }
+
+    @Test
     fun `깜빡이가 꺼져 있으면 주황으로 켜라고 한다`() {
         val state = CoachState().next(frame(TurnSignal.OFF, Tbt(TurnType.LEFT, 48)), emptyList())
 

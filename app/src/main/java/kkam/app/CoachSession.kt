@@ -228,14 +228,14 @@ class CoachSession(context: Context) {
 
     private fun onFrame(frame: SignalFrame) {
         // 코치 끔은 '알림 끔'이다. 엔진은 계속 돌려 판정(KEPT/MISSED)은 기록하되,
-        // 끄면 음성·카드·팝업 같은 안내(GUIDE)만 내보내지 않는다. 기획서 진단→교정→졸업의 기록이 끊기지 않게 하려는 것이다.
+        // 끄면 음성·카드·팝업 같은 안내만 내보내지 않는다(카드는 대기 상태로 둔다). 기획서 진단→교정→졸업의 기록이 끊기지 않게 하려는 것이다.
         // 주행 중에 바꿔도 다음 프레임부터 반영된다.
         val outputs = engine.onFrame(frame)
         outputs.forEach { Log.i(TAG, "${frame.t} $it") }
         val shown = if (guidesOn(modes.load())) outputs else outputs.filterNot { it is Guide }
         shown.filterIsInstance<Guide>().forEach { speaker.speak(it.text) }
         val eventsBefore = state.todayEvents.size
-        state = state.next(frame, shown)
+        state = state.next(frame, shown, quiet = !coachOn)
         // 판정이 새로 생겼을 때만 저장한다. 매 프레임 쓰지 않는다.
         if (state.todayEvents.size != eventsBefore) records.save(state.todayEvents)
         if (coachOn) updatePopup(shown, frame) else popup = null

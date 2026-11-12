@@ -183,9 +183,12 @@ private fun SignalFrame.signalTarget(turn: TurnType, kind: GuideKind, checkM: In
     )
 }
 
-/** 프레임 하나와 엔진 출력을 반영한 다음 상태를 돌려준다. */
-fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>): CoachState {
-    val target = targetFor(frame)
+/**
+ * 프레임 하나와 엔진 출력을 반영한 다음 상태를 돌려준다.
+ * [quiet]가 true면(코치 끔) 안내 카드를 만들지 않고 대기 상태로 둔다. 판정 기록(지킴·놓침, 오늘 성적)은 그대로 쌓는다.
+ */
+fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>, quiet: Boolean = false): CoachState {
+    val target = if (quiet) null else targetFor(frame)
     var state = if (target == null) {
         copy(
             tone = Tone.IDLE, turnLabel = IDLE_LABEL, distanceLabel = "", signalLabel = "", badge = "",

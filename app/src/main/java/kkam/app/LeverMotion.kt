@@ -43,12 +43,12 @@ fun leverMotion(kind: GuideKind, right: Boolean): LeverMotion? = when (kind) {
 }
 
 /**
- * 그림을 보여줄 안내인지. 초보 기능 안내(차선 변경, 전조등, 와이퍼)만 보여준다.
- * 회전 깜빡이는 누구나 아는 동작이라 그림 없이 화살표만 쓴다.
- * TODO(연수 모드, spec v0.3): 초보 운전자(연수 모드)면 회전 깜빡이에도 그림을 보여준다.
+ * 그림을 보여줄 안내인지. 켜야 할 때(주황)만, 레버를 쓰는 안내면 모두 보여준다.
+ * 회전 깜빡이도 좌회전 = 아래, 우회전 = 위로 레버를 움직이는 그림을 같이 보여준다.
+ * 레버가 없는 안내(적색 우회전, 김서림 버튼)는 null.
  */
 fun leverFor(kind: GuideKind, right: Boolean, warn: Boolean): LeverMotion? =
-    if (warn && kind != GuideKind.TURN_SIGNAL) leverMotion(kind, right) else null
+    if (warn) leverMotion(kind, right) else null
 
 /** 레버 동작을 말로. 그림과 같이 보여주고, 미리보기에서는 음성으로 읽는다. */
 val LeverMotion.howTo: String

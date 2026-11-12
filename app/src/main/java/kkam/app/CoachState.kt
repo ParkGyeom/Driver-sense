@@ -5,6 +5,7 @@ import kkam.engine.model.Event
 import kkam.engine.model.Guide
 import kkam.engine.model.GuideAction
 import kkam.engine.model.HeadlightState
+import kkam.engine.model.LightPhase
 import kkam.engine.model.Result
 import kkam.engine.model.RuleId
 import kkam.engine.model.SignalFrame
@@ -50,6 +51,8 @@ data class CoachState(
     val checkedTone: Tone? = null,
     /** R3 "멈췄다 가세요" 안내 뒤 한 번이라도 멈췄으면 true. 엔진처럼 한 번 멈추면 지킨 것으로 본다. */
     val stopSeen: Boolean = false,
+    /** 전방 신호등 색. 적색 우회전 카드의 신호등 그림과 "전방 적색" 글자에 쓴다. 모르면 null. */
+    val lightPhase: LightPhase? = null,
     /** 기록 앞에 붙는 주행 이름. 예: S2 */
     val driveLabel: String = "",
     val kept: Int = 0,
@@ -233,7 +236,7 @@ private fun CoachState.withTarget(frame: SignalFrame, signalTarget: Target): Coa
     // R3 "멈췄다 가세요" 안내 뒤의 우회전은 깜빡이 대신 멈췄는지를 보여준다
     val stopping = base.guideAction == GuideAction.STOP
     val stopSeen = stopping && (base.stopSeen || frame.speedKph <= STOP_KPH)
-    val target = if (stopping) stopTarget(signalTarget.turn, stopSeen) else signalTarget
+    val target = if (stopping) stopTarget(signalTarget.turn, stopSeen, frame.light?.phase) else signalTarget
 
     val pastCheck = target.checkM != null && distanceM <= target.checkM
     val liveTone = if (target.ok) Tone.OK else Tone.WARN
@@ -261,21 +264,29 @@ private fun CoachState.withTarget(frame: SignalFrame, signalTarget: Target): Coa
         checkedTurn = if (pastCheck) target.turn else null,
         checkedTone = locked,
         stopSeen = stopSeen,
+        lightPhase = frame.light?.phase,
     )
 }
 
 /** R3 안내 뒤의 우회전 카드. 판정 지점에서 색을 고정하지 않는다 (엔진은 회전 시작 전 멈춤을 본다). */
-private fun stopTarget(turn: TurnType, stopSeen: Boolean) = Target(
+private fun stopTarget(turn: TurnType, stopSeen: Boolean, phase: LightPhase?) = Target(
     turn = turn,
     kind = GuideKind.RED_RIGHT_TURN,
     right = true,
     checkM = null,
     ok = stopSeen,
     okLabel = "정지 확인",
-    offLabel = "전방 적색",
+    offLabel = phase.frontLabel(),
     warnBadge = "멈췄다 가세요",
     answered = "정지선에서 멈췄어요",
 )
+
+/** 신호등 칩 글자. 신호를 모르면(재생 데이터에 없음) 안내 기준인 적색으로 본다. */
+private fun LightPhase?.frontLabel(): String = when (this) {
+    LightPhase.YELLOW -> "전방 황색"
+    LightPhase.GREEN -> "전방 녹색"
+    LightPhase.RED, LightPhase.UNKNOWN, null -> "전방 적색"
+}
 
 /** 오른쪽을 가리키는 안내인가. 적색 우회전(STOP)은 우회전이다. */
 private fun GuideAction.isRight(): Boolean = this == GuideAction.SIGNAL_RIGHT || this == GuideAction.STOP

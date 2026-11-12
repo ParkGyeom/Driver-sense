@@ -38,6 +38,11 @@
     <color name="warn_deep">#F2A700</color>
     <color name="ok_deep">#2F6FE4</color>
     <color name="miss_deep">#E54848</color>
+    <!-- 신호등 그림의 불빛. 실제 신호등처럼 켜진 칸만 색, 나머지는 꺼진 회색. 몸통은 ink_strong. -->
+    <color name="lamp_red">#FF3B30</color>
+    <color name="lamp_yellow">#FFC400</color>
+    <color name="lamp_green">#22C55E</color>
+    <color name="lamp_off">#4A525E</color>
     <!-- 내비 지도 위 팝업 바탕: 흰색 95%. -->
     <color name="popup_light">#F2FFFFFF</color>
     <!--

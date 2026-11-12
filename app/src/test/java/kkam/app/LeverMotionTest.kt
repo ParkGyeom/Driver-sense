@@ -26,10 +26,13 @@ class LeverMotionTest {
     }
 
     @Test
-    fun `그림은 초보 기능 안내를 켜야 할 때(주황)만 보여준다`() {
+    fun `레버 그림은 레버를 쓰는 안내를 켜야 할 때(주황)만 보여준다`() {
         assertEquals(LeverMotion.RIGHT_DOWN, leverFor(GuideKind.WIPER, right = false, warn = true))
         assertNull(leverFor(GuideKind.WIPER, right = false, warn = false))
-        assertNull(leverFor(GuideKind.TURN_SIGNAL, right = false, warn = true))
+        assertEquals(LeverMotion.LEFT_DOWN, leverFor(GuideKind.TURN_SIGNAL, right = false, warn = true))
+        assertEquals(LeverMotion.LEFT_UP, leverFor(GuideKind.TURN_SIGNAL, right = true, warn = true))
+        assertNull(leverFor(GuideKind.RED_RIGHT_TURN, right = true, warn = true))
+        assertNull(leverFor(GuideKind.DEFOG, right = false, warn = true))
     }
 
     @Test

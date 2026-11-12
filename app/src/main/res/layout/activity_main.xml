@@ -50,17 +50,6 @@
                 android:textColor="#0B0E13"
                 android:textSize="40sp"
                 android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|start"
-                android:background="#99FFFFFF"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="2dp"
-                android:text="@string/route_map_attribution"
-                android:textColor="#333333"
-                android:textSize="14sp" />
         </FrameLayout>
 
         <FrameLayout

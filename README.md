@@ -18,6 +18,7 @@
 | Android | minSdk 28, Kotlin 2.4, Gradle Wrapper 포함 |
 | 빌드 | JDK 17, Android SDK (`local.properties`의 `sdk.dir` 또는 `ANDROID_HOME`) |
 | Pleos SDK | Vehicle 2.3.2, NaviHelper 3.0.5, FusedLocation 1.1.3, TextToSpeech 3.3.1. Maven 저장소 `https://nexus-playground.pleos.ai/repository/maven-releases/` |
+| 네이버 지도 | 경로 데모 지도. `local.properties`에 `NAVER_MAP_CLIENT_ID`를 적습니다 ([app/README.md](app/README.md)의 "네이버 지도"). 없으면 지도만 안 뜹니다 |
 | 권한 | 위치(`pleos.car.permission.FUSED_LOCATION`)와 속도(`android.car.permission.CAR_SPEED`)는 앱을 처음 켤 때 묻습니다 |
 
 에뮬레이터의 내비는 경로를 설정해도 위치가 움직이지 않습니다. 그래서 주행 장면은 녹화된 차량 신호(`scenarios/`)를 앱에 재생해서 보여줍니다. 판정 엔진은 실제 차량 신호와 재생 신호를 똑같이 처리합니다.

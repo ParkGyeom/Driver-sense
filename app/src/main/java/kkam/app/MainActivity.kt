@@ -272,6 +272,7 @@ class MainActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
+        routeMap.onStart()
         showNotifierStatus()
         started = true
         session?.appVisible = true
@@ -283,10 +284,31 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        routeMap.onResume()
+    }
+
+    override fun onPause() {
+        routeMap.onPause()
+        super.onPause()
+    }
+
     override fun onStop() {
         started = false
         session?.appVisible = false
+        routeMap.onStop()
         super.onStop()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        routeMap.onSaveInstanceState(outState)
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        routeMap.onLowMemory()
     }
 
     /** 화면만 닫는다. 주행 중이면 서비스가 계속 돌고, 멈춰 있으면 서비스도 끝난다. */
@@ -294,7 +316,7 @@ class MainActivity : Activity() {
         session?.removeListener(sessionListener)
         unbindService(connection)
         uxManager?.unregisterListener()
-        routeMap.release()
+        routeMap.onDestroy()
         car?.disconnect()
         session = null
         super.onDestroy()

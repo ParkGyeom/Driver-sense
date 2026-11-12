@@ -272,6 +272,7 @@ class MainActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
+        routeMap.onStart()
         showNotifierStatus()
         started = true
         session?.appVisible = true
@@ -283,10 +284,31 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        routeMap.onResume()
+    }
+
+    override fun onPause() {
+        routeMap.onPause()
+        super.onPause()
+    }
+
     override fun onStop() {
         started = false
         session?.appVisible = false
+        routeMap.onStop()
         super.onStop()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        routeMap.onSaveInstanceState(outState)
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        routeMap.onLowMemory()
     }
 
     /** 화면만 닫는다. 주행 중이면 서비스가 계속 돌고, 멈춰 있으면 서비스도 끝난다. */
@@ -294,7 +316,7 @@ class MainActivity : Activity() {
         session?.removeListener(sessionListener)
         unbindService(connection)
         uxManager?.unregisterListener()
-        routeMap.release()
+        routeMap.onDestroy()
         car?.disconnect()
         session = null
         super.onDestroy()
@@ -392,11 +414,12 @@ class MainActivity : Activity() {
         if (screen == Screen.ROUTE_REPORT) routeReportScreen.render(state)
         if (screen == Screen.REPORT) reportScreen.render(state)
         if (screen == Screen.ROUTE_PREVIEW) routePreviewScreen.render(state)
-        // 경로 좌표가 있으면(경로 데모) 주행 화면 왼쪽에 지도를 같이 보여준다.
+        // 경로 좌표가 있으면(경로 데모) 주행 화면 대신 지도를 앱 칸 전체에 보여주고, 안내는 지도 위 팝업 카드로 띄운다.
         val path = state.route?.plan?.path.orEmpty()
         val mapVisible = screen == Screen.DRIVE && path.isNotEmpty()
         routeMap.show(mapVisible)
-        if (mapVisible) routeMap.render(path, session?.lastFrame)
+        view.screenSlot.visibility = if (mapVisible) View.GONE else View.VISIBLE
+        if (mapVisible) routeMap.render(path, session?.lastFrame, session?.popup)
         driveScreen.render(state)
         view.logs.text = state.logs.takeLast(MAX_LOGS).reversed().joinToString("\n").ifEmpty { getString(R.string.demo_no_logs) }
     }
@@ -484,6 +507,7 @@ class MainActivity : Activity() {
         val scenarios: LinearLayout = activity.findViewById(R.id.scenarios)
         val tiles: GridLayout = activity.findViewById(R.id.tiles)
         val logs: TextView = activity.findViewById(R.id.logs)
+        val screenSlot: View = activity.findViewById(R.id.screenSlot)
     }
 
     private companion object {

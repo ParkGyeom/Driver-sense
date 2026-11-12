@@ -4,10 +4,6 @@
 <img src="docs/images/banner.svg" alt="Driver Sense — 차 안에 나만의 선생님." width="100%">
 
 <br>
-
-차량 신호로 운전 법규 습관을 진단하고, 단속되기 전에 미리 알려주는 **Pleos Connect 차량용 앱**이다.<br>
-판정은 차 안에서 규칙(상태 머신)으로 하고, 결과는 음성 한 문장과 카드, 리포트로 보여준다.
-
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=kotlin&logoColor=white)](#실행-환경)
 [![Android Automotive](https://img.shields.io/badge/Android_Automotive-minSdk_28-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=android&logoColor=white)](#실행-환경)
 [![Pleos Connect](https://img.shields.io/badge/Pleos_Connect-Emulator_2.1.0-1F5FD1?labelColor=0E2A5E&style=for-the-badge)](#실행-환경)

@@ -7,14 +7,19 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 /**
- * 경로 미리보기 (screen_route_preview.xml). 출발 전 기어 P에서만 보인다. 누를 것은 없다.
+ * 경로 미리보기 (screen_route_preview.xml). 출발 전 기어 P에서만 보인다.
+ * 누를 것은 경로 데모의 "출발" 하나뿐이다 (실제 내비 경로에서는 숨기고 기어 D로 출발한다).
  * 값은 [buildRoutePreview]에서만 온다.
  */
 class RoutePreviewScreen(
     private val activity: Activity,
     /** 약한 곳을 고를 때 오늘 놓친 기록이 없으면 쓰는 진단 값. */
     private val diagnosis: () -> Diagnosis,
+    /** 경로 데모의 "출발". 실제 내비 경로에서는 버튼이 숨어 있어 불리지 않는다. */
+    private val onDepart: () -> Unit,
 ) {
+    private val depart: View = activity.findViewById(R.id.routeDepart)
+    private val hint: View = activity.findViewById(R.id.routePreviewHint)
     private val root: View = activity.findViewById(R.id.routePreviewScreen)
     private val destination: TextView = activity.findViewById(R.id.routeDestination)
     private val points: TextView = activity.findViewById(R.id.routePoints)
@@ -31,6 +36,14 @@ class RoutePreviewScreen(
         activity.findViewById<View>(R.id.routePointsCard).background = activity.cardBackground()
         activity.findViewById<View>(R.id.routeWeakCard).background = activity.cardBackground(activity.getColor(R.color.warn_soft))
         activity.findViewById<View>(R.id.routeSequenceCard).background = activity.cardBackground()
+        depart.background = activity.pillBackground(activity.getColor(R.color.ok))
+        depart.setOnClickListener { onDepart() }
+    }
+
+    /** 경로 데모가 출발을 기다릴 때만 "출발" 버튼을 보이고, 기어 안내 문구는 숨긴다. */
+    fun showDepart(waiting: Boolean) {
+        depart.visibility = if (waiting) View.VISIBLE else View.GONE
+        hint.visibility = if (waiting) View.GONE else View.VISIBLE
     }
 
     fun show(screen: Screen) {

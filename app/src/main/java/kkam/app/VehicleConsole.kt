@@ -21,10 +21,10 @@ import kotlin.math.roundToInt
  */
 class VehicleConsole(private val baseUrl: String = DEFAULT_URL) {
     /**
-     * 속도도 보낼지. 차가 움직이면(속도 > 0) 차량 OS가 주행 중 제한으로 우리 앱 화면을 막는다
-     * ("주행 중에는 사용할 수 없습니다"). 그래서 기본은 기어·깜빡이만 보내고, 계기판 속도까지 보이고 싶을 때만 켠다.
+     * 속도는 보내지 않는다 (늘 0, 브레이크). 차가 움직이면(속도 > 0) 차량 OS가 주행 중 제한으로 우리 앱 화면을 막는다
+     * ("주행 중에는 사용할 수 없습니다"). 경로 데모의 속도는 앱 지도 위에 표시한다.
      */
-    var sendSpeed = false
+    private val sendSpeed = false
     private var thread: HandlerThread? = null
     private var handler: Handler? = null
     private var last: SignalFrame? = null

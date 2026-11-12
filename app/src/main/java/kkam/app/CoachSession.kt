@@ -33,12 +33,6 @@ class CoachSession(context: Context) {
     /** 경로 데모 동안 기어·속도·깜빡이를 에뮬레이터 Virtual Console에 보내 차량 화면도 같이 움직인다. */
     private val console = VehicleConsole()
 
-    /** 데모: 경로 데모 때 계기판 속도도 보낼지 ([VehicleConsole.sendSpeed]). 켜면 주행 중 제한으로 앱 화면이 가려진다. */
-    var consoleSpeed: Boolean
-        get() = console.sendSpeed
-        set(value) {
-            console.sendSpeed = value
-        }
     private val listeners = mutableSetOf<Listener>()
     private val handler = Handler(Looper.getMainLooper())
     private val hideOkPopup = Runnable {
@@ -57,6 +51,10 @@ class CoachSession(context: Context) {
 
     /** 앱·서비스를 다시 켜도 오늘 판정은 남는다. 날짜가 바뀌었으면 빈 상태로 시작한다. */
     var state = restoredToday(records.load())
+        private set
+
+    /** 경로 데모에서 마지막 프레임이 빨리 감는 구간이면 true. 지도 속도 표시에 "빨리 감기"를 붙인다. */
+    var routeFastForward = false
         private set
 
     /** 마지막 프레임. 화면이 새로 붙을 때 신호 칸과 기어를 맞추는 데 쓴다. */
@@ -101,26 +99,47 @@ class CoachSession(context: Context) {
     }
 
     /**
-     * PT용 경로 데모. 실제 도로 경로를 따라 달리는 프레임을 재생한다 ([RouteDemo]).
-     * 출발 전 기어 P에서 경로 미리보기, 회전마다 코치, 도착하면 경로 리포트.
+     * PT용 경로 데모. 목적지 검색에서 고른 목적지의 미리 계산한 경로를 따라 달리는 프레임을 재생한다 ([RouteDemo]).
+     * 출발 전 기어 P에서 경로 미리보기, 코치 지점마다 안내·판정, 도착하면 경로 리포트.
+     * 차선 변경은 엔진 룰이 없어서 각본 시각([RouteDemo.LaneCue])에 팝업과 음성만 낸다.
      */
-    fun playRouteDemo() {
+    fun playRouteDemo(destination: DemoDestination) {
         stopAll()
-        val run = RouteDemo.build(RouteDemo.parse(player.readAsset(RouteDemo.ASSET)))
+        val run = RouteDemo.build(RouteDemo.parse(player.readAsset(destination.asset)))
         startDrive(ROUTE_DEMO, ROUTE_DEMO)
-        attachRoute(run.plan)
+        attachRoute(run.plan.copy(destination = destination.name))
         console.start()
+        // 출발 전: 기어 P 프레임 하나로 미리보기를 띄우고 "출발"을 기다린다 ([departRouteDemo]).
+        val parked = run.frames.first()
+        console.mirror(parked)
+        departRun = run
+        onFrame(parked)
+    }
+
+    /** 출발을 기다리는 경로 데모. "출발"을 누르면 [departRouteDemo]가 재생한다. */
+    private var departRun: RouteDemo.Run? = null
+
+    /** 경로 데모가 출발 전 미리보기에서 "출발"을 기다리는 중이면 true. */
+    val waitingDepart: Boolean get() = departRun != null
+
+    /** 경로 미리보기의 "출발": 기어 D로 출발해 경로를 따라 달린다. 도착하면 기어 P와 경로 리포트. */
+    fun departRouteDemo() {
+        val run = departRun ?: return
+        departRun = null
         player.playFrames(
-            run.frames,
+            run.frames.filter { it.t >= RouteDemo.PREVIEW_MS },
             onFrame = { frame ->
                 console.mirror(frame)
+                routeFastForward = frame.t in run.fastForward
                 // 도착 프레임에서 경로를 끝낸다. 뒤따르는 기어 P 프레임에서 경로 리포트가 열린다.
                 if (frame.t == run.arriveAt) state = state.endRoute(RouteStatus.ARRIVED)
-                onFrame(frame)
+                if (run.laneCues.any { it.showAt == frame.t }) speaker.speak(LANE_CHANGE_SPEECH)
+                onFrame(frame, laneChangePopup(run.laneCues, frame.t))
             },
             onEnd = {
                 console.stop()
                 running = null
+                routeFastForward = false
                 notifyChanged(null)
             },
         )
@@ -177,6 +196,8 @@ class CoachSession(context: Context) {
         val wasRunning = running != null
         running = null
         popup = null
+        routeFastForward = false
+        departRun = null
         handler.removeCallbacks(hideOkPopup)
         handler.removeCallbacks(hidePreviewPopup)
         if (wasRunning) notifyChanged(null)
@@ -226,7 +247,8 @@ class CoachSession(context: Context) {
     /** 운전 코치가 켜져 있는가 (코치 화면의 켬/끔). 경로 코치 등 다른 곳에서도 이 값을 읽는다. */
     val coachOn: Boolean get() = modes.isCoachOn()
 
-    private fun onFrame(frame: SignalFrame) {
+    /** [demoPopup]: 경로 데모 각본 팝업(차선 변경). 있으면 엔진 출력으로 정한 팝업보다 먼저 보인다. */
+    private fun onFrame(frame: SignalFrame, demoPopup: Popup? = null) {
         // 코치 끔은 '알림 끔'이다. 엔진은 계속 돌려 판정(KEPT/MISSED)은 기록하되,
         // 끄면 음성·카드·팝업 같은 안내만 내보내지 않는다(카드는 대기 상태로 둔다). 기획서 진단→교정→졸업의 기록이 끊기지 않게 하려는 것이다.
         // 주행 중에 바꿔도 다음 프레임부터 반영된다.
@@ -239,6 +261,7 @@ class CoachSession(context: Context) {
         // 판정이 새로 생겼을 때만 저장한다. 매 프레임 쓰지 않는다.
         if (state.todayEvents.size != eventsBefore) records.save(state.todayEvents)
         if (coachOn) updatePopup(shown, frame) else popup = null
+        if (coachOn && demoPopup != null) popup = demoPopup
         lastFrame = frame
         notifyChanged(frame)
     }

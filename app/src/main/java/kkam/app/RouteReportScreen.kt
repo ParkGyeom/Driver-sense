@@ -17,6 +17,8 @@ import kkam.engine.model.Result
 class RouteReportScreen(
     private val activity: Activity,
     private val laws: () -> List<LawEntry>,
+    /** "AI에게 묻기"를 눌렀을 때. MainActivity가 법규 Q&A를 열고 [ROUTE_REPORT_QUESTION]을 묻는다. */
+    private val onAsk: () -> Unit,
 ) {
     private val root: View = activity.findViewById(R.id.routeReportScreen)
     private val title: TextView = activity.findViewById(R.id.routeReportTitle)
@@ -34,6 +36,10 @@ class RouteReportScreen(
     init {
         activity.findViewById<View>(R.id.routeReportMissedCard).background = activity.cardBackground()
         activity.findViewById<View>(R.id.routeReportKeptCard).background = activity.cardBackground()
+        activity.findViewById<View>(R.id.routeReportAsk).apply {
+            background = activity.pillBackground(activity.getColor(R.color.text))
+            setOnClickListener { onAsk() }
+        }
     }
 
     fun show(screen: Screen) {
@@ -96,3 +102,6 @@ class RouteReportScreen(
         const val CHIP_RADIUS_DP = 20
     }
 }
+
+/** 경로 리포트 "AI에게 묻기"가 법규 Q&A에 바로 묻는 질문. 적색 우회전 일시정지는 룰 테이블에 근거가 있다 (추천 질문 첫 번째). */
+val ROUTE_REPORT_QUESTION: String = SUGGESTED_QUESTIONS.first()

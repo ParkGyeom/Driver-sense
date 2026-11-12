@@ -28,13 +28,17 @@ class ScenarioPlayer(private val context: Context) {
     fun play(fileName: String, onFrame: (SignalFrame) -> Unit, onEnd: () -> Unit) =
         playFrames(load(fileName), onFrame, onEnd)
 
-    /** 프레임을 t(0부터 ms)에 맞춰 내보낸다. 끝나고 [END_HOLD_MS] 뒤에 [onEnd]. */
+    /**
+     * 프레임을 t에 맞춰 내보낸다. 첫 프레임은 바로, 나머지는 첫 프레임과의 시각 차이만큼 뒤에.
+     * 끝나고 [END_HOLD_MS] 뒤에 [onEnd].
+     */
     fun playFrames(frames: List<SignalFrame>, onFrame: (SignalFrame) -> Unit, onEnd: () -> Unit) {
         stop()
+        val first = frames.first().t
         for (frame in frames) {
-            handler.postDelayed({ onFrame(frame) }, token, frame.t)
+            handler.postDelayed({ onFrame(frame) }, token, frame.t - first)
         }
-        handler.postDelayed(onEnd, token, frames.last().t + END_HOLD_MS)
+        handler.postDelayed(onEnd, token, frames.last().t - first + END_HOLD_MS)
     }
 
     fun stop() = handler.removeCallbacksAndMessages(token)

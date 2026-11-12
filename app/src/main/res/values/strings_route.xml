@@ -18,6 +18,7 @@
     <string name="route_preview_start">출발</string>
     <string name="route_preview_end">도착</string>
     <string name="route_preview_hint">기어를 D로 바꾸면 코치를 시작해요</string>
+    <string name="route_preview_depart">출발</string>
 
     <!-- 경로 리포트 (경로가 끝난 뒤 기어 P) -->
     <string name="route_report_title">%s 경로 리포트</string>
@@ -29,12 +30,18 @@
     <string name="route_report_saved">안내 듣고 지켜서 아낀 범칙금 %s</string>
     <string name="route_report_timeline">잘못한 점부터 보여줘요</string>
     <string name="route_report_empty">이번 경로에는 판정이 없어요</string>
+    <string name="route_report_ask">AI에게 묻기</string>
+
+    <!-- 경로 데모 목적지 검색 (지도 위 검색창) -->
+    <string name="route_search_hint">목적지 검색</string>
+    <string name="route_search_from">출발 %s (현재 위치)</string>
+    <string name="route_search_empty">검색 결과가 없어요</string>
+    <!-- 빨리 감는 구간의 지도 속도 표시 -->
+    <string name="route_map_speed_fast">%d km/h ▶▶ 빨리 감기</string>
 
     <!-- 경로 데모 지도 왼쪽 아래 속도 -->
     <string name="route_map_speed">%d km/h</string>
 
     <!-- 데모 패널 -->
-    <string name="demo_route">경로 데모 (출발 → 도착)</string>
-    <string name="demo_console_speed_off">경로 데모 계기판 속도: 끔 (앱 지도 보임)</string>
-    <string name="demo_console_speed_on">경로 데모 계기판 속도: 켬 (주행 중 앱 가려짐)</string>
+    <string name="demo_route">경로 데모 (목적지 검색 → 도착)</string>
 </resources>

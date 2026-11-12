@@ -3,9 +3,28 @@
 
 <img src="docs/images/banner.svg" alt="Driver Sense — 차 안에 나만의 선생님." width="100%">
 
+<br>
+
+차량 신호로 운전 법규 습관을 진단하고, 단속되기 전에 미리 알려주는 **Pleos Connect 차량용 앱**이다.<br>
+판정은 차 안에서 규칙(상태 머신)으로 하고, 결과는 음성 한 문장과 카드, 리포트로 보여준다.
+
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.4-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=kotlin&logoColor=white)](#실행-환경)
+[![Android Automotive](https://img.shields.io/badge/Android_Automotive-minSdk_28-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=android&logoColor=white)](#실행-환경)
+[![Pleos Connect](https://img.shields.io/badge/Pleos_Connect-Emulator_2.1.0-1F5FD1?labelColor=0E2A5E&style=for-the-badge)](#실행-환경)
+[![JDK](https://img.shields.io/badge/JDK-17-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=openjdk&logoColor=white)](#실행-환경)
+<br>
+[![Rules](https://img.shields.io/badge/판정_룰-R1~R7-1F5FD1?labelColor=0E2A5E&style=flat-square)](#하는-일)
+[![Scenarios](https://img.shields.io/badge/시나리오-S1~S24-1F5FD1?labelColor=0E2A5E&style=flat-square)](#데모로-보기)
+[![Naver Map](https://img.shields.io/badge/Naver_Map_SDK-3.24.1-1F5FD1?labelColor=0E2A5E&style=flat-square)](#실행-환경)
+[![JUnit 5](https://img.shields.io/badge/JUnit-5-1F5FD1?labelColor=0E2A5E&style=flat-square&logo=junit5&logoColor=white)](#소스에서-빌드)
 
 </div>
-[시스템 구성](#시스템-구성) → [하는 일](#하는-일) → [실행 환경](#실행-환경) → [빌드와 실행](#빌드와-실행) → [데모로 보기](#데모로-보기) 순서로 읽는다.
+
+> [!NOTE]
+> - Pleos Connect Emulator의 내비는 경로를 정해도 위치가 움직이지 않는다. 그래서 주행 장면은 녹화된 차량 신호를 재생해서 보여준다([데모로 보기](#데모로-보기)). 판정 엔진은 실제 신호와 재생 신호를 똑같이 처리한다.
+> - 아직 완성되지 않은 부분은 [현재 한계](#현재-한계)에 모아 두었다.
+
+처음 본다면 [시스템 구성](#시스템-구성) → [하는 일](#하는-일) → [실행 환경](#실행-환경) → [빌드와 실행](#빌드와-실행) → [데모로 보기](#데모로-보기) 순서로 읽는다.
 
 ## 시스템 구성
 
@@ -99,7 +118,7 @@
 ├── data/                법규 룰 테이블 law_table.json (15개 항목). 앱 리포트·Q&A와 엔진 테스트가 같이 쓴다
 ├── server/              Spring 서버 (판정 이벤트 저장, 리포트 API) · 서버 담당
 ├── docs/                기획서, 엔진 명세, 법규 룰 테이블 설명, 작업 순서
-├── apk/                 제출용 release APK
+├── apk/                 실행용 release APK
 ├── settings.gradle.kts  루트 빌드. :engine, :app 두 모듈
 └── CLAUDE.md            엔진 작업 지침 (개발용)
 ```
@@ -138,7 +157,7 @@
 
 ### APK로 실행
 
-제출용 release APK는 [apk/](apk/README.md)에 둔다. 파일 이름은 `팀명_앱이름_release.apk`다.
+실행용 release APK는 [apk/](apk/README.md)에 둔다. 파일 이름은 `팀명_앱이름_release.apk`다.
 
 1. Pleos Connect Emulator를 켠다.
 2. 설치하고 실행한다.
@@ -214,7 +233,7 @@ debug 앱의 오른쪽 위 "데모" 버튼으로 데모 패널을 연다. releas
 ## 고치고 반영하는 법
 
 > [!IMPORTANT]
-> 이 저장소의 파일은 그대로 공모전 제출본이 된다. 코드, 주석, TODO, 문서, 앱 화면 문구에 팀원 실명, GitHub 계정 이름, 개인 이메일, 개인 폴더 경로를 쓰지 않는다. 대신 역할명(AI 담당, 앱 담당, 서버 담당, PM)을 쓴다.
+> 코드, 주석, TODO, 문서, 앱 화면 문구에 팀원 실명, GitHub 계정 이름, 개인 이메일, 개인 폴더 경로를 쓰지 않는다. 대신 역할명(AI 담당, 앱 담당, 서버 담당, PM)을 쓴다.
 
 1. 작업 브랜치에서 고친다. 브랜치 이름은 `engine/r2`, `app/coach-card`, `server/event-api`처럼 폴더 이름으로 시작한다.
 2. 다른 담당자의 폴더를 고칠 때는 담당자에게 먼저 알린다.
@@ -222,8 +241,6 @@ debug 앱의 오른쪽 위 "데모" 버튼으로 데모 패널을 연다. releas
 4. `./gradlew test :app:testDebugUnitTest`가 통과하는지 본 뒤 작은 PR로 `main`에 합친다. `main`은 늘 빌드되는 상태로 두고 직접 푸시하지 않는다.
 
 - 시연 영상과 화면 캡처에도 이름, 계정, 개인 폴더 경로, 메신저 알림이 보이지 않게 한다.
-- 제출용 저장소는 제출 직전에 이 저장소의 `main`을 복사해 따로 올린다. 제출용 저장소에는 각자 커밋하지 않는다. 커밋하면 개인 계정 이름이 기록에 남는다.
-- 커밋 메시지와 PR 본문은 제출본에 복사되지 않으므로 이름을 써도 된다.
 
 ## 변경 이력
 
@@ -254,7 +271,7 @@ debug 앱의 오른쪽 위 "데모" 버튼으로 데모 패널을 연다. releas
 
 - 엔진: R4(나들목 깜빡이), R5(터널 전조등). spec v0.2.
 - 앱: 주행 리포트, 진단·습관 선택, 내비 위 팝업, 레버 그림.
-- 제출 규정에 맞춰 문서와 주석의 실명을 역할명으로 바꿨다.
+- 문서와 주석의 팀원 실명을 역할명으로 바꿨다.
 
 ### 그 전
 
@@ -272,9 +289,9 @@ debug 앱의 오른쪽 위 "데모" 버튼으로 데모 패널을 연다. releas
 | [engine/README.md](engine/README.md) | 판정 엔진 사용법과 시나리오 목록 |
 | [app/README.md](app/README.md) | 차량 앱의 화면, 데모 패널, SDK 연동, 코드 구조 |
 | [server/README.md](server/README.md) | 서버 계획 |
-| [apk/README.md](apk/README.md) | 제출용 APK |
+| [apk/README.md](apk/README.md) | 실행용 APK |
 | [docs/tasks.md](docs/tasks.md) | 판정 엔진 개발 단계 기록 (팀 내부용) |
 
 <div align="center">
-<sub>Driver Sense · 현대자동차그룹 Pleos Playground 출품작 · 2026</sub>
+<sub>Driver Sense · Pleos Connect 차량용 앱 · 2026</sub>
 </div>

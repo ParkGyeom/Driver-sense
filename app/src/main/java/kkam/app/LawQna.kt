@@ -49,7 +49,7 @@ val SUGGESTED_QUESTIONS = listOf(
 
 const val NO_BASIS_TEXT = "확인된 근거가 없어요. 룰 테이블에 있는 법규만 답할 수 있어요."
 
-/** law_table.json 글을 룰 목록으로 읽는다. MainActivity.loadLaws()와 같은 방식. */
+/** law_table.json 글을 룰 목록으로 읽는다. 앱(MainActivity.loadLaws)과 테스트가 같이 쓴다. */
 fun parseLawTable(json: String): List<LawEntry> =
     Json { ignoreUnknownKeys = true }.decodeFromString(ListSerializer(LawEntry.serializer()), json)
 

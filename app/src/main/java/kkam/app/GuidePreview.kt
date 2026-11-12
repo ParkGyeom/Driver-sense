@@ -2,7 +2,7 @@ package kkam.app
 
 /**
  * 데모 패널의 "안내 종류 미리보기"에 쓰는 예시 값. 엔진 출력이 아니라 화면 확인용 문구다.
- * 엔진이 차선 변경·전조등·와이퍼 룰을 내보내기 전에 그림과 배치를 미리 보려고 둔다.
+ * 시연에서 안내 종류마다 그림과 배치를 바로 보여 주려고 둔다.
  */
 fun CoachState.preview(kind: GuideKind): CoachState {
     val (title, distance, status, headline) = when (kind) {

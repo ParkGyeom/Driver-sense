@@ -4,7 +4,7 @@ import android.content.Context
 
 /**
  * 운전 코치 켬/끔. 사용자 요청으로 기획서 4.3의 4개 모드(진단·교정·연수·조용)를 이 두 값으로 줄였다.
- * - 켬: 목적지까지 가는 동안 음성 안내를 하고 판정을 기록한다. 도착하면 리포트를 보여준다(경로 리포트는 route-coach 세션).
+ * - 켬: 목적지까지 가는 동안 음성 안내를 하고 판정을 기록한다. 도착하면 경로 리포트를 보여준다.
  * - 끔: 음성·카드·팝업 안내만 끈다. 판정은 계속 기록한다(진단→교정→졸업과 리포트가 끊기지 않게).
  */
 enum class DriveMode {
@@ -46,7 +46,7 @@ class ModeStore(context: Context) {
         prefs.edit().putString(KEY_MODE, mode.name).apply()
     }
 
-    /** 코치가 켜져 있는가. 경로 코치(route-coach) 등 다른 곳에서는 이 함수만 쓰면 된다. */
+    /** 코치가 켜져 있는가. 경로 코치 등 다른 곳에서는 이 함수만 쓰면 된다. */
     fun isCoachOn(): Boolean = load() == DriveMode.ON
 
     private companion object {

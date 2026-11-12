@@ -86,7 +86,7 @@ private data class Target(
 )
 
 /**
- * 이 상태에서 카드에 보여줄 대상. R6 "와이퍼 켜세요" 안내 중이면 내비 안내 대신 와이퍼를 보여준다.
+ * 이 상태에서 카드에 보여줄 대상. R6 "와이퍼 켜세요"·R7 김서림 안내 중이면 내비 안내 대신 그 카드를 보여준다.
  * 그 밖에는 내비 안내로 정한다.
  */
 private fun CoachState.targetFor(frame: SignalFrame): Target? = when (guideAction) {

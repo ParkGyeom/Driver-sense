@@ -44,7 +44,7 @@ fun CardLook.badgeIconRes(): Int = when (this) {
  * 카드 한 장에 칠할 색.
  * accent = 상태 색 채움 (그림 원, 알약, 켜진 깜빡이 칩), edge = 흰 바탕에서 또렷한 진한 상태 색
  * (카드 테두리, 꺼진 깜빡이 칩 테두리·화살표, 레버 그림), iconBg·iconInk = 방향 그림 원과 그림,
- * note = 카드 밑 한 줄 문구 색 (어두운 화면 바탕 위).
+ * note = 카드 밑 한 줄 문구 색 (앱 바탕 위).
  */
 data class CardPalette(
     val accent: Int,

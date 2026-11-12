@@ -25,9 +25,8 @@ class ParkedNav(
     /** [screen]이 정차 화면이면 레일을 보이고 그 항목을 칠한다. */
     fun show(screen: Screen) {
         rail.visibility = if (screen.parkedOnly) View.VISIBLE else View.GONE
-        val selected = selectedItem(screen)
         items.forEach { (target, item) ->
-            val on = target == selected
+            val on = target == screen
             item.background = if (on) activity.pillBackground(activity.getColor(R.color.surface_2)) else null
             item.setTextColor(activity.getColor(if (on) R.color.text else R.color.muted))
         }
@@ -54,7 +53,7 @@ class ParkedNav(
         const val ITEM_HEIGHT_DP = 88
         const val ITEM_GAP_DP = 8
 
-        /** 레일 순서. 습관 선택은 진단 리포트에서 이어 들어가므로 따로 두지 않는다. */
+        /** 레일 순서. */
         val ITEMS = listOf(
             Screen.REPORT to R.string.nav_report,
             Screen.DIAGNOSE to R.string.nav_diagnose,
@@ -62,8 +61,5 @@ class ParkedNav(
             Screen.QNA to R.string.nav_qna,
             Screen.MODE to R.string.nav_mode,
         )
-
-        /** 습관 선택 중에는 "진단" 항목을 칠한다. */
-        fun selectedItem(screen: Screen): Screen = if (screen == Screen.HABIT) Screen.DIAGNOSE else screen
     }
 }

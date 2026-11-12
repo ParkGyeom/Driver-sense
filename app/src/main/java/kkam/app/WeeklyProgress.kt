@@ -118,7 +118,7 @@ data class MissedPlace(
 data class WeeklyProgress(
     /** 예: "11월 2주 · 최근 7일" */
     val periodLabel: String,
-    /** 고른 습관 1~2개 (HabitSelection 순서). */
+    /** 교정 중인 습관 1~2개. 카드가 이 순서로 나온다. */
     val habits: List<HabitProgress>,
     /** 최근 7일, 오래된 날부터. 마지막이 오늘. */
     val days: List<DayRate>,

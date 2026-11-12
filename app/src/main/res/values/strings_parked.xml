@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 기어 P 정차 화면(리포트·진단·습관 선택) 개편 문구. 기존 strings.xml의 report_*, diagnose_*, habit_*도 그대로 쓴다. -->
+<!-- 기어 P 정차 화면(리포트·진단) 개편 문구. 기존 strings.xml의 report_*, diagnose_*도 그대로 쓴다. -->
 <resources>
     <!-- 오늘 주행 리포트 (흰 배경) -->
     <string name="parked_report_summary">%1$d번 중 %2$d번 지켰어요</string>
@@ -22,11 +22,4 @@
     <string name="parked_diagnose_above">평균 이상</string>
     <string name="parked_diagnose_average_legend">전국 평균 %s%%</string>
 
-    <!-- 습관 선택 -->
-    <string name="parked_habit_progress">%1$d/%2$d 개</string>
-    <string name="parked_habit_progress_label">골랐어요</string>
-    <string name="parked_habit_tap">카드를 눌러 고르세요. 다시 누르면 빠져요</string>
-    <string name="parked_habit_recommended">★ 추천</string>
-    <string name="parked_habit_selected">선택됨</string>
-    <string name="parked_habit_average">전국 평균 %s%%</string>
 </resources>

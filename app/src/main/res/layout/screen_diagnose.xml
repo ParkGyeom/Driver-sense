@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  진단 리포트 (기획서 UI-3 앞부분). 기어 P일 때만 연다.
+  진단 리포트 (기획서 UI-3). 기어 P일 때만 연다.
   위: 제목 + 한 줄 요약(진단 기간).
   히어로: 핵심 문구 한 줄 (가장 낮은 상황. 퍼센트는 크게, 평균보다 낮으면 주황 + ! 아이콘).
   카드: 상황별 준수율 막대. 세로선 = 전국 평균 75.7%. 막대 한 줄은 diagnose_row.xml을 코드에서 넣는다.
-  아래: "고칠 습관 고르기" 버튼.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/diagnoseScreen"
@@ -90,18 +89,4 @@
             android:orientation="vertical" />
     </LinearLayout>
 
-    <Space
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
-
-    <TextView
-        android:id="@+id/diagnoseNext"
-        style="@style/Kk.Pill"
-        android:layout_height="88dp"
-        android:layout_gravity="end"
-        android:paddingHorizontal="48dp"
-        android:text="@string/diagnose_next"
-        android:textColor="@color/on_accent"
-        android:textSize="@dimen/kk_text_body" />
 </LinearLayout>

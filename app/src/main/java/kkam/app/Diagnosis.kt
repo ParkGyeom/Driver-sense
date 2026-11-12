@@ -3,8 +3,7 @@ package kkam.app
 import kotlin.math.roundToInt
 
 /**
- * 진단 리포트·습관 선택(기획서 UI-3)에서 다루는 습관. 습관 카드 한 장 = 값 하나.
- * 나중에 엔진 모드 입력(spec v0.2)으로 넘길 때 룰과 회전 방향으로 바꾼다.
+ * 진단 리포트와 교정 진행(기획서 UI-3·UI-4)에서 다루는 습관. 준수율 막대 한 줄, 습관 카드 한 장 = 값 하나.
  */
 enum class Habit(val label: String) {
     LEFT_SIGNAL("좌회전 깜빡이"),
@@ -40,8 +39,6 @@ data class Diagnosis(
             val compare = if (lowest.percent < nationalAveragePercent) "전국 평균보다 낮아요" else "전국 평균보다 높아요"
             return "${lowest.habit.label} ${lowest.percent}%, $compare"
         }
-
-    fun rateOf(habit: Habit): SituationRate? = rates.firstOrNull { it.habit == habit }
 }
 
 /**

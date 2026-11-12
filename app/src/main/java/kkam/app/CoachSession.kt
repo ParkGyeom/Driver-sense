@@ -215,12 +215,6 @@ class CoachSession(context: Context) {
         notifyChanged(null)
     }
 
-    /** 주행 화면 한 줄 문구를 바꾼다. 습관 선택을 마쳤을 때 쓴다. */
-    fun showMessage(message: String) {
-        state = state.copy(message = message)
-        notifyChanged(null)
-    }
-
     fun release() {
         stopAll()
         routes.release()

@@ -85,9 +85,9 @@ class MainActivity : Activity() {
         set(value) = getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_NAVI_AFTER_PLAY, value).apply()
     /** 지금 screenSlot에 보이는 화면. 마지막 프레임의 기어로 정한다. */
     private var screen = Screen.DRIVE
-    /** 마지막 프레임의 기어. 아직 프레임이 없으면 null. 진단·습관 선택은 P일 때만 연다. */
+    /** 마지막 프레임의 기어. 아직 프레임이 없으면 null. 정차 화면은 P일 때만 연다. */
     private var gear: Gear? = null
-    private lateinit var habitScreens: HabitScreens
+    private lateinit var diagnoseScreen: DiagnoseScreen
     private lateinit var driveScreen: DriveScreen
     private lateinit var reportScreen: ReportScreen
     private lateinit var progressScreen: ProgressScreen
@@ -220,7 +220,6 @@ class MainActivity : Activity() {
 
     /**
      * screenSlot의 화면들과 기어 P 레일을 만든다. 화면마다 담당 클래스가 자기 레이아웃만 그린다.
-     * 진단 리포트 → 습관 선택 → 주행 화면은 기획서 5.5 PT 흐름 1~2.
      */
     private fun setUpScreens() {
         driveScreen = DriveScreen(this)
@@ -233,13 +232,7 @@ class MainActivity : Activity() {
         routeReportScreen = RouteReportScreen(this, laws = { laws }, onAsk = ::askFromRouteReport)
         destinationSearch = DestinationSearch(this, onSelect = ::playRouteDemo)
         parkedNav = ParkedNav(this, onSelect = ::showParked)
-        habitScreens = HabitScreens(
-            activity = this,
-            diagnosis = diagnosisSource.load(),
-            onOpenHabit = { showParked(Screen.HABIT) },
-            onBackToDiagnose = { showParked(Screen.DIAGNOSE) },
-            onFinish = ::finishHabits,
-        )
+        diagnoseScreen = DiagnoseScreen(this, diagnosisSource.load())
     }
 
     /** 데모 패널 버튼. 재생을 멈추고 기어 P로 세운 뒤 진단 리포트를 연다. */
@@ -254,14 +247,6 @@ class MainActivity : Activity() {
     /** 기어 P가 아니면 열지 않고 주행 화면에 머문다 (기획서 5.4). */
     private fun showParked(target: Screen) {
         screen = openScreen(target, gear)
-        render()
-    }
-
-    private fun finishHabits(selection: HabitSelection) {
-        // TODO(엔진 모드 입력, AI 담당): 고른 습관을 엔진에 넘긴다.
-        //  지금은 엔진에 넘기지 않고, 주행 화면 한 줄 문구에만 보여준다.
-        session?.showMessage(selection.summary())
-        screen = Screen.DRIVE
         render()
     }
 
@@ -383,7 +368,7 @@ class MainActivity : Activity() {
     /** 세션 상태가 바뀌었을 때. 새 프레임이면 기어로 화면을 정하고 신호 칸을 갱신한다. */
     private fun onSessionChanged(frame: SignalFrame?) {
         if (frame != null) {
-            // 기어 P면 리포트(진단·습관 선택 중이면 그대로), 그 밖의 기어면 주행 화면 (기획서 5.4).
+            // 기어 P면 리포트(다른 정차 화면을 보고 있으면 그대로), 그 밖의 기어면 주행 화면 (기획서 5.4).
             gear = frame.gear
             screen = nextScreen(screen, frame.gear, state.route)
             showSignals(frame)
@@ -425,7 +410,7 @@ class MainActivity : Activity() {
         parkedNav.show(screen)
         driveScreen.show(screen)
         reportScreen.show(screen)
-        habitScreens.show(screen)
+        diagnoseScreen.show(screen)
         progressScreen.show(screen)
         qnaScreen.show(screen)
         modeScreen.show(screen)

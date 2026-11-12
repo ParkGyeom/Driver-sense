@@ -42,7 +42,7 @@ class ReportScreen(
     init {
         listOf(statKept, statMissed, statSaved).forEach { it.background = activity.cardBackground() }
         activity.findViewById<View>(R.id.reportListCard).background = activity.cardBackground()
-        activity.findViewById<View>(R.id.reportEmptyIcon).background = activity.rounded(color(R.color.surface_2), radiusDp = 999)
+        activity.findViewById<View>(R.id.reportEmptyIcon).background = activity.pillBackground(color(R.color.surface_2))
         activity.findViewById<View>(R.id.reportAsk).background =
             activity.pillBackground(color(R.color.surface), strokeColor = color(R.color.line))
 
@@ -110,7 +110,7 @@ class ReportScreen(
         findViewById<TextView>(R.id.statIcon).apply {
             text = symbol
             setTextColor(color(toneRes))
-            background = activity.rounded(color(softRes), radiusDp = 999)
+            background = activity.pillBackground(color(softRes))
         }
         findViewById<TextView>(R.id.statLabel).setText(labelRes)
         findViewById<TextView>(R.id.statValue).setTextColor(color(toneRes))
@@ -174,11 +174,6 @@ class ReportScreen(
 
     private companion object {
         const val ZERO_WON = "0 원"
-        /** 단위 글자 크기 비율. Ui.kt numberEmphasis의 기본값(0.45)과 같다. */
-        const val UNIT_SCALE = 0.45f
-
-        /** 이보다 작은 t는 시나리오 시각(0부터 ms), 크면 실제 시각(epoch ms). CoachState의 판정 기록과 같은 기준. */
-        const val EPOCH_START_MS = 1_000_000_000_000L
         val CLOCK: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.of("Asia/Seoul"))
 
         /** 시나리오: "42초", 실제 주행: "14:32" */

@@ -22,10 +22,8 @@ import kkam.engine.model.LawEntry
  */
 class QnaScreen(
     private val activity: Activity,
-    /** 지금은 룰 테이블 키워드 매칭. Gleo AI가 붙으면 여기만 바꾼다 (LawQna.kt TODO). */
-    private val answerer: QnaAnswerer = KeywordQnaAnswerer(loadLaws(activity)),
-    /** 답이 나왔을 때. TTS로 읽기 같은 일을 MainActivity가 붙인다. 기본은 아무것도 안 함. */
-    private val onAnswer: (QnaAnswer) -> Unit = {},
+    /** 지금은 룰 테이블 키워드 매칭(MainActivity가 넘긴다). Gleo AI가 붙으면 넘기는 것만 바꾼다 (LawQna.kt TODO). */
+    private val answerer: QnaAnswerer,
 ) {
     private val root: View = activity.findViewById(R.id.qnaScreen)
     private val input: EditText = activity.findViewById(R.id.qnaInput)
@@ -71,9 +69,7 @@ class QnaScreen(
 
     private fun ask(question: String) {
         hideKeyboard()
-        val answer = answerer.answer(question)
-        render(answer)
-        onAnswer(answer)
+        render(answerer.answer(question))
     }
 
     /** 답변 카드. 근거가 없으면 회색 i 아이콘 + 회색 글자로 톤을 낮추고 근거 칸을 숨긴다. */
@@ -141,13 +137,8 @@ class QnaScreen(
     }
 
     private companion object {
-        /** 루트 data/law_table.json이 assets로 바로 들어간다 (app/build.gradle.kts). */
-        const val LAW_TABLE_FILE = "law_table.json"
         const val GAP_DP = 16
         const val ICON_RADIUS_DP = 16
         const val SOURCE_RADIUS_DP = 20
-
-        fun loadLaws(activity: Activity): List<LawEntry> =
-            parseLawTable(activity.assets.open(LAW_TABLE_FILE).bufferedReader().use { it.readText() })
     }
 }

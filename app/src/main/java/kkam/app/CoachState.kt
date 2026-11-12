@@ -378,5 +378,7 @@ private fun Long.timeLabel(): String =
     }
 
 private const val IDLE_LABEL = "다음 회전 대기"
-private const val EPOCH_START_MS = 1_000_000_000_000L
+
+/** 이보다 작은 t는 시나리오 시각(0부터 ms), 크면 실제 시각(epoch ms). 기록 줄과 리포트 시간이 같이 쓴다. */
+const val EPOCH_START_MS = 1_000_000_000_000L
 private val CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.of("Asia/Seoul"))

@@ -28,8 +28,7 @@ class HabitScreens(
     /** "선택 완료" */
     private val onFinish: (HabitSelection) -> Unit,
 ) {
-    var selection = HabitSelection()
-        private set
+    private var selection = HabitSelection()
 
     /** 마지막으로 누른 카드가 개수 제한에 걸렸으면 true. 안내 문구를 바꾼다. */
     private var blocked = false
@@ -80,7 +79,7 @@ class HabitScreens(
         activity.findViewById<ImageView>(R.id.diagnoseHeroIcon).apply {
             setImageResource(if (lowestBelow) R.drawable.ic_kk_alert else R.drawable.ic_kk_check)
             imageTintList = ColorStateList.valueOf(tone)
-            background = activity.rounded(color(if (lowestBelow) R.color.warn_soft else R.color.ok_soft), radiusDp = 999)
+            background = activity.pillBackground(color(if (lowestBelow) R.color.warn_soft else R.color.ok_soft))
         }
         activity.findViewById<TextView>(R.id.diagnoseHeadline).text = headlineText(diagnosis.headline, tone)
 
@@ -148,7 +147,7 @@ class HabitScreens(
         card.findViewById<ImageView>(R.id.habitIcon).apply {
             setImageResource(habit.iconRes())
             imageTintList = ColorStateList.valueOf(color(R.color.text))
-            background = activity.rounded(color(R.color.surface_2), radiusDp = 999)
+            background = activity.pillBackground(color(R.color.surface_2))
         }
         card.findViewById<View>(R.id.habitBadge).apply {
             background = activity.pillBackground(color(R.color.warn))
@@ -193,7 +192,7 @@ class HabitScreens(
                 imageAlpha = if (selected) 255 else 0
                 imageTintList = ColorStateList.valueOf(color(R.color.on_accent))
                 background = if (selected) {
-                    activity.rounded(color(R.color.ok), radiusDp = 999)
+                    activity.pillBackground(color(R.color.ok))
                 } else {
                     activity.rounded(color(R.color.bg), radiusDp = 999, strokeColor = color(R.color.line), strokeDp = 3)
                 }

@@ -29,8 +29,6 @@ import kkam.engine.model.WiperMode
 import kkam.engine.model.LawEntry
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnSignal
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.Json
 import kotlin.math.roundToInt
 
 /**
@@ -143,11 +141,9 @@ class MainActivity : Activity() {
         bindService(Intent(this, CoachService::class.java), connection, Context.BIND_AUTO_CREATE)
     }
 
-    /** 법규 룰 테이블은 루트 data/law_table.json을 assets로 바로 쓴다. */
-    private fun loadLaws(): List<LawEntry> {
-        val text = assets.open(LAW_TABLE_FILE).bufferedReader().use { it.readText() }
-        return Json { ignoreUnknownKeys = true }.decodeFromString(ListSerializer(LawEntry.serializer()), text)
-    }
+    /** 법규 룰 테이블은 루트 data/law_table.json을 assets로 바로 쓴다 (app/build.gradle.kts). */
+    private fun loadLaws(): List<LawEntry> =
+        parseLawTable(assets.open(LAW_TABLE_FILE).bufferedReader().use { it.readText() })
 
     /**
      * 차량의 주행 중 제한(UX 제한)을 본다. 제한 중에는 권한 확인 화면이 막히고("주행 중에는 사용할 수 없습니다")
@@ -212,7 +208,7 @@ class MainActivity : Activity() {
     private fun setUpDemoToggle() {
         if (!debuggable) return
         view.demoToggle.visibility = View.VISIBLE
-        view.demoToggle.background = rounded(getColor(R.color.surface), radiusDp = 999, strokeColor = getColor(R.color.line))
+        view.demoToggle.background = pillBackground(getColor(R.color.surface), strokeColor = getColor(R.color.line))
         view.demoToggle.setOnClickListener { showDemoPanel(view.demoPanel.visibility != View.VISIBLE) }
     }
 
@@ -234,7 +230,7 @@ class MainActivity : Activity() {
         driveScreen = DriveScreen(this)
         reportScreen = ReportScreen(this) { laws }
         progressScreen = ProgressScreen(this)
-        qnaScreen = QnaScreen(this)
+        qnaScreen = QnaScreen(this, KeywordQnaAnswerer(laws))
         modeScreen = ModeScreen(this)
         routePreviewScreen = RoutePreviewScreen(this, diagnosis = { diagnosisSource.load() }, onDepart = { session?.departRouteDemo() })
         routeMap = RouteMap(this)
@@ -372,7 +368,7 @@ class MainActivity : Activity() {
             current.stopAll()
             return
         }
-        val missing = LIVE_PERMISSIONS.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
+        val missing = CoachSession.LIVE_PERMISSIONS.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
         if (missing.isEmpty()) startLive() else requestPermissions(missing.toTypedArray(), REQUEST_LIVE)
     }
 
@@ -564,7 +560,6 @@ class MainActivity : Activity() {
         const val PREFS = "kkam"
         const val KEY_OVERLAY_ASKED = "overlay_asked"
         const val KEY_NAVI_AFTER_PLAY = "navi_after_play"
-        val LIVE_PERMISSIONS = CoachSession.LIVE_PERMISSIONS
         val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호", "전조등", "와이퍼·비", "성에·순환")
     }
 }

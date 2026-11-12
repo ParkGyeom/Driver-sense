@@ -32,10 +32,6 @@ enum class DriveMode {
 /** 주행 중에 음성 안내를 하는가. */
 fun guidesOn(mode: DriveMode): Boolean = mode == DriveMode.ON
 
-/** 판정을 오늘 기록에 남기는가. 끔이어도 남긴다 (끔은 안내만 끈다). */
-@Suppress("UNUSED_PARAMETER")
-fun recordsOn(mode: DriveMode): Boolean = true
-
 /**
  * 코치 켬/끔을 SharedPreferences에 저장한다. 앱을 다시 켜도 남는다.
  * 세션은 프레임마다 [isCoachOn]을 읽으므로 주행 중에 바꿔도 바로 반영된다.

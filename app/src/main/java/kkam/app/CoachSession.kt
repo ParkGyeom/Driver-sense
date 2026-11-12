@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import kkam.engine.Engine
+import kkam.engine.model.EngineOutput
 import kkam.engine.model.Guide
 import kkam.engine.model.SignalFrame
 
@@ -78,8 +79,6 @@ class CoachSession(context: Context) {
     /** 지금 도는 것: 시나리오 파일 이름, 실제 주행이면 [LIVE], 멈춰 있으면 null. */
     var running: String? = null
         private set
-
-    fun scenarioFiles(): List<String> = player.fileNames()
 
     fun addListener(listener: Listener) {
         listeners += listener
@@ -267,7 +266,7 @@ class CoachSession(context: Context) {
     }
 
     /** 파랑("좋아요")으로 바뀌면 [OK_POPUP_MS] 뒤에 숨긴다. 그 사이 주황으로 돌아가면 숨기지 않는다. */
-    private fun updatePopup(outputs: List<kkam.engine.model.EngineOutput>, frame: SignalFrame) {
+    private fun updatePopup(outputs: List<EngineOutput>, frame: SignalFrame) {
         val before = popup
         popup = nextPopup(before, state, outputs, frame)
         if (popup?.tone == PopupTone.OK && before?.tone != PopupTone.OK) {

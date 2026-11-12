@@ -17,11 +17,13 @@ data class DemoDestination(
 
 /** 지금은 PT 시연 경로 하나. 목적지를 늘리면 assets에 경로 파일을 더하고 여기에 한 줄 더한다. */
 val DEMO_DESTINATIONS = listOf(
+    // Pleos를 만드는 현대차그룹 계열사의 판교 사무실 (주소 출처와 좌표는 경로 파일의 destinationNote).
+    // 시연에서 "현대자동차 판교"라고 입력해도 찾히게 찾는 말에 넣는다.
     DemoDestination(
-        name = "현대자동차 판교",
-        area = "경기 성남시 분당구",
+        name = "포티투닷 (42dot)",
+        area = "경기 성남시 수정구 창업로40번길 20 (판교 제2테크노밸리)",
         asset = RouteDemo.ASSET,
-        keywords = listOf("현대차", "판교", "hyundai"),
+        keywords = listOf("42dot", "포티투닷", "현대자동차 판교", "현대차 판교", "현대자동차", "현대차", "판교", "pleos", "플레오스"),
     ),
 )
 

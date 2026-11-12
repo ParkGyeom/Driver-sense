@@ -103,6 +103,21 @@
         android:layout_weight="1" />
 
     <TextView
+        android:id="@+id/routePreviewHint"
         style="@style/Kk.Caption"
         android:text="@string/route_preview_hint" />
+
+    <!-- 경로 데모: 출발 전 미리보기에서 누르면 기어 D로 출발한다. 실제 내비 경로에서는 숨기고 기어로 출발한다. -->
+    <TextView
+        android:id="@+id/routeDepart"
+        style="@style/Kk.Pill"
+        android:layout_width="match_parent"
+        android:layout_height="96dp"
+        android:layout_marginTop="@dimen/kk_gap"
+        android:gravity="center"
+        android:text="@string/route_preview_depart"
+        android:textColor="@color/on_accent"
+        android:textSize="@dimen/kk_text_body"
+        android:textStyle="bold"
+        android:visibility="gone" />
 </LinearLayout>

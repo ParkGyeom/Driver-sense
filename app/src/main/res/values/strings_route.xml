@@ -18,6 +18,7 @@
     <string name="route_preview_start">출발</string>
     <string name="route_preview_end">도착</string>
     <string name="route_preview_hint">기어를 D로 바꾸면 코치를 시작해요</string>
+    <string name="route_preview_depart">출발</string>
 
     <!-- 경로 리포트 (경로가 끝난 뒤 기어 P) -->
     <string name="route_report_title">%s 경로 리포트</string>

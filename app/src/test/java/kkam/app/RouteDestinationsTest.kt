@@ -12,7 +12,8 @@ class RouteDestinationsTest {
         assertEquals(listOf(pangyo), searchDestinations("현대자동차 판교"))
         assertEquals(listOf(pangyo), searchDestinations("현대"))
         assertEquals(listOf(pangyo), searchDestinations("현대자동차판교"))
-        assertEquals(listOf(pangyo), searchDestinations("판교 현대차"))
+        assertEquals(listOf(pangyo), searchDestinations("포티투닷"))
+        assertEquals(listOf(pangyo), searchDestinations("42dot"))
     }
 
     @Test

@@ -109,8 +109,25 @@ class CoachSession(context: Context) {
         startDrive(ROUTE_DEMO, ROUTE_DEMO)
         attachRoute(run.plan.copy(destination = destination.name))
         console.start()
+        // 출발 전: 기어 P 프레임 하나로 미리보기를 띄우고 "출발"을 기다린다 ([departRouteDemo]).
+        val parked = run.frames.first()
+        console.mirror(parked)
+        departRun = run
+        onFrame(parked)
+    }
+
+    /** 출발을 기다리는 경로 데모. "출발"을 누르면 [departRouteDemo]가 재생한다. */
+    private var departRun: RouteDemo.Run? = null
+
+    /** 경로 데모가 출발 전 미리보기에서 "출발"을 기다리는 중이면 true. */
+    val waitingDepart: Boolean get() = departRun != null
+
+    /** 경로 미리보기의 "출발": 기어 D로 출발해 경로를 따라 달린다. 도착하면 기어 P와 경로 리포트. */
+    fun departRouteDemo() {
+        val run = departRun ?: return
+        departRun = null
         player.playFrames(
-            run.frames,
+            run.frames.filter { it.t >= RouteDemo.PREVIEW_MS },
             onFrame = { frame ->
                 console.mirror(frame)
                 routeFastForward = frame.t in run.fastForward
@@ -180,6 +197,7 @@ class CoachSession(context: Context) {
         running = null
         popup = null
         routeFastForward = false
+        departRun = null
         handler.removeCallbacks(hideOkPopup)
         handler.removeCallbacks(hidePreviewPopup)
         if (wasRunning) notifyChanged(null)

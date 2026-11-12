@@ -24,10 +24,10 @@ class RouteDemoTest {
     }
 
     @Test
-    fun `경로는 세종대학교에서 현대자동차 판교까지 약 22km, 코치 지점은 좌·적색 우·차선·터널·나들목·우 순서다`() {
+    fun `경로는 세종대학교에서 포티투닷 판교까지 약 25km, 코치 지점은 좌·적색 우·차선·터널·나들목·우 순서다`() {
         assertEquals("세종대학교", route.start)
-        assertEquals("현대자동차 판교", route.destination)
-        assertTrue(run.plan.distanceM in 21000..24000, "${run.plan.distanceM}")
+        assertEquals("포티투닷 (42dot)", route.destination)
+        assertTrue(run.plan.distanceM in 24000..27000, "${run.plan.distanceM}")
         assertEquals(
             listOf(
                 RouteDemo.CueKind.LEFT,

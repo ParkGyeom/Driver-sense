@@ -236,7 +236,7 @@ class MainActivity : Activity() {
         progressScreen = ProgressScreen(this)
         qnaScreen = QnaScreen(this)
         modeScreen = ModeScreen(this)
-        routePreviewScreen = RoutePreviewScreen(this) { diagnosisSource.load() }
+        routePreviewScreen = RoutePreviewScreen(this, diagnosis = { diagnosisSource.load() }, onDepart = { session?.departRouteDemo() })
         routeMap = RouteMap(this)
         routeReportScreen = RouteReportScreen(this, laws = { laws }, onAsk = ::askFromRouteReport)
         destinationSearch = DestinationSearch(this, onSelect = ::playRouteDemo)
@@ -442,6 +442,7 @@ class MainActivity : Activity() {
         if (screen == Screen.ROUTE_REPORT) routeReportScreen.render(state)
         if (screen == Screen.REPORT) reportScreen.render(state)
         if (screen == Screen.ROUTE_PREVIEW) routePreviewScreen.render(state)
+        routePreviewScreen.showDepart(session?.waitingDepart == true)
         // 경로 데모 지도. 목적지 검색: 지도 전체 + 검색창. 주행: 지도 전체 + 지도 위 팝업 카드.
         // 출발 전 경로 미리보기: 지도(경로 전체)와 미리보기 화면을 반씩.
         val path = state.route?.plan?.path.orEmpty()

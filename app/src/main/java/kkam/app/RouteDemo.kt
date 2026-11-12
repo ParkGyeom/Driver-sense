@@ -8,6 +8,7 @@ import kkam.engine.model.Tbt
 import kkam.engine.model.TrafficLight
 import kkam.engine.model.TurnSignal
 import kkam.engine.model.TurnType
+import kkam.engine.model.WiperMode
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
@@ -27,10 +28,10 @@ import kotlin.math.sqrt
  * 따라 차가 달리는 프레임을 만든다.
  *
  * 에뮬레이터 내비는 지도도 안 나오고 위치도 움직이지 않는다. 그래서 앱 안 네이버 지도를 내비로 보고,
- * 위치, 진행 방향, 다음 안내(TBT)와 남은 거리, 전방 신호, 전조등을 이 파일이 경로 좌표로 계산한다.
+ * 위치, 진행 방향, 다음 안내(TBT)와 남은 거리, 전방 신호, 전조등, 비·와이퍼·공조를 이 파일이 경로 좌표로 계산한다.
  * 같은 경로를 넣으면 항상 같은 프레임이 나온다 (현재 시각, 랜덤을 쓰지 않는다). Android에 의존하지 않아서 JVM 테스트로 확인한다.
  *
- * 시간 압축: 25 km를 3분 안에 보여준다. 코치 지점([Cue]) 앞뒤([window])만 실제 속도로 1초씩 가고,
+ * 시간 압축: 25 km를 3분 남짓에 보여준다. 코치 지점([Cue]) 앞뒤([window])만 실제 속도로 1초씩 가고,
  * 그 밖은 빨리 감는다 (1초 프레임에 최대 [FAST_STEP_M]씩). 빨리 감는 구간은 속도를 30 km/h보다 높게 둬서
  * R2(깜빡이 없이 회전)가 굽은 길을 회전으로 세지 않는다. 엔진이 시각과 거리로 판정하는 구간은 모두 실제 속도 구간 안이다.
  *
@@ -51,7 +52,10 @@ object RouteDemo {
         NEVER,
     }
 
-    /** 경로 위 코치 지점 종류. 차선 변경은 엔진 룰이 없어서 앱 팝업만 띄우고 판정·리포트에 넣지 않는다. */
+    /**
+     * 경로 위 코치 지점 종류. 차선 변경은 엔진 룰이 없어서 앱 팝업만 띄우고 판정·리포트에 넣지 않는다.
+     * 비는 내비 안내가 아니라 날씨다. 이 지점에서 비가 오기 시작해 와이퍼(R6)·김서림(R7) 안내가 차례로 나온다 ([rainAt]).
+     */
     enum class CueKind(
         /** 내비 안내(TBT)로 엔진에 넣는 값. 차선 변경은 내비 안내가 아니라 null. */
         val turn: TurnType?,
@@ -61,6 +65,7 @@ object RouteDemo {
         RAMP_RIGHT(TurnType.RAMP_RIGHT),
         TUNNEL(TurnType.TUNNEL),
         LANE_CHANGE(null),
+        RAIN(null),
     }
 
     /** 경로 데모 파일의 코치 지점 하나. [point]는 [DemoRoute.points]의 번호. */
@@ -102,8 +107,11 @@ object RouteDemo {
     /** 자동차전용도로 순항 속도. */
     const val EXPRESS_KPH = 80.0
     const val TURN_KPH = 15.0
-    /** 회전 지점 이 거리 앞부터 [TURN_KPH]까지 줄인다. */
-    const val SLOW_FROM_M = 60.0
+    /**
+     * 회전 지점 이 거리 앞부터 [TURN_KPH]까지 줄인다. 일찍 줄여서 회전 앞을 천천히 지나므로
+     * 주황 "지금 켜세요" 카드가 영상에서 읽을 수 있을 만큼(약 4초) 보인다.
+     */
+    const val SLOW_FROM_M = 100.0
     /** 1초에 올릴 수 있는 속도. */
     const val ACCEL_KPH_PER_FRAME = 8.0
     /** 도착 지점 이 거리 앞부터 멈출 때까지 줄인다. */
@@ -111,28 +119,48 @@ object RouteDemo {
     const val MIN_KPH = 5.0
     /** [Driver.EARLY]가 회전 깜빡이를 켜는 거리 (안내 거리 50~100m보다 앞). */
     const val EARLY_ON_M = 95
-    /** [Driver.AFTER_GUIDE]가 회전 깜빡이를 켜는 거리 (안내 뒤, 판정 30m 전). */
-    const val AFTER_GUIDE_ON_M = 42
-    /** [Driver.AFTER_GUIDE]가 나들목 깜빡이를 켜는 거리 (80 km/h 안내 약 189m 뒤, 판정 100m 전). */
-    const val RAMP_ON_M = 150
+    /**
+     * [Driver.AFTER_GUIDE]가 회전 깜빡이를 켜는 거리 (안내 뒤, 판정 30m 바로 앞).
+     * 30 이상이어야 한다: 판정 지점(30m 안)에 처음 닿는 프레임에서 깜빡이가 늘 켜져 있게.
+     */
+    const val AFTER_GUIDE_ON_M = 32
+    /** [Driver.AFTER_GUIDE]가 나들목 깜빡이를 켜는 거리 (80 km/h 안내 약 189m 뒤, 판정 100m 바로 앞. [RAMP_CHECK_M] 이상). */
+    const val RAMP_ON_M = 110
     /** R4가 나들목 깜빡이를 판정하는 거리 (spec 7.1 LANE_CHECK_M). 이 지점을 지나면 나들목 깜빡이를 끈다. */
     const val RAMP_CHECK_M = 100
     /** 회전 지점을 이만큼 지나면 깜빡이를 끈다. */
     const val SIGNAL_OFF_PAST_M = 15.0
-    /** 터널 입구 이 거리 안에서 전조등을 켠다 (R5 안내 200m 뒤). 켠 뒤로는 계속 켜 둔다. */
-    const val HEADLIGHT_ON_M = 150
+    /** 터널 입구 이 거리 안에서 전조등을 켠다 (R5 안내 200m에서 약 4초 뒤). 켠 뒤로는 계속 켜 둔다. */
+    const val HEADLIGHT_ON_M = 100
     /** 적색 신호를 보는 거리 (R1·R3 감시 100m보다 앞). 회전을 지나 [SIGNAL_OFF_PAST_M]까지 적색이다. */
     const val RED_FROM_M = 120
     /** 적색 우회전에서 멈추는 정지선 (회전 지점 앞, R3 판정 30m 안). */
     const val STOP_LINE_M = 8.0
     /** 정지선에서 서 있는 프레임 수. */
     const val RED_STOP_FRAMES = 3
-    /** 차선 변경: 팝업 뒤 깜빡이를 켜기까지, 켠 채로 옮기는 시간, 파랑으로 둔 뒤 숨기기까지. */
-    const val LANE_SIGNAL_AFTER_MS = 2000L
+    /** 차선 변경: 팝업 뒤 깜빡이를 켜기까지(주황 4초), 켠 채로 옮기는 시간, 파랑으로 둔 뒤 숨기기까지. */
+    const val LANE_SIGNAL_AFTER_MS = 4000L
     const val LANE_SIGNAL_MS = 3000L
-    const val LANE_OK_MS = 2000L
+    const val LANE_OK_MS = 3000L
+    /**
+     * 비 구간 각본. 비가 오기 시작한 프레임부터 잰 시각이다. 와이퍼·내기 순환·성에 제거는 비 오기 전부터 꺼짐·켬·꺼짐이다.
+     *
+     * | 시각 | 차 | 엔진 (spec 10장 R6, 13장 R7) |
+     * | --- | --- | --- |
+     * | 0초 | 비 시작, 와이퍼 꺼짐 | R6 시간 재기 |
+     * | 5초 | | R6 안내 "와이퍼 켜세요" (RAIN_HOLD_MS) |
+     * | [WIPER_ON_AFTER_MS] | 와이퍼 켬 | R6 지킴. R7 시간 재기 (비 + 내기 순환 + 성에 제거 꺼짐) |
+     * | 와이퍼 + 10초 | | R7 안내 "성에 제거를 켜고 외기로" (FOG_HOLD_MS) |
+     * | [DEFROST_ON_AFTER_MS] | 성에 제거 켬 | R7 지킴 |
+     * | [RAIN_END_AFTER_MS] | 비 그침, 와이퍼·성에 제거 끔 | 대기 |
+     */
+    const val WIPER_ON_AFTER_MS = 9000L
+    const val DEFROST_ON_AFTER_MS = 23000L
+    const val RAIN_END_AFTER_MS = 27000L
+    /** 비 구간을 실제 속도로 가는 거리: 비가 그칠 때까지 자동차전용도로 순항 속도로 달리는 거리 + 2초. 비 지점은 자동차전용도로 위에 둔다. */
+    const val RAIN_WINDOW_M = (RAIN_END_AFTER_MS + 2 * FRAME_MS) / 1000.0 * EXPRESS_KPH / 3.6
     /** 빨리 감는 구간에서 한 프레임에 가는 최대 거리. */
-    const val FAST_STEP_M = 1500.0
+    const val FAST_STEP_M = 5000.0
     /** 실제 속도 구간이 이보다 가까우면 이어서 실제 속도로 간다 (짧은 빨리 감기로 화면이 튀지 않게). */
     const val MERGE_GAP_M = 100.0
     /** 출발 직후 이 거리까지는 실제 속도로 출발하는 모습을 보여준다. */
@@ -148,9 +176,10 @@ object RouteDemo {
      */
     fun window(kind: CueKind): Pair<Double, Double> = when (kind) {
         CueKind.LEFT, CueKind.RIGHT -> 120.0 to 40.0
-        CueKind.LANE_CHANGE -> 20.0 to 90.0
+        CueKind.LANE_CHANGE -> 20.0 to 130.0
         CueKind.TUNNEL -> 260.0 to 30.0
         CueKind.RAMP_RIGHT -> 320.0 to 20.0
+        CueKind.RAIN -> 0.0 to RAIN_WINDOW_M
     }
 
     /**
@@ -190,6 +219,7 @@ object RouteDemo {
         val frames = mutableListOf<SignalFrame>()
         val fast = mutableSetOf<Long>()
         val laneCues = mutableListOf<LaneCue>()
+        var rainStartAt: Long? = null
         var t = 0L
 
         fun cruise(s: Double) = if (s in express) EXPRESS_KPH else CITY_KPH
@@ -250,6 +280,7 @@ object RouteDemo {
                 laneShown += it
                 laneCues += LaneCue(t, t + LANE_SIGNAL_AFTER_MS, t + LANE_SIGNAL_AFTER_MS + LANE_SIGNAL_MS + LANE_OK_MS)
             }
+            if (rainStartAt == null && cues.any { it.cue.kind == CueKind.RAIN && s >= it.atM }) rainStartAt = t
 
             val target = targetKph(cues, stopped, path.length, s, cruise(s))
             val next = min(target, kph + ACCEL_KPH_PER_FRAME)
@@ -276,11 +307,12 @@ object RouteDemo {
         val withLaneSignal = frames.map { f ->
             val laneOn = laneCues.any { f.t >= it.okAt && f.t < it.okAt + LANE_SIGNAL_MS }
             val rampDone = rampChecked != null && f.t > rampChecked && f.tbt?.turn == TurnType.RAMP_RIGHT
-            when {
-                laneOn -> f.copy(turnSignal = TurnSignal.RIGHT)
-                rampDone -> f.copy(turnSignal = TurnSignal.OFF)
-                else -> f
+            val signal = when {
+                laneOn -> TurnSignal.RIGHT
+                rampDone -> TurnSignal.OFF
+                else -> f.turnSignal
             }
+            rainAt(rainStartAt, f.t).applyTo(f.copy(turnSignal = signal))
         }
 
         val plan = RoutePlan(
@@ -294,6 +326,26 @@ object RouteDemo {
 
     /** 데모 파일의 코치 지점과 경로 위 거리. */
     private data class Placed(val cue: Cue, val atM: Double)
+
+    /** 한 시각의 비와 운전자 조작. */
+    data class Weather(val rain: Boolean, val wiper: WiperMode, val recirc: Boolean, val defroster: Boolean) {
+        fun applyTo(frame: SignalFrame) = frame.copy(rain = rain, wiper = wiper, recirc = recirc, defroster = defroster)
+    }
+
+    /**
+     * [rainStartAt](비가 오기 시작한 시각, 비 지점이 없으면 null) 기준으로 [t]의 비와 조작. 표는 [WIPER_ON_AFTER_MS].
+     * 내기 순환은 처음부터 켜 둔다 (흔한 설정이고, R7이 김서림 상황으로 보는 조건이다).
+     */
+    fun rainAt(rainStartAt: Long?, t: Long): Weather {
+        val since = rainStartAt?.let { t - it }
+        val raining = since != null && since >= 0 && since < RAIN_END_AFTER_MS
+        return Weather(
+            rain = raining,
+            wiper = if (raining && since!! >= WIPER_ON_AFTER_MS) WiperMode.ON else WiperMode.OFF,
+            recirc = true,
+            defroster = raining && since!! >= DEFROST_ON_AFTER_MS,
+        )
+    }
 
     private fun stepM(kph: Double) = kph / KPH_PER_MPS * FRAME_MS / MS_PER_SECOND
 
@@ -349,7 +401,7 @@ object RouteDemo {
             val signal = when (placed.cue.kind) {
                 CueKind.LEFT -> TurnSignal.LEFT
                 CueKind.RIGHT, CueKind.RAMP_RIGHT -> TurnSignal.RIGHT
-                CueKind.TUNNEL, CueKind.LANE_CHANGE -> continue
+                CueKind.TUNNEL, CueKind.LANE_CHANGE, CueKind.RAIN -> continue
             }
             val onAt = when (placed.cue.driver) {
                 Driver.EARLY -> EARLY_ON_M

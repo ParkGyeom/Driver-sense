@@ -279,7 +279,8 @@ class CoachSession(context: Context) {
         const val ROUTE_DEMO = "경로"
         /** 실제 차량 신호에 필요한 런타임 권한. 화면이 묻고, 경로 자동 시작은 있는지만 본다. */
         val LIVE_PERMISSIONS = listOf("android.car.permission.CAR_SPEED", "pleos.car.permission.FUSED_LOCATION")
-        private const val OK_POPUP_MS = 3000L
+        /** 파랑 "좋아요" 팝업을 보여주는 시간. 영상에서 읽을 수 있게 4초. */
+        private const val OK_POPUP_MS = 4000L
         private const val PREVIEW_POPUP_MS = 6000L
         private const val TAG = "KkamCoach"
     }

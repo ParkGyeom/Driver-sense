@@ -20,6 +20,7 @@ const val GUIDE_MAX_M = 100.0
 const val CHECK_AT_M = 30
 const val TURN_DONE_DEG = 60.0
 const val TURN_TIMEOUT_MS = 30000L
+const val TBT_JUMP_M = 20
 
 private const val KPH_PER_METER_PER_SECOND = 3.6
 private const val MS_PER_SECOND = 1000.0
@@ -36,7 +37,7 @@ fun guideDistance(speedKph: Double): Double {
 }
 
 /**
- * R1: 회전 전 깜빡이 (spec 3장).
+ * R1: 회전·유턴 전 깜빡이 (spec 3장).
  *
  * @param nextEventId 엔진 전체에서 순서대로 이벤트 id를 만들어주는 함수
  */
@@ -47,6 +48,8 @@ class R1Rule(private val nextEventId: () -> String) {
         data class Approaching(
             val targetTurn: TurnType,
             val guided: Boolean,
+            /** 직전 프레임의 tbt.distanceM. 거리가 다시 커지면 새 회전으로 본다 (#2a). */
+            val lastDistanceM: Int,
         ) : State()
 
         data class Turning(
@@ -76,10 +79,17 @@ class R1Rule(private val nextEventId: () -> String) {
                 return emptyList()
             }
 
+            // 전이표 #1a: 처음 본 회전이 이미 30m 안. 다가오는 과정 없이 바로 판정한다 (연속 회전)
+            current is State.Idle && tbt != null && isTurn(tbt.turn) &&
+                tbt.distanceM <= CHECK_AT_M -> {
+                state = startTurning(tbt.turn, guided = false, frame)
+                return emptyList()
+            }
+
             // 전이표 #1: 다음 회전이 감시 거리 안으로 들어옴
             current is State.Idle && tbt != null && isTurn(tbt.turn) &&
                 tbt.distanceM <= APPROACH_START_M -> {
-                state = State.Approaching(targetTurn = tbt.turn, guided = false)
+                state = State.Approaching(targetTurn = tbt.turn, guided = false, lastDistanceM = tbt.distanceM)
                 return emptyList()
             }
 
@@ -89,16 +99,16 @@ class R1Rule(private val nextEventId: () -> String) {
                 return emptyList()
             }
 
+            // 전이표 #2a: 같은 방향인데 거리가 다시 커짐. 앞 회전을 놓치고 다음 회전이 온 것으로 보고 새로 감시한다
+            current is State.Approaching && tbt != null &&
+                tbt.distanceM > current.lastDistanceM + TBT_JUMP_M -> {
+                state = State.Approaching(targetTurn = tbt.turn, guided = false, lastDistanceM = tbt.distanceM)
+                return emptyList()
+            }
+
             // 전이표 #3: 30m 지점에서 깜빡이 판정. 기록은 회전이 끝난 뒤에 한다
             current is State.Approaching && tbt != null && tbt.distanceM <= CHECK_AT_M -> {
-                state = State.Turning(
-                    targetTurn = current.targetTurn,
-                    guided = current.guided,
-                    signalOk = isSameDirection(frame.turnSignal, current.targetTurn),
-                    startHeading = frame.headingDeg,
-                    movingMs = 0,
-                    lastT = frame.t,
-                )
+                state = startTurning(current.targetTurn, current.guided, frame)
                 return emptyList()
             }
 
@@ -108,7 +118,7 @@ class R1Rule(private val nextEventId: () -> String) {
                 tbt.distanceM <= guideDistance(frame.speedKph) &&
                 !isSameDirection(frame.turnSignal, current.targetTurn) &&
                 !current.guided -> {
-                state = current.copy(guided = true)
+                state = current.copy(guided = true, lastDistanceM = tbt.distanceM)
                 return listOf(Guide(frame.t, RuleId.R1, guideText(current.targetTurn), guideAction(current.targetTurn)))
             }
 
@@ -136,13 +146,28 @@ class R1Rule(private val nextEventId: () -> String) {
                 return emptyList()
             }
 
-            // 맞는 행이 없으면 상태를 유지한다
+            // 맞는 행이 없으면 상태를 유지한다. APPROACHING이면 이번 거리를 기억한다 (#2a용)
             else -> {
-                state = current
+                state = if (current is State.Approaching && tbt != null) {
+                    current.copy(lastDistanceM = tbt.distanceM)
+                } else {
+                    current
+                }
                 return emptyList()
             }
         }
     }
+
+    /** #1a·#3: 30m 지점의 깜빡이와 진행 방향을 기억하고 회전이 끝나길 기다린다. */
+    private fun startTurning(targetTurn: TurnType, guided: Boolean, frame: SignalFrame): State =
+        State.Turning(
+            targetTurn = targetTurn,
+            guided = guided,
+            signalOk = isSameDirection(frame.turnSignal, targetTurn),
+            startHeading = frame.headingDeg,
+            movingMs = 0,
+            lastT = frame.t,
+        )
 
     /** spec 3.2: TURNING이면 전이표를 보기 전에 주행 시간을 먼저 갱신한다. */
     private fun updateMovingTime(state: State, frame: SignalFrame): State {
@@ -154,19 +179,23 @@ class R1Rule(private val nextEventId: () -> String) {
         return state.copy(movingMs = state.movingMs + elapsedMs, lastT = frame.t)
     }
 
+    /** R1이 감시하는 안내: 좌회전, 우회전, 유턴 (spec 3장). */
     private fun isTurn(turn: TurnType): Boolean =
-        turn == TurnType.LEFT || turn == TurnType.RIGHT
+        turn == TurnType.LEFT || turn == TurnType.RIGHT || turn == TurnType.UTURN
 
-    /** HAZARD(비상등)는 같은 방향으로 치지 않는다. */
+    /** 유턴은 왼쪽 깜빡이가 맞다 (시행령 별표 2 1호). HAZARD(비상등)는 같은 방향으로 치지 않는다. */
     private fun isSameDirection(signal: TurnSignal, turn: TurnType): Boolean = when (turn) {
-        TurnType.LEFT -> signal == TurnSignal.LEFT
+        TurnType.LEFT, TurnType.UTURN -> signal == TurnSignal.LEFT
         TurnType.RIGHT -> signal == TurnSignal.RIGHT
         else -> false
     }
 
     private fun guideAction(turn: TurnType): GuideAction =
-        if (turn == TurnType.LEFT) GuideAction.SIGNAL_LEFT else GuideAction.SIGNAL_RIGHT
+        if (turn == TurnType.RIGHT) GuideAction.SIGNAL_RIGHT else GuideAction.SIGNAL_LEFT
 
-    private fun guideText(turn: TurnType): String =
-        if (turn == TurnType.LEFT) "좌회전 곧이에요, 깜빡이 켜세요" else "우회전 곧이에요, 깜빡이 켜세요"
+    private fun guideText(turn: TurnType): String = when (turn) {
+        TurnType.UTURN -> "유턴 곧이에요, 왼쪽 깜빡이 켜세요"
+        TurnType.RIGHT -> "우회전 곧이에요, 깜빡이 켜세요"
+        else -> "좌회전 곧이에요, 깜빡이 켜세요"
+    }
 }

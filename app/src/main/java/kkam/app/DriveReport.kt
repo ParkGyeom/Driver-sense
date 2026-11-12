@@ -4,6 +4,7 @@ import kkam.engine.model.Event
 import kkam.engine.model.LawEntry
 import kkam.engine.model.Result
 import kkam.engine.model.RuleId
+import kkam.engine.model.TurnType
 
 /** 기어 P에서 보여줄 오늘 주행 리포트 (기획서 UI-2). Android에 의존하지 않아서 JVM 테스트로 확인한다. */
 data class DriveReport(
@@ -38,7 +39,7 @@ fun buildReport(events: List<Event>, laws: List<LawEntry>): DriveReport {
         kept = events.count { it.rule.inRate && it.result == Result.KEPT },
         missed = events.count { it.rule.inRate && it.result == Result.MISSED },
         savedWon = events.filter { it.guided && it.result == Result.KEPT }.sumOf { it.rule.fineWon() },
-        items = events.reversed().map { it.toItem(it.rule.lawId()?.let(lawById::get)) },
+        items = events.reversed().map { it.toItem(it.lawId()?.let(lawById::get)) },
     )
 }
 
@@ -81,12 +82,19 @@ private fun RuleId.fineWon(): Int = when (this) {
 val RuleId.inRate: Boolean get() = this != RuleId.R6 && this != RuleId.R7
 
 /**
- * 룰과 룰 테이블 행의 연결. 룰 테이블에 룰 필드가 생기면 그걸 쓴다.
- * R1: 회전 전 방향지시등, R2: 깜빡이 없이 회전, R3: 적색 신호 우회전 일시정지, R4: 차로 변경.
- * R5(터널 전조등)는 룰 테이블에 행이 아직 없고, R6(와이퍼)은 법규 근거가 없다.
+ * 판정과 룰 테이블 행의 연결. 룰 테이블에 룰 필드가 생기면 그걸 쓴다.
+ *
+ * | 판정 | 룰 테이블 행 |
+ * | --- | --- |
+ * | R1 좌회전·우회전 | LAW-01 회전 전 방향지시등 |
+ * | R1 유턴 | LAW-03 깜빡이 없이 회전 (LAW-01은 "좌회전 또는 우회전할 때"만 다룬다. spec 3장 법 근거) |
+ * | R2 | LAW-03 깜빡이 없이 회전 |
+ * | R3 | LAW-12 적색 신호 우회전 일시정지 |
+ * | R4 | LAW-04 차로 변경 |
+ * | R5·R6·R7 | 없음. R5(터널 전조등)는 룰 테이블에 행이 아직 없고, R6(와이퍼)·R7(김서림)은 법규 근거가 없다 |
  */
-private fun RuleId.lawId(): String? = when (this) {
-    RuleId.R1 -> "LAW-01"
+private fun Event.lawId(): String? = when (rule) {
+    RuleId.R1 -> if (turn == TurnType.UTURN) "LAW-03" else "LAW-01"
     RuleId.R2 -> "LAW-03"
     RuleId.R3 -> "LAW-12"
     RuleId.R4 -> "LAW-04"

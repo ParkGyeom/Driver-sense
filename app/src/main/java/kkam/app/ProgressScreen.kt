@@ -138,7 +138,8 @@ class ProgressScreen(
         activity.findViewById<View>(R.id.progressConversionTile).background = activity.cardBackground(color(R.color.surface_2))
         activity.findViewById<View>(R.id.progressSavedTile).background = activity.cardBackground(color(R.color.surface_2))
         text(R.id.progressConversion).text = numberEmphasis("${progress.guideConversionPercent} %")
-        text(R.id.progressSaved).text = numberEmphasis(wonLabel(progress.savedWon))
+        // 금액은 "33" 크게 + "만 원" 작게. 오늘 리포트의 아낀 범칙금과 같은 모양이다.
+        text(R.id.progressSaved).text = digitsEmphasis(wonLabel(progress.savedWon))
     }
 
     /** 하루 막대. 오늘은 진한 파랑, 다른 날은 옅은 파랑. 주행이 없으면 빈 칸만. */

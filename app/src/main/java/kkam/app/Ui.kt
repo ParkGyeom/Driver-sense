@@ -40,8 +40,21 @@ fun numberEmphasis(label: String, unitScale: Float = UNIT_SCALE): CharSequence {
     }
 }
 
+/**
+ * 앞쪽 숫자만 크게, 나머지는 모두 작게. "21만 원" → "21" 크게 + "만 원" 작게, "10 번" → "10" 크게 + " 번" 작게.
+ * [numberEmphasis]는 마지막 공백 뒤만 줄여서 "21만"이 한 덩어리로 커진다. 그래서 금액("만 원")에는 이걸 쓴다.
+ * 숫자로 시작하지 않으면 그대로 돌려준다.
+ */
+fun digitsEmphasis(label: String): CharSequence {
+    val unitStart = label.indexOfFirst { !it.isDigit() && it != ',' }
+    if (unitStart <= 0) return label
+    return SpannableString(label).apply {
+        setSpan(RelativeSizeSpan(UNIT_SCALE), unitStart, label.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
+}
+
 private const val CARD_RADIUS_DP = 28
 private const val PILL_RADIUS_DP = 999
 
-/** 단위 글자 크기 비율. [numberEmphasis]와 ReportScreen의 digitsEmphasis가 같이 쓴다. */
+/** 단위 글자 크기 비율. [numberEmphasis]와 [digitsEmphasis]가 같이 쓴다. */
 const val UNIT_SCALE = 0.45f

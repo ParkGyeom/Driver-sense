@@ -3,16 +3,6 @@
 
 <img src="docs/images/banner.svg" alt="Driver Sense — 차 안에 나만의 선생님." width="100%">
 
-<br>
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.4-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=kotlin&logoColor=white)](#실행-환경)
-[![Android Automotive](https://img.shields.io/badge/Android_Automotive-minSdk_28-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=android&logoColor=white)](#실행-환경)
-[![Pleos Connect](https://img.shields.io/badge/Pleos_Connect-Emulator_2.1.0-1F5FD1?labelColor=0E2A5E&style=for-the-badge)](#실행-환경)
-[![JDK](https://img.shields.io/badge/JDK-17-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=openjdk&logoColor=white)](#실행-환경)
-<br>
-[![Rules](https://img.shields.io/badge/판정_룰-R1~R7-1F5FD1?labelColor=0E2A5E&style=flat-square)](#하는-일)
-[![Scenarios](https://img.shields.io/badge/시나리오-S1~S24-1F5FD1?labelColor=0E2A5E&style=flat-square)](#데모로-보기)
-[![Naver Map](https://img.shields.io/badge/Naver_Map_SDK-3.24.1-1F5FD1?labelColor=0E2A5E&style=flat-square)](#실행-환경)
-[![JUnit 5](https://img.shields.io/badge/JUnit-5-1F5FD1?labelColor=0E2A5E&style=flat-square&logo=junit5&logoColor=white)](#소스에서-빌드)
 
 </div>
 

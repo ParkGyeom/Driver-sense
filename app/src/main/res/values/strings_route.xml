@@ -35,7 +35,7 @@
     <!-- 경로 데모 목적지 검색 (지도 위 검색창) -->
     <string name="route_search_hint">목적지 검색</string>
     <string name="route_search_from">출발 %s (현재 위치)</string>
-    <string name="route_search_empty">검색 결과가 없어요</string>
+    <string name="route_search_recent">최근 검색</string>
     <!-- 빨리 감는 구간의 지도 속도 표시 -->
     <string name="route_map_speed_fast">%d km/h ▶▶ 빨리 감기</string>
 

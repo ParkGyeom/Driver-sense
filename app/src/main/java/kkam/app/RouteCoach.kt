@@ -147,9 +147,12 @@ fun routeStartMessage(plan: RoutePlan): String {
     return if (counts.isEmpty()) head else "$head ${counts.joinToString(", ")}에서 챙길게요."
 }
 
-/** 경로 리포트 머리 한 줄. 예: "도착했어요 · 3번 중 2번 지켰어요" */
+/**
+ * 경로 리포트 머리 한 줄. 예: "도착했어요 · 3번 중 2번 지켰어요"
+ * 지킴률에 세는 판정만 센다([inRate]). 와이퍼·김서림은 안전 안내라 빼서, 같은 화면의 "지킨 곳" 카드와 숫자가 맞는다.
+ */
 fun routeSummary(trip: RouteTrip, todayEvents: List<Event>): String {
-    val events = trip.events(todayEvents)
+    val events = trip.events(todayEvents).filter { it.rule.inRate }
     val head = when (trip.status) {
         RouteStatus.DRIVING -> "경로 주행 중"
         RouteStatus.ARRIVED -> "도착했어요"

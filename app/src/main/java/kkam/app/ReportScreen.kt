@@ -1,9 +1,6 @@
 package kkam.app
 
 import android.app.Activity
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.style.RelativeSizeSpan
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -120,18 +117,6 @@ class ReportScreen(
     private fun View.setStatBody(value: String, caption: String) {
         findViewById<TextView>(R.id.statValue).text = digitsEmphasis(value)
         findViewById<TextView>(R.id.statCaption).text = caption
-    }
-
-    /**
-     * 앞쪽 숫자만 크게, 나머지는 모두 작게. "21만 원" → "21" 크게 + "만 원" 작게, "10 번" → "10" 크게 + " 번" 작게.
-     * Ui.kt의 numberEmphasis는 마지막 공백 뒤만 줄여서 "21만"이 한 덩어리로 커지기 때문에 리포트에서는 이걸 쓴다.
-     */
-    private fun digitsEmphasis(label: String): CharSequence {
-        val unitStart = label.indexOfFirst { !it.isDigit() && it != ',' }
-        if (unitStart <= 0) return label
-        return SpannableString(label).apply {
-            setSpan(RelativeSizeSpan(UNIT_SCALE), unitStart, label.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        }
     }
 
     /** 판정 한 줄: 시간 | 상황 + 설명 | 결과 칩, 아래 조항·처분. */

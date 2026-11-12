@@ -5,7 +5,7 @@
     출발 전 경로 미리보기 때는 지도(경로선)와 미리보기 화면(screenSlot)을 반씩 보여준다.
   - navRail: 기어 P 화면 왼쪽 레일(nav_rail). 리포트·진단·교정 진행·Q&A·모드를 오간다. 주행 화면에서는 숨긴다.
   - screenSlot: 지금 보여줄 화면 하나가 들어가는 자리. 화면마다 담당 클래스(DriveScreen, ReportScreen,
-    HabitScreens, ProgressScreen, QnaScreen, ModeScreen, RoutePreviewScreen, RouteReportScreen)가 자기 화면의 보이기를 정한다.
+    DiagnoseScreen, ProgressScreen, QnaScreen, ModeScreen, RoutePreviewScreen, RouteReportScreen)가 자기 화면의 보이기를 정한다.
   - demoPanel: 시연·개발용 패널(panel_demo). debug 빌드에서만 demoToggle로 연다.
     주행 화면 레이아웃과 섞이지 않게 바깥에 둔다.
 -->
@@ -68,8 +68,6 @@
             <include layout="@layout/screen_report" />
 
             <include layout="@layout/screen_diagnose" />
-
-            <include layout="@layout/screen_habit" />
 
             <include layout="@layout/screen_progress" />
 

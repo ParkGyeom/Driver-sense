@@ -25,14 +25,14 @@
 |---|---|---|---|
 | 주행 화면 (UI-1) | 기어 P가 아닐 때 | 코치 카드, 한 줄 문구, 오늘 성적(지킴 수와 링) | `screen_drive.xml` |
 | 오늘 리포트 (UI-2) | 기어 P | 요약 한 줄, 수치 카드(지킴·놓침·아낀 범칙금), 판정 기록과 조항·처분 | `screen_report.xml` |
-| 진단·습관 (UI-3) | 기어 P | 상황별 준수율 막대와 전국 평균선 75.7%, 습관 카드(최대 2개 선택) | `screen_diagnose.xml`, `screen_habit.xml` |
+| 진단 (UI-3) | 기어 P | 상황별 준수율 막대와 전국 평균선 75.7% | `screen_diagnose.xml` |
 | 교정 진행 (UI-4) | 기어 P | 습관별 졸업 진행, 7일 준수율 막대, 코칭 카드, 자주 놓친 곳 Top 3 | `screen_progress.xml` |
 | 법규 Q&A (UI-5) | 기어 P | 질문 입력, 추천 질문 칩, 답변과 근거 카드(조항·처분·출처) | `screen_qna.xml` |
 | 운전 코치 | 기어 P | 코치 켬/끔 스위치 카드 한 장 | `screen_mode.xml` |
 | 경로 미리보기 | 경로가 시작됐을 때 기어 P | 코치할 곳 수, 좌·우회전 칩, 경로 순서, 자주 놓친 유형, "출발" 버튼 | `screen_route_preview.xml` |
 | 경로 리포트 | 경로가 끝나고 기어 P | 그 경로의 판정만. 놓친 곳 먼저, 지킨 곳, 아낀 범칙금, "AI에게 묻기" | `screen_route_report.xml` |
 
-- 왼쪽 레일 순서는 오늘 리포트 → 진단·습관 → 교정 진행 → 법규 Q&A → 운전 코치다. 습관 선택은 진단 리포트에서 이어 들어간다.
+- 왼쪽 레일 순서는 오늘 리포트 → 진단 → 교정 진행 → 법규 Q&A → 운전 코치다.
 - 기어 P에서 이미 정차 화면(진단, Q&A 등)을 보고 있으면 리포트로 덮지 않는다(`Screen.kt`).
 - 내비를 보다가 기어를 P로 바꾸면 앱이 앞으로 와서 리포트를 보여준다. P에서 출발해 처음 D가 되면 내비를 앞으로 띄운다. 경로 데모 중에는 앱 지도가 내비 역할이라 띄우지 않는다.
 - 리포트의 조항·처분은 루트 `data/law_table.json`을 assets로 바로 읽는다. 룰 테이블에 룰 필드가 없어서 `DriveReport.kt`에서 룰과 행을 잇는다: R1→`LAW-01`, R2→`LAW-03`, R3→`LAW-12`, R4→`LAW-04`. R5~R7은 연결할 행이 없다.
@@ -208,7 +208,7 @@ Maven 저장소 `https://nexus-playground.pleos.ai/repository/maven-releases/`�
 | 법규 Q&A | 룰 테이블 키워드 매칭(`KeywordQnaAnswerer`) | Gleo AI 답변(`QnaAnswerer` 자리에 교체), 음성 질문(STT) |
 | 오늘 리포트 "AI에게 묻기" | "준비 중" 표시 | 경로 리포트처럼 Q&A로 잇는다 |
 | 진단·교정 진행 | 데모 고정값(`DemoDiagnosisSource`, `DemoProgressSource`) | 실제 판정 기록으로 계산한다 |
-| 습관 선택 | 주행 화면 한 줄 문구에만 반영 | 엔진에 모드 입력이 생기면 넘긴다 |
+| 습관 선택 (기획서 4.1) | 화면 없음. 코치를 켜면 모든 상황을 안내한다 | 엔진에 모드 입력이 생기면 습관 선택 화면과 함께 넣는다 |
 | 실제 신호의 신호등·비 정보 | `light`, `rain`, `fogReported`가 null | 서버 신호·날씨, STT를 잇는다 |
 | 리포트 지도 핀 | 없음 | 지도 SDK로 판정 위치를 표시한다 |
 
@@ -249,9 +249,8 @@ kkam/app/
 │   ├── ParkedNav.kt            기어 P 화면 왼쪽 레일
 │   ├── ReportScreen.kt         오늘 리포트 화면
 │   ├── DriveReport.kt          리포트 값 계산, 룰과 룰 테이블 행 연결 (JVM 테스트)
-│   ├── HabitScreens.kt         진단 리포트·습관 선택 화면
+│   ├── DiagnoseScreen.kt       진단 리포트 화면
 │   ├── Diagnosis.kt            진단 값 (JVM 테스트)
-│   ├── HabitSelection.kt       습관 선택 상태, 최대 2개 (JVM 테스트)
 │   ├── ProgressScreen.kt       교정 진행 화면
 │   ├── WeeklyProgress.kt       졸업 단계 계산 (JVM 테스트)
 │   ├── QnaScreen.kt            법규 Q&A 화면

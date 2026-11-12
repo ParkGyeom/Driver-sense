@@ -33,6 +33,7 @@ class CoachPopup(context: Context) : CoachNotifier {
     private val badgeIcon: ImageView = card.findViewById(R.id.popupBadgeIcon)
     private val headline: TextView = card.findViewById(R.id.popupHeadline)
     private val lever: LeverGuideView = card.findViewById(R.id.popupLever)
+    private val buttonGuide = ButtonGuide(card.findViewById(R.id.popupButtonGuide), BUTTON_ICON_DP, R.style.Kk_Caption)
     private val ink = this.context.getColor(R.color.ink_strong)
     private val inkSoft = this.context.getColor(R.color.ink_soft)
 
@@ -49,6 +50,8 @@ class CoachPopup(context: Context) : CoachNotifier {
     /** 지금 칠해진 색. 주황 → 파랑처럼 모습이 바뀔 때 한 번만 페이드한다. */
     private var painted: CardPalette? = null
     private var fade: ValueAnimator? = null
+    /** 지금 그림이 여러 색(신호등)이라 tint를 입히지 않는가. */
+    private var multiColor = false
 
     init {
         card.background = cardFill
@@ -94,14 +97,19 @@ class CoachPopup(context: Context) : CoachNotifier {
     /** 주행 화면 코치 카드와 같은 순서: 방향 그림 → 회전·거리 → 행동 알약. */
     private fun draw(popup: Popup) {
         val look = popup.tone.look()
-        icon.setImageResource(guideIconRes(popup.kind, popup.right))
+        // 적색 우회전은 빨간불이 켜진 신호등 (R3 안내는 적색일 때만 나온다).
+        icon.setImageResource(cardIconRes(popup.kind, popup.right, phase = null))
+        multiColor = popup.kind.isMultiColor()
         turn.text = popup.turnLabel
         distance.text = distanceText(popup.distanceLabel, inkSoft)
         distance.visibility = if (popup.distanceLabel.isEmpty()) View.GONE else View.VISIBLE
+        // 거리가 없는 안내(김서림·와이퍼)는 제목이 주인공이라 검정.
+        turn.setTextColor(if (popup.distanceLabel.isEmpty()) ink else inkSoft)
         headline.text = popup.headline
         badgeIcon.setImageResource(look.badgeIconRes())
         val target = context.palette(look)
         lever.show(leverFor(popup.kind, popup.right, look == CardLook.WARN), target.edge)
+        buttonGuide.show(popup.kind, look == CardLook.WARN, target.accent, target.edge)
         paint(target)
     }
 
@@ -124,7 +132,7 @@ class CoachPopup(context: Context) : CoachNotifier {
         painted = palette
         cardFill.setStroke((CARD_EDGE_DP * density).toInt(), palette.edge)
         iconCircle.setColor(palette.iconBg)
-        icon.imageTintList = ColorStateList.valueOf(palette.iconInk)
+        icon.imageTintList = if (multiColor) null else ColorStateList.valueOf(palette.iconInk)
         badgeFill.setColor(palette.accent)
     }
 
@@ -162,5 +170,7 @@ class CoachPopup(context: Context) : CoachNotifier {
         /** 상태를 테두리로 보여주므로 굵게. */
         const val CARD_EDGE_DP = 6
         const val PILL_RADIUS_DP = 999
+        /** 김서림 버튼 그림 한 칸의 크기. 팝업 높이에 맞춰 작게. */
+        const val BUTTON_ICON_DP = 88
     }
 }

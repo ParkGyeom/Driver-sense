@@ -76,12 +76,21 @@
                     android:textColor="@color/ink_soft" />
             </LinearLayout>
 
-            <!-- "어떻게 켜는지" 레버 그림. 초보 기능 안내(차선 변경, 전조등, 와이퍼)를 켜야 할 때만 보인다. -->
+            <!-- "어떻게 켜는지" 레버 그림. 레버를 쓰는 안내(회전·차선 변경 깜빡이, 전조등, 와이퍼)를 켜야 할 때만 보인다. -->
             <kkam.app.LeverGuideView
                 android:id="@+id/lever"
                 android:layout_width="380dp"
                 android:layout_height="280dp"
                 android:layout_marginStart="@dimen/kk_gap_large"
+                android:visibility="gone" />
+
+            <!-- "어떤 버튼을 누르는지" 그림 (ButtonGuide가 채운다). 김서림을 켜야 할 때만 보인다. -->
+            <LinearLayout
+                android:id="@+id/buttonGuide"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/kk_gap_large"
+                android:orientation="horizontal"
                 android:visibility="gone" />
         </LinearLayout>
 

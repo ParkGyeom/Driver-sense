@@ -24,6 +24,8 @@ import android.widget.TextView
  * | OK (좋아요) | 파랑 | 파랑 원 + 방향 | 파랑 "✓ 좋아요" | 켜짐: 파랑으로 채움 + 꽉 찬 화살표 | 파랑 |
  * | MISS (놓침) | 빨강 | 빨강 원 + 방향 | 빨강 "X 다음엔 미리 켜요" | 꺼짐: 빨강 테두리 + 빈 화살표 | 빨강 |
  *
+ * 적색 우회전은 신호등 그림의 켜진 칸을 지금 신호 색(빨강·노랑·초록)으로 칠하고, 칩에도 같은 신호등을 쓴다.
+ * 켜야 할 때(주황)는 어떻게 하는지도 보여준다: 레버를 쓰는 안내는 레버 그림, 김서림은 누를 공조 버튼 그림.
  * 오늘 성적 링: 지킨 몫은 파랑, 놓친 몫은 빨강, 판정이 없으면 연회색.
  * 모습이 바뀔 때만 색을 [FADE_MS] 동안 한 번 바꾼다. 반복 애니메이션은 없다 (레버 그림 제외: 켜는 방법 안내).
  */
@@ -47,6 +49,7 @@ class DriveScreen(private val activity: Activity) {
     private val scoreRate: TextView = activity.findViewById(R.id.scoreRate)
     private val todayKept: TextView = activity.findViewById(R.id.todayKept)
     private val todayTotal: TextView = activity.findViewById(R.id.todayTotal)
+    private val buttonGuide = ButtonGuide(activity.findViewById(R.id.buttonGuide), BUTTON_ICON_DP, R.style.Kk_Body)
 
     private val ink = color(R.color.ink_strong)
     private val inkSoft = color(R.color.ink_soft)
@@ -65,6 +68,8 @@ class DriveScreen(private val activity: Activity) {
     private var painted: CardPalette? = null
     private var paintedLook: CardLook? = null
     private var fade: ValueAnimator? = null
+    /** 지금 그림이 여러 색(신호등)이라 tint를 입히지 않는가. */
+    private var multiColor = false
 
     init {
         card.background = cardFill
@@ -95,7 +100,11 @@ class DriveScreen(private val activity: Activity) {
     private fun renderCard(state: CoachState, look: CardLook) {
         val active = look != CardLook.IDLE
         // 그림: 안내 중이면 안내 종류에 맞는 그림(회전이면 방향 화살표), 대기 중이면 경로 화살표.
-        turnIcon.setImageResource(if (active) guideIconRes(state.guideKind, state.right) else R.drawable.ic_route_idle)
+        // 적색 우회전은 지금 신호 색이 켜진 신호등 그림.
+        turnIcon.setImageResource(
+            if (active) cardIconRes(state.guideKind, state.right, state.lightPhase) else R.drawable.ic_route_idle,
+        )
+        multiColor = active && state.guideKind.isMultiColor()
         // 대기 중에는 그림을 작게 해서 차분하게, 안내 중에는 원 안을 크게 채운다.
         val iconPadding = activity.dp(if (active) ACTIVE_ICON_PADDING_DP else IDLE_ICON_PADDING_DP)
         turnIcon.setPadding(iconPadding, iconPadding, iconPadding, iconPadding)
@@ -103,10 +112,11 @@ class DriveScreen(private val activity: Activity) {
         turn.text = state.turnLabel
         distance.text = distanceText(state.distanceLabel, inkSoft)
         // 거리가 없는 안내(예: 와이퍼)는 거리 줄을 접어서 제목이 그림 옆 가운데에 오게 한다.
-        distance.visibility = if (active && state.distanceLabel.isNotEmpty()) View.VISIBLE else View.GONE
+        val showDistance = active && state.distanceLabel.isNotEmpty()
+        distance.visibility = if (showDistance) View.VISIBLE else View.GONE
         idleHint.visibility = if (active) View.GONE else View.VISIBLE
-        // 대기 중에는 제목이 주인공이라 검정, 안내 중에는 거리가 주인공이라 제목을 흐리게.
-        turn.setTextColor(if (active) inkSoft else ink)
+        // 거리가 주인공일 때만 제목을 흐리게. 대기 중이나 거리가 없는 안내(김서림·와이퍼)는 제목이 주인공이라 검정.
+        turn.setTextColor(if (showDistance) inkSoft else ink)
 
         actionRow.visibility = if (active) View.VISIBLE else View.GONE
         badge.text = state.badge
@@ -133,36 +143,45 @@ class DriveScreen(private val activity: Activity) {
         val from = painted
         val lookChanged = paintedLook != null && paintedLook != look
         paintedLook = look
-        // 깜빡이 칩: 켜짐(파랑)은 상태 색으로 채우고, 꺼짐은 흰 바탕에 상태 색 테두리. 화살표 모양(꽉 참/빔)도 같이 바뀐다.
+        // 상태 칩: 켜짐(파랑)은 상태 색으로 채우고, 꺼짐은 흰 바탕에 상태 색 테두리.
+        // 그림은 안내 종류에 맞게 (깜빡이 화살표 꽉 참/빔, 신호등, 전조등, 김서림).
         val signalOn = look == CardLook.OK
-        signalIcon.setImageResource(if (signalOn) R.drawable.ic_blinker_on else R.drawable.ic_blinker_off)
+        signalIcon.setImageResource(chipIconRes(state.guideKind, signalOn, state.lightPhase))
         // 레버 그림은 프레임마다 안내 종류가 바뀔 수 있어서 늘 다시 넘긴다.
         val leverMotion = leverFor(state.guideKind, state.right, look == CardLook.WARN)
 
+        val kind = state.guideKind
+        val warn = look == CardLook.WARN
+
         fade?.cancel()
         if (from == null || !lookChanged || root.visibility != View.VISIBLE) {
-            apply(target, signalOn, leverMotion)
+            apply(target, signalOn, leverMotion, kind, warn)
             return
         }
         fade = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = FADE_MS
-            addUpdateListener { apply(from.mix(target, it.animatedFraction), signalOn, leverMotion) }
+            addUpdateListener { apply(from.mix(target, it.animatedFraction), signalOn, leverMotion, kind, warn) }
             start()
         }
     }
 
-    private fun apply(palette: CardPalette, signalOn: Boolean, leverMotion: LeverMotion?) {
+    private fun apply(palette: CardPalette, signalOn: Boolean, leverMotion: LeverMotion?, kind: GuideKind, warn: Boolean) {
         painted = palette
         cardFill.setStroke(activity.dp(CARD_EDGE_DP), palette.edge)
         iconCircle.setColor(palette.iconBg)
-        turnIcon.imageTintList = ColorStateList.valueOf(palette.iconInk)
+        turnIcon.imageTintList = if (multiColor) null else ColorStateList.valueOf(palette.iconInk)
         badgeFill.setColor(palette.accent)
         signalFill.setColor(if (signalOn) palette.accent else white)
         signalFill.setStroke(activity.dp(SIGNAL_EDGE_DP), palette.edge)
         signal.setTextColor(ink)
-        signalIcon.imageTintList = ColorStateList.valueOf(if (signalOn) ink else palette.edge)
+        signalIcon.imageTintList = when {
+            multiColor -> null
+            signalOn -> ColorStateList.valueOf(ink)
+            else -> ColorStateList.valueOf(palette.edge)
+        }
         message.setTextColor(palette.note)
         lever.show(leverMotion, palette.edge)
+        buttonGuide.show(kind, warn, palette.accent, palette.edge)
     }
 
     private fun color(id: Int) = activity.getColor(id)
@@ -175,5 +194,7 @@ class DriveScreen(private val activity: Activity) {
         const val SIGNAL_EDGE_DP = 3
         const val ACTIVE_ICON_PADDING_DP = 32
         const val IDLE_ICON_PADDING_DP = 52
+        /** 김서림 버튼 그림 한 칸의 크기. */
+        const val BUTTON_ICON_DP = 176
     }
 }

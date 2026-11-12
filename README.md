@@ -8,15 +8,15 @@
 차량 신호로 운전 법규 습관을 진단하고, 단속되기 전에 미리 알려주는 **Pleos Connect 차량용 앱**이다.<br>
 판정은 차 안에서 규칙(상태 머신)으로 하고, 결과는 음성 한 문장과 카드, 리포트로 보여준다.
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.4-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](#실행-환경)
-[![Android Automotive](https://img.shields.io/badge/Android_Automotive-minSdk_28-3DDC84?style=for-the-badge&logo=android&logoColor=white)](#실행-환경)
-[![Pleos Connect](https://img.shields.io/badge/Pleos_Connect-Emulator_2.1.0-002C5F?style=for-the-badge)](#실행-환경)
-[![JDK](https://img.shields.io/badge/JDK-17-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](#실행-환경)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.4-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=kotlin&logoColor=white)](#실행-환경)
+[![Android Automotive](https://img.shields.io/badge/Android_Automotive-minSdk_28-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=android&logoColor=white)](#실행-환경)
+[![Pleos Connect](https://img.shields.io/badge/Pleos_Connect-Emulator_2.1.0-1F5FD1?labelColor=0E2A5E&style=for-the-badge)](#실행-환경)
+[![JDK](https://img.shields.io/badge/JDK-17-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=openjdk&logoColor=white)](#실행-환경)
 <br>
-[![Rules](https://img.shields.io/badge/판정_룰-R1~R7-FFC04D?style=flat-square)](#하는-일)
-[![Scenarios](https://img.shields.io/badge/시나리오-S1~S24-4C8DFF?style=flat-square)](#데모로-보기)
-[![Naver Map](https://img.shields.io/badge/Naver_Map_SDK-3.24.1-03C75A?style=flat-square)](#실행-환경)
-[![JUnit 5](https://img.shields.io/badge/JUnit-5-25A162?style=flat-square&logo=junit5&logoColor=white)](#소스에서-빌드)
+[![Rules](https://img.shields.io/badge/판정_룰-R1~R7-1F5FD1?labelColor=0E2A5E&style=flat-square)](#하는-일)
+[![Scenarios](https://img.shields.io/badge/시나리오-S1~S24-1F5FD1?labelColor=0E2A5E&style=flat-square)](#데모로-보기)
+[![Naver Map](https://img.shields.io/badge/Naver_Map_SDK-3.24.1-1F5FD1?labelColor=0E2A5E&style=flat-square)](#실행-환경)
+[![JUnit 5](https://img.shields.io/badge/JUnit-5-1F5FD1?labelColor=0E2A5E&style=flat-square&logo=junit5&logoColor=white)](#소스에서-빌드)
 
 </div>
 
@@ -58,23 +58,23 @@
     <td width="50%"><img src="docs/images/coach-card-ok.png" alt="주행 화면 코치 카드: 좌회전 28 m, 파랑 '좋아요'"></td>
   </tr>
   <tr>
-    <td><b>🟡 지금 켜세요</b><br>좌회전 60 m 앞인데 깜빡이가 꺼져 있다. 노랑 카드와 음성 한 문장 "좌회전 곧이에요, 깜빡이 켜세요", 어느 레버를 어떻게 움직이는지 그림으로 알려준다.</td>
-    <td><b>🔵 좋아요</b><br>깜빡이를 켜면 카드가 파랑으로 바뀐다. 30 m 판정 지점과 회전 완료를 지나면 지킴으로 기록하고, 아래 오늘 성적에 더한다.</td>
+    <td><b>지금 켜세요</b><br>좌회전 60 m 앞인데 깜빡이가 꺼져 있다. 노랑 카드와 음성 한 문장 "좌회전 곧이에요, 깜빡이 켜세요", 어느 레버를 어떻게 움직이는지 그림으로 알려준다.</td>
+    <td><b>좋아요</b><br>깜빡이를 켜면 카드가 파랑으로 바뀐다. 30 m 판정 지점과 회전 완료를 지나면 지킴으로 기록하고, 아래 오늘 성적에 더한다.</td>
   </tr>
   <tr>
     <td><img src="docs/images/navi-popup-warn.png" alt="내비 위 팝업: 좌회전 48 m, 노랑 '지금 켜세요'"></td>
     <td><img src="docs/images/navi-popup-ok.png" alt="내비 위 팝업: 좌회전 28 m, 파랑 '좋아요'"></td>
   </tr>
   <tr>
-    <td colspan="2"><b>🧭 내비 위 팝업</b><br>주행 중에는 내비가 화면을 차지한다. 앱은 뒤에서 판정하다가 안내가 필요한 순간에만 내비 위쪽에 작은 카드를 띄우고, 켜면 "좋아요"로 바꾼 뒤 3초 뒤 지운다.</td>
+    <td colspan="2"><b>내비 위 팝업</b><br>주행 중에는 내비가 화면을 차지한다. 앱은 뒤에서 판정하다가 안내가 필요한 순간에만 내비 위쪽에 작은 카드를 띄우고, 켜면 "좋아요"로 바꾼 뒤 3초 뒤 지운다.</td>
   </tr>
   <tr>
     <td><img src="docs/images/report.png" alt="오늘 주행 리포트: 지킴, 놓침, 아낀 범칙금, 판정 기록과 조항·처분"></td>
     <td><img src="docs/images/qna.png" alt="법규 Q&A: 적색 우회전 질문에 대한 답과 근거 카드"></td>
   </tr>
   <tr>
-    <td><b>📋 오늘 주행 리포트</b><br>기어를 P로 두면 열린다. 지킴·놓침·아낀 범칙금을 숫자로, 판정마다 법 조항과 "단속됐다면" 받을 처분을 보여준다.</td>
-    <td><b>💬 법규 Q&A</b><br>룰 테이블에서 근거를 찾아 답하고, 조항·처분·출처를 근거 카드로 붙인다. 근거가 없으면 "확인된 근거가 없어요"라고 답한다.</td>
+    <td><b>오늘 주행 리포트</b><br>기어를 P로 두면 열린다. 지킴·놓침·아낀 범칙금을 숫자로, 판정마다 법 조항과 "단속됐다면" 받을 처분을 보여준다.</td>
+    <td><b>법규 Q&A</b><br>룰 테이블에서 근거를 찾아 답하고, 조항·처분·출처를 근거 카드로 붙인다. 근거가 없으면 "확인된 근거가 없어요"라고 답한다.</td>
   </tr>
 </table>
 

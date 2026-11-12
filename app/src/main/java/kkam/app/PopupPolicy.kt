@@ -38,6 +38,7 @@ data class Popup(
  * | 놓침(MISSED) 판정 | 숨김. 위반 직후 잔소리하지 않는다 (기획서 5.4) |
  * | 지킴(KEPT) 판정이고 떠 있음 | 파랑 "좋아요". 안내 직후 바로 켜도(R5) 파랑이 보이게 한다 |
  * | 숨겨져 있음 | 계속 숨김. 안내 전에는 먼저 띄우지 않는다 |
+ * | 와이퍼·김서림 카드가 파랑 | 그대로 둔다. 판정 뒤 카드는 내비 안내로 돌아가 대기가 되지만, "좋아요"는 몇 초 보여준다 |
  * | 내비 안내가 띄울 때와 다름 | 숨김 (재탐색이나 지나감) |
  * | 카드가 대기 상태 | 숨김 |
  * | 그 밖 | 띄움. 안내를 따랐으면 파랑, 아니면 주황 |
@@ -57,6 +58,7 @@ fun nextPopup(current: Popup?, state: CoachState, outputs: List<EngineOutput>, f
             distanceLabel = state.distanceLabel.ifEmpty { current.distanceLabel },
         )
         current == null -> null
+        current.tone == PopupTone.OK && current.kind.notTiedToNavi() -> current
         current.forTurn != null && current.forTurn != turn -> null
         state.tone == Tone.IDLE -> null
         else -> state.toPopup(current.forTurn)

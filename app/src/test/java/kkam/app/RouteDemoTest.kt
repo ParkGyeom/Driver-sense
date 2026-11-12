@@ -11,6 +11,7 @@ import kkam.engine.model.Result
 import kkam.engine.model.RuleId
 import kkam.engine.model.TurnSignal
 import kkam.engine.model.TurnType
+import kkam.engine.model.WiperMode
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,7 +25,7 @@ class RouteDemoTest {
     }
 
     @Test
-    fun `경로는 세종대학교에서 포티투닷 판교까지 약 25km, 코치 지점은 좌·적색 우·차선·터널·나들목·우 순서다`() {
+    fun `경로는 세종대학교에서 포티투닷 판교까지 약 25km, 코치 지점은 좌·적색 우·차선·비·터널·나들목·우 순서다`() {
         assertEquals("세종대학교", route.start)
         assertEquals("포티투닷 (42dot)", route.destination)
         assertTrue(run.plan.distanceM in 24000..27000, "${run.plan.distanceM}")
@@ -33,13 +34,14 @@ class RouteDemoTest {
                 RouteDemo.CueKind.LEFT,
                 RouteDemo.CueKind.RIGHT,
                 RouteDemo.CueKind.LANE_CHANGE,
+                RouteDemo.CueKind.RAIN,
                 RouteDemo.CueKind.TUNNEL,
                 RouteDemo.CueKind.RAMP_RIGHT,
                 RouteDemo.CueKind.RIGHT,
             ),
             route.cues.map { it.kind },
         )
-        // 차선 변경은 내비 안내가 아니라서 경로 안내 순서(미리보기 칩)에 없다
+        // 차선 변경과 비는 내비 안내가 아니라서 경로 안내 순서(미리보기 칩)에 없다
         assertEquals(listOf(TurnType.LEFT, TurnType.RIGHT, TurnType.TUNNEL, TurnType.RAMP_RIGHT, TurnType.RIGHT), run.plan.turns)
         assertEquals(route.points, run.plan.path)
         assertTrue(route.cues.zipWithNext().all { (a, b) -> a.point < b.point })
@@ -62,6 +64,11 @@ class RouteDemoTest {
                 "GUIDE R3",
                 "EVENT R1 KEPT guided=false",
                 "EVENT R3 KEPT guided=true",
+                // 자동차전용도로 비 구간: 와이퍼 안내 → 켬 → 지킴, 이어서 김서림 안내 → 성에 제거 켬 → 지킴
+                "GUIDE R6",
+                "EVENT R6 KEPT guided=true",
+                "GUIDE R7",
+                "EVENT R7 KEPT guided=true",
                 // 분당수서로 터널: 전조등 안내 → 켬 → 지킴
                 "GUIDE R5",
                 "EVENT R5 KEPT guided=true",
@@ -87,9 +94,10 @@ class RouteDemoTest {
     }
 
     @Test
-    fun `3분 안에 끝난다 - 미리보기, 주행, 도착 뒤 기어 P까지`() {
+    fun `3분 30초 안에 끝난다 - 미리보기, 주행, 도착 뒤 기어 P까지`() {
         val total = run.frames.last().t + RouteDemo.FRAME_MS
-        assertTrue(total <= 180_000, "총 ${total / 1000}초")
+        // 안내 카드를 영상에서 읽을 수 있게 주황·파랑을 몇 초씩 보여주느라 3분을 조금 넘는다
+        assertTrue(total <= 210_000, "총 ${total / 1000}초")
         assertTrue(run.fastForward.isNotEmpty())
         // 빨리 감는 프레임은 30 km/h보다 빨라서 R2가 회전으로 세지 않는다
         run.frames.filter { it.t in run.fastForward }.forEach { assertTrue(it.speedKph > 30.0, "${it.t}") }
@@ -130,12 +138,35 @@ class RouteDemoTest {
 
     @Test
     fun `차선 변경은 팝업만 - 오른쪽 깜빡이를 잠깐 켜고 판정은 없다`() {
+        // 팝업이 떠 있는 동안은 실제 속도 (빨리 감기에서 팝업이 스쳐 지나가지 않는다)
+        run.laneCues.forEach { cue -> assertTrue((cue.showAt until cue.hideAt step RouteDemo.FRAME_MS).none { it in run.fastForward }) }
         assertEquals(1, run.laneCues.size)
         val cue = run.laneCues.single()
         assertTrue(cue.showAt < cue.okAt && cue.okAt < cue.hideAt)
         val during = run.frames.filter { it.t >= cue.okAt && it.t < cue.okAt + RouteDemo.LANE_SIGNAL_MS }
         assertTrue(during.isNotEmpty() && during.all { it.turnSignal == TurnSignal.RIGHT && it.speedKph > 30.0 })
         assertTrue(outputs.none { (t, _) -> t in cue.showAt..cue.hideAt })
+    }
+
+    @Test
+    fun `비 구간 - 와이퍼 안내 뒤 와이퍼를 켜고, 김서림 안내 뒤 성에 제거를 켠다`() {
+        val rainy = run.frames.filter { it.rain == true }
+        assertTrue(rainy.isNotEmpty())
+        val start = rainy.first().t
+        // 비는 한 번 와서 그친다 (구간 하나)
+        assertEquals(RouteDemo.RAIN_END_AFTER_MS / RouteDemo.FRAME_MS, rainy.size.toLong())
+        assertTrue(rainy.zipWithNext().all { (a, b) -> b.t - a.t == RouteDemo.FRAME_MS })
+        // 비 구간은 모두 실제 속도이고 자동차전용도로 순항 속도로 달린다 (빨리 감기에 묻히지 않는다)
+        assertTrue(rainy.all { it.t !in run.fastForward && it.gear == Gear.D && it.speedKph == RouteDemo.EXPRESS_KPH })
+        // 안내 → 조작 순서
+        val wiperGuide = outputs.single { it.second is Guide && it.second.rule == RuleId.R6 }.first
+        val fogGuide = outputs.single { it.second is Guide && it.second.rule == RuleId.R7 }.first
+        assertTrue(wiperGuide < start + RouteDemo.WIPER_ON_AFTER_MS, "와이퍼 안내가 와이퍼를 켜기 전에 나온다")
+        assertTrue(start + RouteDemo.WIPER_ON_AFTER_MS < fogGuide, "김서림 안내는 와이퍼 안내가 끝난 뒤에 나온다")
+        assertTrue(fogGuide < start + RouteDemo.DEFROST_ON_AFTER_MS, "김서림 안내가 성에 제거를 켜기 전에 나온다")
+        // 비 밖에서는 와이퍼·성에 제거가 꺼져 있고 내기 순환은 늘 켜져 있다
+        assertTrue(run.frames.filter { it.rain != true }.all { it.wiper == WiperMode.OFF && it.defroster == false })
+        assertTrue(run.frames.all { it.recirc == true })
     }
 
     /** 보고용 이벤트 순서표. `./gradlew :app:testDebugUnitTest --tests "*RouteDemoTest*" -i`로 본다. */

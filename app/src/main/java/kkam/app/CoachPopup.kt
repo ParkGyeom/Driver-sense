@@ -2,10 +2,8 @@ package kkam.app
 
 import android.animation.ValueAnimator
 import android.content.Context
-import android.content.res.ColorStateList
 import android.graphics.PixelFormat
 import android.graphics.Rect
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
@@ -13,8 +11,6 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
-import android.widget.ImageView
-import android.widget.TextView
 
 /**
  * 내비 위에 뜨는 작은 안내 카드 (겹침 창). 서비스가 하나만 갖고 [show]로 갱신한다.
@@ -23,42 +19,15 @@ import android.widget.TextView
 class CoachPopup(context: Context) : CoachNotifier {
     private val context = context.applicationContext
     private val windowManager = context.getSystemService(WindowManager::class.java)
-    private val density = context.resources.displayMetrics.density
     /** 겹침 창에 붙는 뷰. 그림자가 잘리지 않게 카드 둘레에 여백을 둔 틀이다. */
     private val window: View = LayoutInflater.from(this.context).inflate(R.layout.popup_card, null)
-    private val card: View = window.findViewById(R.id.popupCard)
-    private val icon: ImageView = card.findViewById(R.id.popupIcon)
-    private val turn: TextView = card.findViewById(R.id.popupTurn)
-    private val distance: TextView = card.findViewById(R.id.popupDistance)
-    private val badgeIcon: ImageView = card.findViewById(R.id.popupBadgeIcon)
-    private val headline: TextView = card.findViewById(R.id.popupHeadline)
-    private val lever: LeverGuideView = card.findViewById(R.id.popupLever)
-    private val buttonGuide = ButtonGuide(card.findViewById(R.id.popupButtonGuide), BUTTON_ICON_DP, R.style.Kk_Caption)
-    private val ink = this.context.getColor(R.color.ink_strong)
-    private val inkSoft = this.context.getColor(R.color.ink_soft)
-
-    // 배경은 한 번만 만들고 색만 바꾼다.
-    // 카드 = 흰색 95% 바탕 + 굵은 상태 색 테두리, 그림 원·알약 = 상태 색.
-    private val cardFill = GradientDrawable().apply {
-        setColor(this@CoachPopup.context.getColor(R.color.popup_light))
-        cornerRadius = CARD_RADIUS_DP * density
-    }
-    private val iconCircle = GradientDrawable().apply { cornerRadius = PILL_RADIUS_DP * density }
-    private val badgeFill = GradientDrawable().apply { cornerRadius = PILL_RADIUS_DP * density }
+    /** 카드 그리기는 지도 위 팝업([MapPopupCard])과 같은 코드를 쓴다. */
+    private val painter = PopupCardPainter(window.findViewById(R.id.popupCard))
     private var attached = false
     private var shown: Popup? = null
     /** 지금 칠해진 색. 주황 → 파랑처럼 모습이 바뀔 때 한 번만 페이드한다. */
     private var painted: CardPalette? = null
     private var fade: ValueAnimator? = null
-    /** 지금 그림이 여러 색(신호등)이라 tint를 입히지 않는가. */
-    private var multiColor = false
-
-    init {
-        card.background = cardFill
-        icon.background = iconCircle
-        card.findViewById<View>(R.id.popupBadge).background = badgeFill
-        badgeIcon.imageTintList = ColorStateList.valueOf(ink)
-    }
 
     /** popup이 null이면 숨긴다. area는 앱 칸(내비 자리)의 크기. 모르면 화면 가운데. */
     override fun show(popup: Popup?, area: Rect?) {
@@ -72,7 +41,7 @@ class CoachPopup(context: Context) : CoachNotifier {
             Log.w(TAG, "overlay permission missing")
             return
         }
-        draw(popup)
+        paint(painter.fill(popup))
         if (!attached) {
             runCatching { windowManager.addView(window, layoutParams(area)) }
                 .onSuccess { attached = true }
@@ -94,25 +63,6 @@ class CoachPopup(context: Context) : CoachNotifier {
         attached = false
     }
 
-    /** 주행 화면 코치 카드와 같은 순서: 방향 그림 → 회전·거리 → 행동 알약. */
-    private fun draw(popup: Popup) {
-        val look = popup.tone.look()
-        // 적색 우회전은 빨간불이 켜진 신호등 (R3 안내는 적색일 때만 나온다).
-        icon.setImageResource(cardIconRes(popup.kind, popup.right, phase = null))
-        multiColor = popup.kind.isMultiColor()
-        turn.text = popup.turnLabel
-        distance.text = distanceText(popup.distanceLabel, inkSoft)
-        distance.visibility = if (popup.distanceLabel.isEmpty()) View.GONE else View.VISIBLE
-        // 거리가 없는 안내(김서림·와이퍼)는 제목이 주인공이라 검정.
-        turn.setTextColor(if (popup.distanceLabel.isEmpty()) ink else inkSoft)
-        headline.text = popup.headline
-        badgeIcon.setImageResource(look.badgeIconRes())
-        val target = context.palette(look)
-        lever.show(leverFor(popup.kind, popup.right, look == CardLook.WARN), target.edge)
-        buttonGuide.show(popup.kind, look == CardLook.WARN, target.accent, target.edge)
-        paint(target)
-    }
-
     /** 색. 이미 떠 있는 카드의 모습이 바뀔 때(켜세요 → 좋아요)만 [FADE_MS] 동안 한 번 페이드한다. */
     private fun paint(target: CardPalette) {
         val from = painted
@@ -130,10 +80,7 @@ class CoachPopup(context: Context) : CoachNotifier {
 
     private fun apply(palette: CardPalette) {
         painted = palette
-        cardFill.setStroke((CARD_EDGE_DP * density).toInt(), palette.edge)
-        iconCircle.setColor(palette.iconBg)
-        icon.imageTintList = if (multiColor) null else ColorStateList.valueOf(palette.iconInk)
-        badgeFill.setColor(palette.accent)
+        painter.paint(palette)
     }
 
     /**
@@ -166,11 +113,5 @@ class CoachPopup(context: Context) : CoachNotifier {
     private companion object {
         const val TAG = "KkamPopup"
         const val FADE_MS = 200L
-        const val CARD_RADIUS_DP = 32
-        /** 상태를 테두리로 보여주므로 굵게. */
-        const val CARD_EDGE_DP = 6
-        const val PILL_RADIUS_DP = 999
-        /** 김서림 버튼 그림 한 칸의 크기. 팝업 높이에 맞춰 작게. */
-        const val BUTTON_ICON_DP = 88
     }
 }

@@ -105,6 +105,23 @@ class RouteCoachTest {
     }
 
     @Test
+    fun `경로 리포트 머리 문구는 와이퍼·김서림을 빼고 센다 - 지킨 곳 카드와 같은 기준`() {
+        val started = CoachState().startRoute(plan)
+        val events = listOf(
+            event("e1", Result.KEPT),
+            event("e2", Result.MISSED),
+            event("rain", Result.KEPT, rule = RuleId.R6),
+            event("fog", Result.KEPT, rule = RuleId.R7),
+        )
+        val driven = started.copy(todayEvents = events)
+
+        assertEquals("경로 주행 중 · 2번 중 1번 지켰어요", routeSummary(driven.route!!, driven.todayEvents))
+        // 와이퍼·김서림만 있으면 셀 판정이 없다
+        val rainOnly = started.copy(todayEvents = listOf(event("rain", Result.KEPT, rule = RuleId.R6)))
+        assertEquals("경로 주행 중 · 아직 판정이 없어요", routeSummary(rainOnly.route!!, rainOnly.todayEvents))
+    }
+
+    @Test
     fun `도착하면 한 번만 끝내고 요약 문구를 보여준다`() {
         val started = CoachState().startRoute(plan)
         assertEquals("판교역까지 안내를 시작해요. 좌회전 2곳, 우회전 1곳, 나들목 1곳에서 챙길게요.", started.message)

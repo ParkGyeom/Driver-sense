@@ -37,4 +37,12 @@ class RouteDestinationsTest {
         assertTrue(ROUTE_REPORT_QUESTION in SUGGESTED_QUESTIONS)
         assertTrue("우회전" in ROUTE_REPORT_QUESTION)
     }
+
+    @Test
+    fun `출발할 때 내비 띄우기 - 경로 데모 중에는 안 띄우고, 실제 주행과 시나리오 재생은 그대로 띄운다`() {
+        assertEquals(false, opensNaviOnDeparture(CoachSession.ROUTE_DEMO))
+        assertEquals(true, opensNaviOnDeparture(CoachSession.LIVE))
+        assertEquals(true, opensNaviOnDeparture("S2_우회전_안내후켬.json"))
+        assertEquals(true, opensNaviOnDeparture(null))
+    }
 }

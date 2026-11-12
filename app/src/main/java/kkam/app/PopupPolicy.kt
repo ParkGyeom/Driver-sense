@@ -104,3 +104,10 @@ fun laneChangePopup(cues: List<RouteDemo.LaneCue>, t: Long): Popup? {
         headline = if (ok) "좋아요" else LANE_CHANGE_HEADLINE,
     )
 }
+
+/**
+ * 기어 P에서 출발해 처음 D가 됐을 때 차량 내비를 앞으로 띄울지 ([CoachService]).
+ * 실제 주행과 시나리오 재생에서는 띄운다 (주행 중 평소 화면은 내비, 기획서 4.2).
+ * 경로 데모가 돌고 있으면 띄우지 않는다. 앱 지도가 내비 역할이라 내비가 앞에 오면 지도를 가린다.
+ */
+fun opensNaviOnDeparture(running: String?): Boolean = running != CoachSession.ROUTE_DEMO

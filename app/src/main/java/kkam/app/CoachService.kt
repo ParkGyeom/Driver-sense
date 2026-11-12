@@ -80,6 +80,7 @@ class CoachService : Service() {
      * 기어에 따라 앞에 둘 화면을 바꾼다 (기획서 4.2).
      * - 주행 중 내비를 보다가 기어를 P로 바꾸면 우리 앱을 앞으로 띄워 리포트를 보여준다 (5번).
      * - P에서 출발해 처음 D가 되면 내비를 앞으로 띄운다. 주행 중 평소 화면은 내비다 (1번).
+     *   경로 데모 중에는 띄우지 않는다. 앱 지도가 내비 역할이다 ([opensNaviOnDeparture]).
      */
     private fun onGear(gear: Gear) {
         val parkedNow = gear == Gear.P && lastGear != null && lastGear != Gear.P
@@ -90,7 +91,7 @@ class CoachService : Service() {
         }
         if (gear == Gear.D && waitingDeparture) {
             waitingDeparture = false
-            if (session.appVisible) NaviLauncher.open(this)
+            if (session.appVisible && opensNaviOnDeparture(session.running)) NaviLauncher.open(this)
         }
     }
 

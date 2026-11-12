@@ -1,8 +1,8 @@
 <div align="center">
 
-# Driver Sense · 제출용 APK
+# Driver Sense · 실행용 APK
 
-공모전 GitHub 제출 규칙에 맞춰 실행할 수 있는 **release APK**를 이 폴더에 둔다.
+에뮬레이터에서 바로 실행할 수 있는 **release APK**를 이 폴더에 둔다.
 
 </div>
 
@@ -11,7 +11,7 @@
 | 파일 이름 | `팀명_앱이름_release.apk` |
 | 패키지 | `kkam.app` |
 | 실행 환경 | Pleos Connect Emulator v2.1.0 |
-| 용량이 클 때 | GitHub Releases에 올리고 그 주소를 제출한다 |
+| 용량이 클 때 | GitHub Releases에 올린다 |
 
 ## 설치와 실행
 

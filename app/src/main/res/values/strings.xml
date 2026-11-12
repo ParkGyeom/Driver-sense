@@ -1,10 +1,8 @@
 <resources>
     <string name="app_name">깜빡코치</string>
-    <string name="today_kept">오늘 지킨 횟수</string>
 
     <!-- 주행 리포트 (기어 P) -->
     <string name="report_title">오늘 주행 리포트</string>
-    <string name="report_hint">주차 중에만 보여요. 출발하면 코치 카드로 돌아가요</string>
     <string name="report_saved">아낀 범칙금</string>
     <string name="report_kept">지킴</string>
     <string name="report_missed">놓침</string>
@@ -14,14 +12,11 @@
     <!-- 진단 리포트·습관 선택 (기어 P) -->
     <string name="diagnose_title">진단 리포트</string>
     <string name="diagnose_rates">상황별 준수율</string>
-    <string name="diagnose_average">전국 평균 %s%%</string>
     <string name="diagnose_count">%2$d번 중 %1$d번 지킴</string>
     <string name="diagnose_next">고칠 습관 고르기</string>
     <string name="habit_title">고칠 습관 고르기</string>
     <string name="habit_hint">최대 2개. 고른 습관만 주행 중에 미리 알려드려요</string>
-    <string name="habit_recommended">추천</string>
     <string name="habit_rate">내 준수율 %d%%</string>
-    <string name="habit_count">%1$d / %2$d개 골랐어요</string>
     <string name="habit_full">%d개까지만 고를 수 있어요. 고른 카드를 눌러 빼세요</string>
     <string name="habit_back">진단 다시 보기</string>
     <string name="habit_done">선택 완료</string>
@@ -59,8 +54,6 @@
     <string name="nav_progress">교정 진행</string>
     <string name="nav_qna">법규 Q&amp;A</string>
     <string name="nav_mode">운전 코치</string>
-    <string name="nav_progress_title">교정 진행</string>
     <string name="nav_qna_title">법규 Q&amp;A</string>
     <string name="nav_mode_title">운전 코치</string>
-    <string name="coming_soon">준비 중이에요</string>
 </resources>

@@ -99,7 +99,6 @@
             android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/reportListHint"
             style="@style/Kk.Caption"
             android:text="@string/parked_report_list_hint"
             android:textColor="@color/muted" />

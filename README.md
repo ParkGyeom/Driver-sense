@@ -1,15 +1,22 @@
 <!-- 룰·시나리오 수나 SDK 판을 바꾸면 배지, '하는 일'의 룰 표, '실행 환경' 표를 같이 고친다 -->
 <div align="center">
 
-# Driver Sense
+<img src="docs/images/banner.svg" alt="Driver Sense — 차 안에 나만의 선생님." width="100%">
+
+<br>
 
 차량 신호로 운전 법규 습관을 진단하고, 단속되기 전에 미리 알려주는 **Pleos Connect 차량용 앱**이다.<br>
-판정은 차 안에서 규칙(상태 머신)으로 하고, 결과는 음성 한 문장과 리포트로 보여준다.
+판정은 차 안에서 규칙(상태 머신)으로 하고, 결과는 음성 한 문장과 카드, 리포트로 보여준다.
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.4-7F52FF?logo=kotlin&logoColor=white)](#실행-환경)
-[![Android Automotive](https://img.shields.io/badge/Android_Automotive-minSdk_28-3DDC84?logo=android&logoColor=white)](#실행-환경)
-[![Pleos Connect](https://img.shields.io/badge/Pleos_Connect-Emulator_2.1.0-002C5F)](#실행-환경)
-[![JDK](https://img.shields.io/badge/JDK-17-ED8B00?logo=openjdk&logoColor=white)](#실행-환경)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.4-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](#실행-환경)
+[![Android Automotive](https://img.shields.io/badge/Android_Automotive-minSdk_28-3DDC84?style=for-the-badge&logo=android&logoColor=white)](#실행-환경)
+[![Pleos Connect](https://img.shields.io/badge/Pleos_Connect-Emulator_2.1.0-002C5F?style=for-the-badge)](#실행-환경)
+[![JDK](https://img.shields.io/badge/JDK-17-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](#실행-환경)
+<br>
+[![Rules](https://img.shields.io/badge/판정_룰-R1~R7-FFC04D?style=flat-square)](#하는-일)
+[![Scenarios](https://img.shields.io/badge/시나리오-S1~S24-4C8DFF?style=flat-square)](#데모로-보기)
+[![Naver Map](https://img.shields.io/badge/Naver_Map_SDK-3.24.1-03C75A?style=flat-square)](#실행-환경)
+[![JUnit 5](https://img.shields.io/badge/JUnit-5-25A162?style=flat-square&logo=junit5&logoColor=white)](#소스에서-빌드)
 
 </div>
 
@@ -22,25 +29,7 @@
 
 ## 시스템 구성
 
-```mermaid
-flowchart LR
-    SDK["Pleos SDK<br/>Vehicle · NaviHelper<br/>FusedLocation"]
-    subgraph APP["차량 앱 (app/)"]
-        C["신호 수집"]
-        E["판정 엔진 (engine/)<br/>R1~R7 상태 머신"]
-        U["코치 카드 · 팝업<br/>리포트 · 법규 Q&A"]
-        T["Pleos TTS"]
-    end
-    S["Spring 서버 (server/)<br/>연결 전"]
-    L[("법규 룰 테이블<br/>data/law_table.json")]
-
-    SDK -->|"방향지시등 · 기어 · 속도<br/>위치 · 다음 안내(TBT)"| C
-    C -->|"SignalFrame 1초마다"| E
-    E -->|"GUIDE 안내 요청"| T
-    E -->|"GUIDE · EVENT"| U
-    L --> U
-    U -.->|"EVENT 저장 (계획)"| S
-```
+<img src="docs/images/architecture.svg" alt="구조: Pleos SDK에서 받은 차량 신호를 앱이 모아 판정 엔진에 넣고, 엔진의 GUIDE는 음성 안내·코치 카드로, EVENT는 리포트·법규 Q&A로 간다. 서버 연결은 계획." width="100%">
 
 1. 앱이 차량 신호를 1초마다 한 프레임(`SignalFrame`)으로 묶어 판정 엔진에 넣는다.
 2. 엔진은 프레임마다 룰 7개를 검사해 두 가지를 낸다. 지금 말할 문구(GUIDE)와, 법규를 지켰는지 놓쳤는지(EVENT)다.
@@ -52,10 +41,42 @@ flowchart LR
 
 운전자가 겪는 흐름은 **진단 → 코치 → 리포트 → 법규 Q&A**다.
 
+<img src="docs/images/flow.svg" alt="동작 흐름: 1 진단(기어 P), 2 코치(주행 중), 3 리포트(기어 P), 4 법규 Q&A(기어 P)" width="100%">
+
 1. **진단**: 정차 중(기어 P) 상황별 준수율을 전국 평균(75.7%)과 견주어 보고, 고칠 습관을 최대 2개 고른다.
 2. **코치**: 출발하면 화면은 내비가 차지하고 앱은 뒤에서 판정한다. 회전·나들목·터널에 다가가는데 깜빡이나 전조등이 꺼져 있으면 음성 한 문장과 카드로 알려준다. 켜면 카드가 "좋아요"로 바뀌고 곧 사라진다.
 3. **리포트**: 도착해 기어를 P로 두면 앱이 앞으로 와서 지킨 곳과 놓친 곳, 조항과 처분, 안내 덕분에 아낀 범칙금을 보여준다.
 4. **법규 Q&A**: 리포트의 "AI에게 묻기"로 넘어가 묻는다. 답은 룰 테이블 근거 안에서만 만들고, 근거가 없으면 "확인된 근거가 없어요"라고 답한다.
+
+**화면으로 보기**
+
+아래는 Pleos Connect Emulator에서 데모 시나리오를 재생하며 찍은 실제 앱 화면이다(앱 칸만 잘랐다).
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/coach-card-warn.png" alt="주행 화면 코치 카드: 좌회전 60 m, 노랑 '지금 켜세요'"></td>
+    <td width="50%"><img src="docs/images/coach-card-ok.png" alt="주행 화면 코치 카드: 좌회전 28 m, 파랑 '좋아요'"></td>
+  </tr>
+  <tr>
+    <td><b>🟡 지금 켜세요</b><br>좌회전 60 m 앞인데 깜빡이가 꺼져 있다. 노랑 카드와 음성 한 문장 "좌회전 곧이에요, 깜빡이 켜세요", 어느 레버를 어떻게 움직이는지 그림으로 알려준다.</td>
+    <td><b>🔵 좋아요</b><br>깜빡이를 켜면 카드가 파랑으로 바뀐다. 30 m 판정 지점과 회전 완료를 지나면 지킴으로 기록하고, 아래 오늘 성적에 더한다.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/navi-popup-warn.png" alt="내비 위 팝업: 좌회전 48 m, 노랑 '지금 켜세요'"></td>
+    <td><img src="docs/images/navi-popup-ok.png" alt="내비 위 팝업: 좌회전 28 m, 파랑 '좋아요'"></td>
+  </tr>
+  <tr>
+    <td colspan="2"><b>🧭 내비 위 팝업</b><br>주행 중에는 내비가 화면을 차지한다. 앱은 뒤에서 판정하다가 안내가 필요한 순간에만 내비 위쪽에 작은 카드를 띄우고, 켜면 "좋아요"로 바꾼 뒤 3초 뒤 지운다.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/report.png" alt="오늘 주행 리포트: 지킴, 놓침, 아낀 범칙금, 판정 기록과 조항·처분"></td>
+    <td><img src="docs/images/qna.png" alt="법규 Q&A: 적색 우회전 질문에 대한 답과 근거 카드"></td>
+  </tr>
+  <tr>
+    <td><b>📋 오늘 주행 리포트</b><br>기어를 P로 두면 열린다. 지킴·놓침·아낀 범칙금을 숫자로, 판정마다 법 조항과 "단속됐다면" 받을 처분을 보여준다.</td>
+    <td><b>💬 법규 Q&A</b><br>룰 테이블에서 근거를 찾아 답하고, 조항·처분·출처를 근거 카드로 붙인다. 근거가 없으면 "확인된 근거가 없어요"라고 답한다.</td>
+  </tr>
+</table>
 
 **판정 룰**
 

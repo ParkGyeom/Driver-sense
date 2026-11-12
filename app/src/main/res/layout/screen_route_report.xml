@@ -74,6 +74,17 @@
                     style="@style/Kk.Caption"
                     android:layout_marginTop="8dp" />
             </LinearLayout>
+
+            <!-- 놓친 곳의 법규를 바로 물어보게 법규 Q&A로 간다 (질문: ROUTE_REPORT_QUESTION). -->
+            <TextView
+                android:id="@+id/routeReportAsk"
+                style="@style/Kk.Pill"
+                android:layout_height="88dp"
+                android:layout_marginTop="@dimen/kk_gap"
+                android:paddingHorizontal="40dp"
+                android:text="@string/route_report_ask"
+                android:textColor="@color/on_accent"
+                android:textSize="@dimen/kk_text_body" />
         </LinearLayout>
 
         <!-- 오른쪽: 판정 카드. 놓친 곳이 먼저 -->

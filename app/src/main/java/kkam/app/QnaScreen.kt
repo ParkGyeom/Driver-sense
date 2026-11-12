@@ -58,6 +58,12 @@ class QnaScreen(
         root.visibility = if (screen == Screen.QNA) View.VISIBLE else View.GONE
     }
 
+    /** 다른 화면에서 질문을 들고 왔을 때 (경로 리포트 "AI에게 묻기"). 입력칸에 넣고 바로 답한다. */
+    fun askNow(question: String) {
+        input.setText(question)
+        ask(question)
+    }
+
     private fun askTyped() {
         val question = input.text.toString().trim()
         if (question.isNotEmpty()) ask(question)

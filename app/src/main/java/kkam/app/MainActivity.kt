@@ -98,6 +98,14 @@ class MainActivity : Activity() {
     private lateinit var routePreviewScreen: RoutePreviewScreen
     private lateinit var routeMap: RouteMap
     private lateinit var routeReportScreen: RouteReportScreen
+    private lateinit var destinationSearch: DestinationSearch
+    /** 경로 데모 목적지 검색창을 보고 있으면 true. 재생이 시작되면 닫는다. */
+    private var searching = false
+    /** 경로 데모 출발지 (현재 위치로 보여준다). 경로 데모 파일의 start와 첫 좌표. */
+    private val demoStart: Pair<String, LatLon> by lazy {
+        val route = RouteDemo.parse(assets.open(RouteDemo.ASSET).bufferedReader().use { it.readText() })
+        route.start to route.points.first()
+    }
     /** 미리보기 화면을 이미 정한 경로. 같은 경로에서 미리보기를 다시 열지 않는다. */
     private var routeHandled: RouteTrip? = null
     private lateinit var parkedNav: ParkedNav
@@ -119,18 +127,12 @@ class MainActivity : Activity() {
         TILE_LABELS.forEach(::addTile)
         setUpScreens()
         addButton(DIAGNOSE_LABEL, getString(R.string.demo_open_diagnose)) { openDiagnoseParked() }
-        addNaviButton()
         addPreviewButton()
         addLiveButton()
-        addButton(CoachSession.ROUTE_DEMO, getString(R.string.demo_route)) { playRouteDemo() }
-        addButton(CONSOLE_SPEED_LABEL, getString(R.string.demo_console_speed_off)) {
-            val current = session ?: return@addButton
-            current.consoleSpeed = !current.consoleSpeed
-            buttons.getValue(CONSOLE_SPEED_LABEL).setText(
-                if (current.consoleSpeed) R.string.demo_console_speed_on else R.string.demo_console_speed_off,
-            )
-        }
+        addButton(CoachSession.ROUTE_DEMO, getString(R.string.demo_route)) { openDestinationSearch() }
         ScenarioPlayer(this).fileNames().forEach(::addScenarioButton)
+        // 시나리오 재생용 토글이라 경로 데모 시연에서는 쓰지 않는다. 패널 맨 뒤에 둔다.
+        addNaviButton()
         setUpDemoToggle()
         render()
 
@@ -236,7 +238,8 @@ class MainActivity : Activity() {
         modeScreen = ModeScreen(this)
         routePreviewScreen = RoutePreviewScreen(this) { diagnosisSource.load() }
         routeMap = RouteMap(this)
-        routeReportScreen = RouteReportScreen(this) { laws }
+        routeReportScreen = RouteReportScreen(this, laws = { laws }, onAsk = ::askFromRouteReport)
+        destinationSearch = DestinationSearch(this, onSelect = ::playRouteDemo)
         parkedNav = ParkedNav(this, onSelect = ::showParked)
         habitScreens = HabitScreens(
             activity = this,
@@ -329,12 +332,37 @@ class MainActivity : Activity() {
         if (naviAfterPlay) NaviLauncher.open(this)
     }
 
-    /** 데모: 시나리오를 이어 한 경로처럼 재생한다 (출발 전 미리보기 → 회전마다 코치 → 도착 리포트). */
-    private fun playRouteDemo() {
-        val current = session ?: return
+    /**
+     * 데모 패널 "경로 데모": 재생을 멈추고 기어 P로 세운 뒤, 지도 위 목적지 검색창을 연다.
+     * 에뮬레이터 내비는 지도도 경로 계산도 안 되므로 앱 지도를 내비로 쓴다.
+     */
+    private fun openDestinationSearch() {
+        session?.stopAll()
+        highlight(null)
+        gear = Gear.P
+        tiles.getValue("기어").text = Gear.P.name
         screen = Screen.DRIVE
-        current.playRouteDemo()
-        if (naviAfterPlay) NaviLauncher.open(this)
+        searching = true
+        destinationSearch.open(demoStart.first)
+        render()
+    }
+
+    /**
+     * 검색에서 목적지를 골랐다: 경로 데모를 시작한다 (출발 전 미리보기 → 코치 지점마다 안내 → 도착 리포트).
+     * 내비 화면을 띄우지 않는다. 내비가 앱 지도를 가리기 때문이다 ("재생하면 내비 띄우기"는 시나리오 재생에만 쓴다).
+     */
+    private fun playRouteDemo(destination: DemoDestination) {
+        val current = session ?: return
+        searching = false
+        screen = Screen.DRIVE
+        current.playRouteDemo(destination)
+    }
+
+    /** 경로 리포트 "AI에게 묻기": 법규 Q&A를 열고 적색 우회전 질문을 바로 묻는다. 기어 P에서만 열린다. */
+    private fun askFromRouteReport() {
+        screen = openScreen(Screen.QNA, gear)
+        if (screen == Screen.QNA) qnaScreen.askNow(ROUTE_REPORT_QUESTION)
+        render()
     }
 
     /** 실제 차량 신호로 주행을 시작한다. 위치와 속도는 런타임 권한이 필요하다. */
@@ -414,12 +442,24 @@ class MainActivity : Activity() {
         if (screen == Screen.ROUTE_REPORT) routeReportScreen.render(state)
         if (screen == Screen.REPORT) reportScreen.render(state)
         if (screen == Screen.ROUTE_PREVIEW) routePreviewScreen.render(state)
-        // 경로 좌표가 있으면(경로 데모) 주행 화면 대신 지도를 앱 칸 전체에 보여주고, 안내는 지도 위 팝업 카드로 띄운다.
+        // 경로 데모 지도. 목적지 검색: 지도 전체 + 검색창. 주행: 지도 전체 + 지도 위 팝업 카드.
+        // 출발 전 경로 미리보기: 지도(경로 전체)와 미리보기 화면을 반씩.
         val path = state.route?.plan?.path.orEmpty()
-        val mapVisible = screen == Screen.DRIVE && path.isNotEmpty()
-        routeMap.show(mapVisible)
-        view.screenSlot.visibility = if (mapVisible) View.GONE else View.VISIBLE
-        if (mapVisible) routeMap.render(path, session?.lastFrame, session?.popup)
+        val current = session
+        // 재생이 시작됐거나 다른 화면을 열었으면 검색창을 닫는다
+        if (searching && (current?.running != null || screen != Screen.DRIVE)) {
+            searching = false
+            destinationSearch.close()
+        }
+        val routeShown = path.isNotEmpty() && current?.running == CoachSession.ROUTE_DEMO
+        val mapFull = searching || (screen == Screen.DRIVE && path.isNotEmpty())
+        val mapHalf = !mapFull && screen == Screen.ROUTE_PREVIEW && routeShown
+        routeMap.show(mapFull || mapHalf)
+        view.screenSlot.visibility = if (mapFull) View.GONE else View.VISIBLE
+        when {
+            searching -> routeMap.focus(demoStart.second)
+            mapFull || mapHalf -> routeMap.render(path, current?.lastFrame, current?.popup, current?.routeFastForward == true)
+        }
         driveScreen.render(state)
         view.logs.text = state.logs.takeLast(MAX_LOGS).reversed().joinToString("\n").ifEmpty { getString(R.string.demo_no_logs) }
     }
@@ -445,6 +485,8 @@ class MainActivity : Activity() {
             previewIndex++
             buttons.getValue(PREVIEW_LABEL).text = getString(R.string.demo_preview_now, kind.label)
             screen = Screen.DRIVE
+            searching = false
+            destinationSearch.close()
             session?.preview(kind)
             if (naviAfterPlay) NaviLauncher.open(this)
         }
@@ -516,7 +558,6 @@ class MainActivity : Activity() {
         const val NAVI_LABEL = "내비"
         const val PREVIEW_LABEL = "미리보기"
         const val DIAGNOSE_LABEL = "진단"
-        const val CONSOLE_SPEED_LABEL = "계기판 속도"
         const val REQUEST_LIVE = 1
         const val REQUEST_NOTIFY = 2
         const val PREFS = "kkam"

@@ -75,3 +75,32 @@ private fun CoachState.toPopup(turn: TurnType?) = Popup(
 
 /** 내비 안내와 상관없이 뜨는 안내 종류인가. */
 private fun GuideKind.notTiedToNavi(): Boolean = this == GuideKind.WIPER || this == GuideKind.DEFOG
+
+/** 차선 변경 팝업 제목과 문구. 엔진 룰이 없어서 경로 데모 각본([RouteDemo.LaneCue])으로만 띄운다. */
+const val LANE_CHANGE_TITLE = "차선 변경"
+const val LANE_CHANGE_HEADLINE = "깜빡이 켜고 옮기세요"
+/** 차선 변경 팝업을 띄울 때 읽는 문장. */
+const val LANE_CHANGE_SPEECH = "차선 바꿀 때 깜빡이 켜세요"
+
+/**
+ * 경로 데모의 차선 변경 팝업. 이 시각에 띄울 팝업, 각본 밖이면 null.
+ * 판정·리포트에는 넣지 않는다 (엔진에 차선 변경 룰이 없다). 그림은 미리보기와 같은 차선 변경 레버 그림이다.
+ *
+ * | 시각 | 팝업 |
+ * | --- | --- |
+ * | showAt ~ okAt 전 | 주황 "깜빡이 켜고 옮기세요" + 레버 그림 |
+ * | okAt ~ hideAt 전 | 파랑 "좋아요" (깜빡이를 켰다) |
+ * | 그 밖 | 없음 |
+ */
+fun laneChangePopup(cues: List<RouteDemo.LaneCue>, t: Long): Popup? {
+    val cue = cues.firstOrNull { t >= it.showAt && t < it.hideAt } ?: return null
+    val ok = t >= cue.okAt
+    return Popup(
+        tone = if (ok) PopupTone.OK else PopupTone.WARN,
+        kind = GuideKind.LANE_CHANGE,
+        right = true,
+        turnLabel = LANE_CHANGE_TITLE,
+        distanceLabel = "",
+        headline = if (ok) "좋아요" else LANE_CHANGE_HEADLINE,
+    )
+}

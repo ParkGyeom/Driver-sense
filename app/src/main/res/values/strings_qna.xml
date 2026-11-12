@@ -6,7 +6,6 @@
     <string name="qna_ask">묻기</string>
     <string name="qna_mic">음성으로 묻기</string>
     <string name="qna_mic_soon">음성 질문은 준비 중이에요. 글로 물어봐 주세요</string>
-    <string name="qna_suggest">이런 걸 물어보세요</string>
     <string name="qna_empty">추천 질문을 누르거나 직접 물어보세요</string>
     <string name="qna_disputed">해석이 갈려요</string>
     <string name="qna_sources">근거</string>

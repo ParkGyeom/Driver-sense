@@ -7,15 +7,13 @@ import kotlin.test.assertTrue
 
 class DriveModeTest {
     @Test
-    fun `켬이면 안내하고 기록한다`() {
+    fun `켬이면 안내한다`() {
         assertTrue(guidesOn(DriveMode.ON))
-        assertTrue(recordsOn(DriveMode.ON))
     }
 
     @Test
-    fun `끔이면 안내는 끄고 기록은 남긴다`() {
+    fun `끔이면 안내를 끈다`() {
         assertFalse(guidesOn(DriveMode.OFF))
-        assertTrue(recordsOn(DriveMode.OFF))
     }
 
     @Test

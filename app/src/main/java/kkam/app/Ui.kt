@@ -42,4 +42,6 @@ fun numberEmphasis(label: String, unitScale: Float = UNIT_SCALE): CharSequence {
 
 private const val CARD_RADIUS_DP = 28
 private const val PILL_RADIUS_DP = 999
-private const val UNIT_SCALE = 0.45f
+
+/** 단위 글자 크기 비율. [numberEmphasis]와 ReportScreen의 digitsEmphasis가 같이 쓴다. */
+const val UNIT_SCALE = 0.45f

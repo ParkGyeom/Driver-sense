@@ -9,10 +9,6 @@
     <dimen name="kk_text_body">30sp</dimen>       <!-- 본문 -->
     <dimen name="kk_text_caption">22sp</dimen>    <!-- 보조 설명, 라벨 -->
 
-    <!-- 모서리 -->
-    <dimen name="kk_radius_card">28dp</dimen>
-    <dimen name="kk_radius_chip">999dp</dimen>
-
     <!-- 여백 -->
     <dimen name="kk_screen_padding">32dp</dimen>
     <dimen name="kk_gap">16dp</dimen>

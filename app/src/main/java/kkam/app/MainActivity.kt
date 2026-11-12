@@ -29,8 +29,6 @@ import kkam.engine.model.WiperMode
 import kkam.engine.model.LawEntry
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnSignal
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.Json
 import kotlin.math.roundToInt
 
 /**
@@ -143,16 +141,15 @@ class MainActivity : Activity() {
         bindService(Intent(this, CoachService::class.java), connection, Context.BIND_AUTO_CREATE)
     }
 
-    /** 법규 룰 테이블은 루트 data/law_table.json을 assets로 바로 쓴다. */
-    private fun loadLaws(): List<LawEntry> {
-        val text = assets.open(LAW_TABLE_FILE).bufferedReader().use { it.readText() }
-        return Json { ignoreUnknownKeys = true }.decodeFromString(ListSerializer(LawEntry.serializer()), text)
-    }
+    /** 법규 룰 테이블은 루트 data/law_table.json을 assets로 바로 쓴다 (app/build.gradle.kts). */
+    private fun loadLaws(): List<LawEntry> =
+        parseLawTable(assets.open(LAW_TABLE_FILE).bufferedReader().use { it.readText() })
 
     /**
      * 차량의 주행 중 제한(UX 제한)을 본다. 제한 중에는 권한 확인 화면이 막히고("주행 중에는 사용할 수 없습니다")
      * 운전 중에 묻는 것도 방해라서, 권한은 제한이 풀렸을 때(정차) 묻는다.
-     * TODO(주행 제한, 로드맵 3단계): 같은 리스너로 데모 패널 숨기기, 화면 전환 막기를 붙인다.
+     * TODO(주행 제한): 같은 리스너로 제한 중에는 데모 패널을 닫고 demoToggle을 숨기며,
+     *  screenSlot을 주행 화면에서 다른 화면으로 바꾸지 않는다 (onSessionChanged의 화면 결정).
      */
     private fun watchDrivingRestriction() {
         val connected = Car.createCar(this) ?: return
@@ -212,7 +209,7 @@ class MainActivity : Activity() {
     private fun setUpDemoToggle() {
         if (!debuggable) return
         view.demoToggle.visibility = View.VISIBLE
-        view.demoToggle.background = rounded(getColor(R.color.surface), radiusDp = 999, strokeColor = getColor(R.color.line))
+        view.demoToggle.background = pillBackground(getColor(R.color.surface), strokeColor = getColor(R.color.line))
         view.demoToggle.setOnClickListener { showDemoPanel(view.demoPanel.visibility != View.VISIBLE) }
     }
 
@@ -220,11 +217,6 @@ class MainActivity : Activity() {
         view.demoPanel.visibility = if (show) View.VISIBLE else View.GONE
         view.demoToggle.setText(if (show) R.string.demo_close else R.string.demo_open)
     }
-
-    // TODO(주행 제한, 4번): CarUxRestrictions는 여기에 붙인다.
-    //  - onStart에서 Car.CAR_UX_RESTRICTION_SERVICE의 CarUxRestrictionsManager에 리스너를 등록하고 onStop에서 해제.
-    //  - 제한 중(isRequiresDistractionOptimization)이면 데모 패널을 닫고 demoToggle을 숨긴다.
-    //  - 제한 중에는 screenSlot을 주행 화면에서 다른 화면으로 바꾸지 않는다 (onFrame의 screen 결정).
 
     /**
      * screenSlot의 화면들과 기어 P 레일을 만든다. 화면마다 담당 클래스가 자기 레이아웃만 그린다.
@@ -234,7 +226,7 @@ class MainActivity : Activity() {
         driveScreen = DriveScreen(this)
         reportScreen = ReportScreen(this) { laws }
         progressScreen = ProgressScreen(this)
-        qnaScreen = QnaScreen(this)
+        qnaScreen = QnaScreen(this, KeywordQnaAnswerer(laws))
         modeScreen = ModeScreen(this)
         routePreviewScreen = RoutePreviewScreen(this, diagnosis = { diagnosisSource.load() }, onDepart = { session?.departRouteDemo() })
         routeMap = RouteMap(this)
@@ -266,7 +258,7 @@ class MainActivity : Activity() {
     }
 
     private fun finishHabits(selection: HabitSelection) {
-        // TODO(엔진 모드 입력, spec v0.2 · AI 담당 11/16): 교정(CORRECT) 모드와 고른 습관을 엔진에 넘긴다.
+        // TODO(엔진 모드 입력, AI 담당): 고른 습관을 엔진에 넘긴다.
         //  지금은 엔진에 넘기지 않고, 주행 화면 한 줄 문구에만 보여준다.
         session?.showMessage(selection.summary())
         screen = Screen.DRIVE
@@ -372,7 +364,7 @@ class MainActivity : Activity() {
             current.stopAll()
             return
         }
-        val missing = LIVE_PERMISSIONS.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
+        val missing = CoachSession.LIVE_PERMISSIONS.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
         if (missing.isEmpty()) startLive() else requestPermissions(missing.toTypedArray(), REQUEST_LIVE)
     }
 
@@ -564,7 +556,6 @@ class MainActivity : Activity() {
         const val PREFS = "kkam"
         const val KEY_OVERLAY_ASKED = "overlay_asked"
         const val KEY_NAVI_AFTER_PLAY = "navi_after_play"
-        val LIVE_PERMISSIONS = CoachSession.LIVE_PERMISSIONS
         val TILE_LABELS = listOf("속도", "핸들 각도", "깜빡이", "기어", "내비 TBT", "전방 신호", "전조등", "와이퍼·비", "성에·순환")
     }
 }

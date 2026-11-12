@@ -164,7 +164,7 @@ class ProgressScreen(
         return column
     }
 
-    /** 막대 위·아래 글자 (퍼센트, 요일). 오늘만 흰 글씨 굵게. */
+    /** 막대 위·아래 글자 (퍼센트, 요일). 오늘만 진한 글씨(text) 굵게. */
     private fun columnLabel(label: String, today: Boolean) = styled(R.style.Kk_Caption).apply {
         text = label
         gravity = Gravity.CENTER

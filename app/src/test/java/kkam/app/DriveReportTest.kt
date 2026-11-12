@@ -67,6 +67,25 @@ class DriveReportTest {
     }
 
     @Test
+    fun `유턴 판정은 좌우회전 행이 아니라 유턴이 들어 있는 행의 조항을 붙인다`() {
+        val report = buildReport(
+            listOf(
+                event("evt-1", RuleId.R1, Result.KEPT, guided = true, turn = TurnType.LEFT),
+                event("evt-2", RuleId.R1, Result.MISSED, guided = true, turn = TurnType.UTURN),
+            ),
+            laws + law("LAW-03", "제38조제1항", "범칙금 3만 원 (유턴)"),
+        )
+
+        assertEquals(
+            listOf(
+                ReportItem(false, "유턴 깜빡이 놓침", "놓쳤어요", "제38조제1항", "처분: 범칙금 3만 원 (유턴)"),
+                ReportItem(true, "좌회전 깜빡이 지킴", "안내 듣고 지켰어요", "제38조", "단속됐다면: 범칙금 3만 원"),
+            ),
+            report.items,
+        )
+    }
+
+    @Test
     fun `나들목과 터널 판정도 리포트에 나온다`() {
         val report = buildReport(
             listOf(

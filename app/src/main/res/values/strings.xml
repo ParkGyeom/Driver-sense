@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">깜빡코치</string>
+    <string name="app_name">Driver Sense</string>
 
     <!-- 주행 리포트 (기어 P) -->
     <string name="report_title">오늘 주행 리포트</string>

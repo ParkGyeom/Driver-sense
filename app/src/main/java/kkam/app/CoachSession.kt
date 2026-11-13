@@ -132,7 +132,7 @@ class CoachSession(context: Context) {
                 routeFastForward = frame.t in run.fastForward
                 // 도착 프레임에서 경로를 끝낸다. 뒤따르는 기어 P 프레임에서 경로 리포트가 열린다.
                 if (frame.t == run.arriveAt) state = state.endRoute(RouteStatus.ARRIVED)
-                if (run.laneCues.any { it.showAt == frame.t }) speaker.speak(LANE_CHANGE_SPEECH)
+                run.laneCues.firstOrNull { it.showAt == frame.t }?.let { speaker.speak(laneChangeSpeech(it.toRight)) }
                 onFrame(frame, laneChangePopup(run.laneCues, frame.t))
             },
             onEnd = {

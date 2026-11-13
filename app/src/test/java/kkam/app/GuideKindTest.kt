@@ -1,16 +1,21 @@
 package kkam.app
 
+import kkam.engine.Engine
 import kkam.engine.model.Gear
 import kkam.engine.model.Guide
 import kkam.engine.model.GuideAction
 import kkam.engine.model.RuleId
+import kkam.engine.model.Scenario
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.Tbt
 import kkam.engine.model.TurnSignal
 import kkam.engine.model.TurnType
+import kotlinx.serialization.json.Json
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class GuideKindTest {
     private val frame = SignalFrame(4000, 30.0, Gear.D, 0.0, TurnSignal.OFF, false, 37.55, 127.07, 90.0, Tbt(TurnType.LEFT, 60), null)
@@ -40,6 +45,40 @@ class GuideKindTest {
         val state = CoachState(guideKind = GuideKind.WIPER).resetDrive("S2")
 
         assertEquals(GuideKind.TURN_SIGNAL, state.guideKind)
+    }
+
+    @Test
+    fun `유턴 시나리오(S25)는 유턴 카드로 왼쪽 깜빡이를 안내하고, 켜면 좋아요`() {
+        val frames = Json { ignoreUnknownKeys = true }
+            .decodeFromString(Scenario.serializer(), File("../scenarios/S25_유턴_안내후_켬.json").readText()).frames
+        val engine = Engine()
+        var state = CoachState()
+        var popup: Popup? = null
+        val popups = frames.map { f ->
+            val out = engine.onFrame(f)
+            state = state.next(f, out)
+            popup = nextPopup(popup, state, out, f)
+            popup
+        }
+        val warn = popups.filterNotNull().first()
+        assertEquals(Popup(PopupTone.WARN, GuideKind.UTURN, false, "유턴", warn.distanceLabel, "왼쪽 깜빡이 켜세요", TurnType.UTURN), warn)
+        assertEquals(PopupTone.OK, popups.filterNotNull().last().tone)
+        assertEquals(LeverMotion.LEFT_DOWN, leverMotion(GuideKind.UTURN, right = false))
+    }
+
+    @Test
+    fun `미리보기는 유턴도 보여준다`() {
+        val state = CoachState().preview(GuideKind.UTURN)
+        assertEquals(Popup(PopupTone.WARN, GuideKind.UTURN, false, "유턴", "60 m", "왼쪽 깜빡이 켜세요"), state.previewPopup())
+        assertTrue(GuideKind.entries.indexOf(GuideKind.UTURN) == GuideKind.entries.indexOf(GuideKind.TURN_SIGNAL) + 1)
+    }
+
+    @Test
+    fun `회전교차로는 미리보기에만 있다 - 나갈 때 오른쪽 깜빡이, 엔진 룰과 연결되지 않는다`() {
+        val state = CoachState().preview(GuideKind.ROUNDABOUT)
+        assertEquals(Popup(PopupTone.WARN, GuideKind.ROUNDABOUT, true, "회전교차로 나갈 때", "40 m", "오른쪽 깜빡이 켜세요"), state.previewPopup())
+        assertEquals(LeverMotion.LEFT_UP, leverMotion(GuideKind.ROUNDABOUT, right = true))
+        assertTrue(RuleId.entries.none { it.guideKind() == GuideKind.ROUNDABOUT })
     }
 
     @Test

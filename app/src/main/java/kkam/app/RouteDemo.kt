@@ -9,6 +9,7 @@ import kkam.engine.model.TrafficLight
 import kkam.engine.model.TurnSignal
 import kkam.engine.model.TurnType
 import kkam.engine.model.WiperMode
+import kkam.engine.rules.CHECK_AT_M
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
@@ -17,6 +18,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.double
 import kotlin.math.atan2
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -76,6 +78,8 @@ object RouteDemo {
         val driver: Driver? = null,
         /** 이 우회전 앞 신호가 적색인가 (R3 데모 값). */
         val redLight: Boolean = false,
+        /** 차선 변경 방향. 오른쪽 차로로 옮기면 true. 차선 변경 지점에만 쓴다 (데모 파일의 "side": "LEFT" | "RIGHT", 없으면 오른쪽). */
+        val toRight: Boolean = true,
     )
 
     data class DemoRoute(
@@ -87,8 +91,11 @@ object RouteDemo {
         val expressway: IntRange,
     )
 
-    /** 차선 변경 팝업 시각. [showAt]에 주황 안내, [okAt]에 깜빡이를 켜 파랑 "좋아요", [hideAt]에 숨김. */
-    data class LaneCue(val showAt: Long, val okAt: Long, val hideAt: Long)
+    /**
+     * 차선 변경 팝업 시각. [showAt]에 주황 안내, [okAt]에 깜빡이를 켜 파랑 "좋아요", [hideAt]에 숨김.
+     * [toRight]는 옮겨 갈 차로 방향이다. 팝업 제목("오른쪽 차로로")과 음성, 켜는 깜빡이 방향이 이 값을 따른다.
+     */
+    data class LaneCue(val showAt: Long, val okAt: Long, val hideAt: Long, val toRight: Boolean = true)
 
     /** 데모 한 번: 경로 정보, 재생할 프레임, 도착 시각, 빨리 감는 프레임 시각, 차선 변경 팝업 시각. */
     data class Run(
@@ -106,6 +113,9 @@ object RouteDemo {
     const val CITY_KPH = 40.0
     /** 자동차전용도로 순항 속도. */
     const val EXPRESS_KPH = 80.0
+    /** 예상 소요 시간([expectedMinutes])에 쓰는 평균 속도. 시내는 신호 대기를 넣어 순항보다 느리다. */
+    const val CITY_AVG_KPH = 25.0
+    const val EXPRESS_AVG_KPH = 60.0
     const val TURN_KPH = 15.0
     /**
      * 회전 지점 이 거리 앞부터 [TURN_KPH]까지 줄인다. 일찍 줄여서 회전 앞을 천천히 지나므로
@@ -114,8 +124,11 @@ object RouteDemo {
     const val SLOW_FROM_M = 100.0
     /** 1초에 올릴 수 있는 속도. */
     const val ACCEL_KPH_PER_FRAME = 8.0
-    /** 도착 지점 이 거리 앞부터 멈출 때까지 줄인다. */
-    const val STOP_FROM_M = 50.0
+    /**
+     * 도착 지점 이 거리 앞부터 일정하게 브레이크를 밟아 멈춘다 (속도 ∝ √남은 거리, [targetKph]).
+     * 남은 거리에 비례해 줄이면 마지막 몇 m를 5 km/h로 오래 기어가서, 도착에서 리포트까지 15초 넘게 걸렸다.
+     */
+    const val STOP_FROM_M = 30.0
     const val MIN_KPH = 5.0
     /** [Driver.EARLY]가 회전 깜빡이를 켜는 거리 (안내 거리 50~100m보다 앞). */
     const val EARLY_ON_M = 95
@@ -132,8 +145,24 @@ object RouteDemo {
     const val SIGNAL_OFF_PAST_M = 15.0
     /** 터널 입구 이 거리 안에서 전조등을 켠다 (R5 안내 200m에서 약 4초 뒤). 켠 뒤로는 계속 켜 둔다. */
     const val HEADLIGHT_ON_M = 100
-    /** 적색 신호를 보는 거리 (R1·R3 감시 100m보다 앞). 회전을 지나 [SIGNAL_OFF_PAST_M]까지 적색이다. */
-    const val RED_FROM_M = 120
+    /**
+     * 적색 우회전 장면 각본. 깜빡이 안내와 정지 안내가 한 프레임에 겹치면 정지 카드만 보이고 음성도 끊긴다.
+     * 그래서 신호가 늦게 적색으로 바뀌게 해서 두 안내를 차례로 보여준다.
+     * R3는 판정 지점([kkam.engine.rules.CHECK_AT_M] 30m) 앞에서만 안내하므로 50~30m 사이를 [RED_CREEP_KPH]로 천천히 지난다.
+     *
+     * | 회전까지 | 차 | 엔진·카드 |
+     * | --- | --- | --- |
+     * | 약 50m | 깜빡이 꺼짐 | R1 안내 "우회전 곧이에요, 깜빡이 켜세요" → 주황 카드 |
+     * | [RED_SIGNAL_ON_M] | 오른쪽 깜빡이 켬 | 파랑 "좋아요" |
+     * | [RED_FROM_M] | 신호가 적색으로 바뀜 | R3 감시 시작, 다음 프레임에 안내 "멈췄다 가세요" → 주황 카드 |
+     * | 정지선 ([STOP_LINE_M]) | 멈춤 | 파랑 "좋아요" |
+     */
+    const val RED_SIGNAL_ON_M = 41
+    /** 적색이 되는 거리. 회전을 지나 [SIGNAL_OFF_PAST_M]까지 적색이다. */
+    const val RED_FROM_M = 38
+    /** 적색 우회전 앞 [RED_CREEP_FROM_M] ~ 30m를 지나는 속도. 1초에 약 2m씩 가서 두 안내 사이에 몇 초씩 둔다. */
+    const val RED_CREEP_KPH = 8.0
+    const val RED_CREEP_FROM_M = 50.0
     /** 적색 우회전에서 멈추는 정지선 (회전 지점 앞, R3 판정 30m 안). */
     const val STOP_LINE_M = 8.0
     /** 정지선에서 서 있는 프레임 수. */
@@ -166,7 +195,7 @@ object RouteDemo {
     /** 출발 직후 이 거리까지는 실제 속도로 출발하는 모습을 보여준다. */
     const val DEPART_M = 60.0
     /** 도착 전 이 거리부터 실제 속도. */
-    const val ARRIVE_M = 80.0
+    const val ARRIVE_M = 40.0
     /** 도착 후 기어 P로 서 있는 프레임 수. */
     const val PARKED_FRAMES = 3
 
@@ -175,7 +204,8 @@ object RouteDemo {
      * 앞 거리는 엔진이 지점을 보기 시작하는 거리보다 길다 (R1·R3 100m, R5 안내 200m, R4 300m).
      */
     fun window(kind: CueKind): Pair<Double, Double> = when (kind) {
-        CueKind.LEFT, CueKind.RIGHT -> 120.0 to 40.0
+        // 회전 뒤는 판정(회전을 마친 직후)이 나올 만큼만. 길면 마지막 회전에서 도착까지가 늘어진다.
+        CueKind.LEFT, CueKind.RIGHT -> 120.0 to 25.0
         CueKind.LANE_CHANGE -> 20.0 to 130.0
         CueKind.TUNNEL -> 260.0 to 30.0
         CueKind.RAMP_RIGHT -> 320.0 to 20.0
@@ -184,7 +214,7 @@ object RouteDemo {
 
     /**
      * assets의 경로 데모 JSON을 읽는다. 모양:
-     * {"start", "destination", "points": [[lat, lon], ...], "cues": [{"kind", "point", "road", "driver"?, "redLight"?}], "expressway": {"from", "to"}}
+     * {"start", "destination", "points": [[lat, lon], ...], "cues": [{"kind", "point", "road", "driver"?, "redLight"?, "side"?}], "expressway": {"from", "to"}}
      */
     fun parse(text: String): DemoRoute {
         val root = Json.parseToJsonElement(text).jsonObject
@@ -204,6 +234,7 @@ object RouteDemo {
                     road = c.getValue("road").jsonPrimitive.content,
                     driver = c["driver"]?.jsonPrimitive?.content?.let(Driver::valueOf),
                     redLight = c["redLight"]?.jsonPrimitive?.boolean ?: false,
+                    toRight = c["side"]?.jsonPrimitive?.content != "LEFT",
                 )
             },
             expressway = express.getValue("from").jsonPrimitive.int..express.getValue("to").jsonPrimitive.int,
@@ -278,7 +309,7 @@ object RouteDemo {
 
             cues.firstOrNull { it.cue.kind == CueKind.LANE_CHANGE && it !in laneShown && s >= it.atM }?.let {
                 laneShown += it
-                laneCues += LaneCue(t, t + LANE_SIGNAL_AFTER_MS, t + LANE_SIGNAL_AFTER_MS + LANE_SIGNAL_MS + LANE_OK_MS)
+                laneCues += LaneCue(t, t + LANE_SIGNAL_AFTER_MS, t + LANE_SIGNAL_AFTER_MS + LANE_SIGNAL_MS + LANE_OK_MS, it.cue.toRight)
             }
             if (rainStartAt == null && cues.any { it.cue.kind == CueKind.RAIN && s >= it.atM }) rainStartAt = t
 
@@ -299,16 +330,16 @@ object RouteDemo {
             emit(end, 0.0, Gear.P, brake = true, tbt = null)
         }
 
-        // 차선 변경 깜빡이: 팝업 뒤 [LANE_SIGNAL_AFTER_MS]부터 [LANE_SIGNAL_MS] 동안 오른쪽 깜빡이를 켠다.
+        // 차선 변경 깜빡이: 팝업 뒤 [LANE_SIGNAL_AFTER_MS]부터 [LANE_SIGNAL_MS] 동안 옮겨 갈 쪽 깜빡이를 켠다.
         // 엔진에는 차선 변경 룰이 없고, 이 동안 속도가 30 km/h보다 높아 R2도 회전으로 세지 않는다.
         // 나들목 깜빡이: 차로를 옮긴 뒤(R4 판정 100m 지점을 지난 뒤) 끈다.
         // 켜 둔 채로 나들목까지 가면 R4가 같은 나들목을 다시 지킴으로 센다 (판정 뒤 대기로 돌아가 300m 안이면 다시 감시한다).
         val rampChecked = frames.firstOrNull { it.tbt?.turn == TurnType.RAMP_RIGHT && (it.tbt?.distanceM ?: Int.MAX_VALUE) <= RAMP_CHECK_M }?.t
         val withLaneSignal = frames.map { f ->
-            val laneOn = laneCues.any { f.t >= it.okAt && f.t < it.okAt + LANE_SIGNAL_MS }
+            val lane = laneCues.firstOrNull { f.t >= it.okAt && f.t < it.okAt + LANE_SIGNAL_MS }
             val rampDone = rampChecked != null && f.t > rampChecked && f.tbt?.turn == TurnType.RAMP_RIGHT
             val signal = when {
-                laneOn -> TurnSignal.RIGHT
+                lane != null -> if (lane.toRight) TurnSignal.RIGHT else TurnSignal.LEFT
                 rampDone -> TurnSignal.OFF
                 else -> f.turnSignal
             }
@@ -320,8 +351,18 @@ object RouteDemo {
             distanceM = path.length.roundToInt(),
             turns = navi.map { it.cue.kind.turn!! },
             path = route.points,
+            durationMin = expectedMinutes(path.length, express.endInclusive - express.start),
         )
         return Run(plan, withLaneSignal, arriveAt, fast, laneCues)
+    }
+
+    /**
+     * 미리보기에 보여줄 예상 소요 시간 (분, 올림). 데모 재생 시간이 아니라 실제로 달리면 걸릴 시간이다.
+     * 자동차전용도로는 [EXPRESS_AVG_KPH], 나머지 시내는 신호 대기를 포함한 [CITY_AVG_KPH]로 어림한다.
+     */
+    fun expectedMinutes(totalM: Double, expressM: Double): Int {
+        val hours = expressM / 1000.0 / EXPRESS_AVG_KPH + (totalM - expressM) / 1000.0 / CITY_AVG_KPH
+        return ceil(hours * 60).toInt()
     }
 
     /** 데모 파일의 코치 지점과 경로 위 거리. */
@@ -366,20 +407,25 @@ object RouteDemo {
         return merged
     }
 
-    /** 다음 회전 속도로 줄이고, 적색 우회전은 정지선 앞에서, 도착 앞에서는 멈출 만큼 줄인다. */
+    /**
+     * 다음 회전 속도로 줄이고, 적색 우회전은 정지선 앞에서, 도착 앞에서는 멈출 만큼 줄인다.
+     * 적색 우회전은 두 안내를 차례로 보여주려고 [RED_CREEP_FROM_M]~30m를 [RED_CREEP_KPH]로 지난다 ([RED_SIGNAL_ON_M] 표).
+     */
     private fun targetKph(cues: List<Placed>, stopped: Set<Placed>, length: Double, s: Double, cruise: Double): Double {
         val turn = cues.firstOrNull { it.atM > s && (it.cue.kind == CueKind.LEFT || it.cue.kind == CueKind.RIGHT) }
         val forTurn = when {
             turn == null -> cruise
             turn.cue.redLight && turn !in stopped -> {
                 val toLine = turn.atM - STOP_LINE_M - s
-                if (toLine < SLOW_FROM_M) cruise * toLine / SLOW_FROM_M else cruise
+                val slowing = if (toLine < SLOW_FROM_M) cruise * toLine / SLOW_FROM_M else cruise
+                val creeping = turn.atM - s in CHECK_AT_M.toDouble()..RED_CREEP_FROM_M
+                if (creeping) min(slowing, RED_CREEP_KPH) else slowing
             }
             turn.atM - s < SLOW_FROM_M -> TURN_KPH + (cruise - TURN_KPH) * (turn.atM - s) / SLOW_FROM_M
             else -> cruise
         }
         val toEnd = length - s
-        val forStop = if (toEnd < STOP_FROM_M) cruise * toEnd / STOP_FROM_M else cruise
+        val forStop = if (toEnd < STOP_FROM_M) cruise * sqrt(toEnd / STOP_FROM_M) else cruise
         return maxOf(MIN_KPH, minOf(forTurn, forStop))
     }
 
@@ -405,7 +451,11 @@ object RouteDemo {
             }
             val onAt = when (placed.cue.driver) {
                 Driver.EARLY -> EARLY_ON_M
-                Driver.AFTER_GUIDE -> if (placed.cue.kind == CueKind.RAMP_RIGHT) RAMP_ON_M else AFTER_GUIDE_ON_M
+                Driver.AFTER_GUIDE -> when {
+                    placed.cue.kind == CueKind.RAMP_RIGHT -> RAMP_ON_M
+                    placed.cue.redLight -> RED_SIGNAL_ON_M
+                    else -> AFTER_GUIDE_ON_M
+                }
                 Driver.NEVER, null -> return TurnSignal.OFF
             }
             return if (ahead <= onAt) signal else TurnSignal.OFF

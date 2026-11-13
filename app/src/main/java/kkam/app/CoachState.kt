@@ -139,6 +139,12 @@ private fun SignalFrame.target(): Target? {
         } else {
             signalTarget(tbt.turn, GuideKind.TURN_SIGNAL, CHECK_AT_M, "지금 켜세요")
         }
+        // 유턴은 왼쪽 깜빡이 (시행령 별표 2 1호). 판정 거리는 회전과 같다 (spec 3장)
+        TurnType.UTURN -> if (tbt.distanceM > APPROACH_START_M) {
+            null
+        } else {
+            signalTarget(tbt.turn, GuideKind.UTURN, CHECK_AT_M, "왼쪽 깜빡이 켜세요")
+        }
         TurnType.RAMP_LEFT, TurnType.RAMP_RIGHT -> if (tbt.distanceM > LANE_START_M) {
             null
         } else {
@@ -201,8 +207,8 @@ fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>, quiet: Bool
     for (output in outputs) {
         state = when (output) {
             is Guide -> state.copy(
-                guideKind = output.rule.guideKind() ?: state.guideKind,
-                guidedKind = output.rule.guideKind(),
+                guideKind = output.guideKind(frame.tbt?.turn) ?: state.guideKind,
+                guidedKind = output.guideKind(frame.tbt?.turn),
                 guideAction = output.action,
                 right = output.action.isRight(),
                 message = output.text,

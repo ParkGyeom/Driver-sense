@@ -5,6 +5,8 @@ import kkam.engine.model.LawEntry
 import kkam.engine.model.Result
 import kkam.engine.model.RuleId
 import kkam.engine.model.TurnType
+import java.time.LocalTime
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 // 경로 코치: 내비에서 목적지를 찍으면 그 경로를 따라 코치한다.
@@ -24,6 +26,8 @@ data class RoutePlan(
     val turns: List<TurnType>,
     /** 경로 좌표. 앱 지도에 경로선을 그린다. 내비 SDK는 좌표를 주지 않아서 경로 데모에만 있다. */
     val path: List<LatLon> = emptyList(),
+    /** 예상 소요 시간 (분). 경로 데모는 구간별 평균 속도로 계산해 넣는다. 모르면 null이고 [estimatedMinutes]가 거리로 어림한다. */
+    val durationMin: Int? = null,
 )
 
 /** 경로 주행 상태. */
@@ -98,17 +102,18 @@ private fun Habit.routeTurns(): Set<TurnType> = when (this) {
     Habit.RIGHT_SIGNAL, Habit.RED_RIGHT_STOP -> setOf(TurnType.RIGHT)
 }
 
-/** 출발 전(기어 P) 경로 미리보기 카드에 그릴 값. */
+/**
+ * 출발 전(기어 P) 경로 미리보기에 그릴 값. 보통 내비의 경로 요약처럼 소요 시간·거리·도착 시각이 주인공이고,
+ * 코치 정보는 그 아래 한 줄([coachPoints], [weakSpot])이다.
+ */
 data class RoutePreview(
     val destination: String,
     /** 예: "4.2 km". 거리를 모르면 빈 문자열. */
     val distanceLabel: String,
+    /** 예상 소요 시간 (분). 거리도 모르면 null. 도착 시각은 화면이 지금 시각에 더해 그린다 ([arrivalLabel]). */
+    val minutes: Int?,
     /** 코치할 지점 수 (좌·우회전, 나들목, 터널). */
     val coachPoints: Int,
-    /** 종류별 개수. 예: ["좌회전 2", "우회전 1"]. 없는 종류는 뺀다. */
-    val counts: List<String>,
-    /** 경로 순서. 예: ["좌회전", "우회전", "좌회전"]. 코치할 지점만. */
-    val sequence: List<String>,
     val weakSpot: WeakSpot?,
     /** 이번 경로에서 약한 곳이 나오는 횟수. */
     val weakOnRoute: Int,
@@ -120,13 +125,40 @@ fun buildRoutePreview(plan: RoutePlan, todayEvents: List<Event>, diagnosis: Diag
     return RoutePreview(
         destination = plan.destination,
         distanceLabel = distanceLabel(plan.distanceM),
+        minutes = plan.estimatedMinutes(),
         coachPoints = coached.size,
-        counts = coached.groupingBy { it.groupLabel() }.eachCount().map { (label, count) -> "$label $count" },
-        sequence = coached.map { it.groupLabel() },
         weakSpot = weak,
         weakOnRoute = weak?.let { spot -> coached.count { it in spot.turns } } ?: 0,
     )
 }
+
+/** 소요 시간을 모를 때 거리로 어림하는 평균 속도. 신호 대기를 포함한 도심 평균이다. */
+const val FALLBACK_AVG_KPH = 30.0
+
+/** 예상 소요 시간 (분, 올림). 내비·데모가 준 값이 먼저고, 없으면 거리 ÷ [FALLBACK_AVG_KPH]. 거리도 모르면 null. */
+fun RoutePlan.estimatedMinutes(): Int? = durationMin ?: if (distanceM > 0) {
+    ceil(distanceM / METERS_PER_KM.toDouble() / FALLBACK_AVG_KPH * MINUTES_PER_HOUR).toInt()
+} else {
+    null
+}
+
+/** 35 → "35분", 60 → "1시간", 95 → "1시간 35분" */
+fun durationLabel(minutes: Int): String = when {
+    minutes < MINUTES_PER_HOUR -> "${minutes}분"
+    minutes % MINUTES_PER_HOUR == 0 -> "${minutes / MINUTES_PER_HOUR}시간"
+    else -> "${minutes / MINUTES_PER_HOUR}시간 ${minutes % MINUTES_PER_HOUR}분"
+}
+
+/** 지금 [now]에 [minutes]를 더한 도착 시각. 예: "오후 1:35 도착". 시각을 인자로 받아서 JVM 테스트로 확인한다. */
+fun arrivalLabel(now: LocalTime, minutes: Int): String {
+    val at = now.plusMinutes(minutes.toLong())
+    val half = if (at.hour < NOON) "오전" else "오후"
+    val hour = (at.hour % NOON).let { if (it == 0) NOON else it }
+    return "$half $hour:${"%02d".format(at.minute)} 도착"
+}
+
+private const val MINUTES_PER_HOUR = 60
+private const val NOON = 12
 
 /** 1234 → "1.2 km", 800 → "800 m", 0 → "" */
 fun distanceLabel(meters: Int): String = when {

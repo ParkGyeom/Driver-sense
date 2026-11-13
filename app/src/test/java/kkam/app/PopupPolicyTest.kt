@@ -49,6 +49,17 @@ class PopupPolicyTest {
     }
 
     @Test
+    fun `판정 지점(30m)을 꺼진 채 지나면 빨강 "다음엔 미리 켜요"로 바뀐다`() {
+        val (guided, warn) = step(CoachState(), null, frame(TurnSignal.OFF, near), listOf(guide))
+        val (late, miss) = step(guided, warn, frame(TurnSignal.OFF, Tbt(TurnType.LEFT, 25)), emptyList())
+
+        assertEquals(Popup(PopupTone.MISS, GuideKind.TURN_SIGNAL, false, "좌회전", "25 m", "다음엔 미리 켜요", TurnType.LEFT), miss)
+        assertEquals(CardLook.MISS, miss?.tone?.look())
+        // 지나서 깜빡이를 켜도 빨강으로 남는다 (판정 지점에서 색이 고정된다)
+        assertEquals(PopupTone.MISS, step(late, miss, frame(TurnSignal.LEFT, Tbt(TurnType.LEFT, 15)), emptyList()).second?.tone)
+    }
+
+    @Test
     fun `놓침이면 숨기고 지킴이면 파랑으로 바꾼다`() {
         val (guided, warn) = step(CoachState(), null, frame(TurnSignal.OFF, near), listOf(guide))
 

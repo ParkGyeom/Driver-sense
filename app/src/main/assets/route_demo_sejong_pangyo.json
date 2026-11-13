@@ -1,6 +1,6 @@
 {
  "name": "세종대학교 → 포티투닷 (42dot) 경로 데모",
- "description": "OpenStreetMap 도로를 OSRM으로 한 번 계산한 경로 (세종대학교 옆 군자로 → 광나루로 → 능동로 → 청담대교 → 분당수서로 → 서현로 → 대왕판교로 → 창업로). 가장 빠른 길(송파대로·헌릉로)이 아니라 분당수서로를 지나게 경유지를 두었다 (터널·나들목 코치 지점). cues는 경로 위 코치 지점이다. 회전·나들목은 OSRM 안내 지점, 터널은 OSM에서 tunnel=yes인 분당수서로 구간의 입구다. 적색 신호와 운전자 동작(driver)은 데모 값이다. RAIN은 비가 오기 시작하는 지점으로, 날씨라서 내비 안내가 아니다 (데모 값). expressway는 자동차전용도로(청담대교~분당수서로) 구간의 꼭짓점 번호다.",
+ "description": "OpenStreetMap 도로를 OSRM으로 한 번 계산한 경로 (세종대학교 옆 군자로 → 광나루로 → 능동로 → 청담대교 → 분당수서로 → 서현로 → 대왕판교로 → 창업로). 가장 빠른 길(송파대로·헌릉로)이 아니라 분당수서로를 지나게 경유지를 두었다 (터널·나들목 코치 지점). cues는 경로 위 코치 지점이다. 회전·나들목은 OSRM 안내 지점, 터널은 OSM에서 tunnel=yes인 분당수서로 구간의 입구다. 적색 신호와 운전자 동작(driver), 차선 변경 방향(side)은 데모 값이다. RAIN은 비가 오기 시작하는 지점으로, 날씨라서 내비 안내가 아니다 (데모 값). expressway는 자동차전용도로(청담대교~분당수서로) 구간의 꼭짓점 번호다.",
  "source": "© OpenStreetMap contributors, route by OSRM",
  "start": "세종대학교",
  "destination": "포티투닷 (42dot)",
@@ -2053,13 +2053,14 @@
    "kind": "RIGHT",
    "point": 26,
    "road": "능동로",
-   "driver": "EARLY",
+   "driver": "AFTER_GUIDE",
    "redLight": true
   },
   {
    "kind": "LANE_CHANGE",
    "point": 54,
-   "road": "능동로"
+   "road": "능동로",
+   "side": "RIGHT"
   },
   {
    "kind": "RAIN",

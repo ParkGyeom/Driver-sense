@@ -44,6 +44,8 @@ class RouteDemoTest {
         // 차선 변경과 비는 내비 안내가 아니라서 경로 안내 순서(미리보기 칩)에 없다
         assertEquals(listOf(TurnType.LEFT, TurnType.RIGHT, TurnType.TUNNEL, TurnType.RAMP_RIGHT, TurnType.RIGHT), run.plan.turns)
         assertEquals(route.points, run.plan.path)
+        // 미리보기의 예상 소요 시간: 자동차전용도로 60 km/h, 시내 25 km/h로 어림한 실제 주행 시간 (재생 시간이 아니다)
+        assertTrue(run.plan.durationMin!! in 30..50, "${run.plan.durationMin}분")
         assertTrue(route.cues.zipWithNext().all { (a, b) -> a.point < b.point })
     }
 
@@ -60,9 +62,10 @@ class RouteDemoTest {
                 // 광나루로 좌회전: 안내 듣고 켬 → 지킴
                 "GUIDE R1",
                 "EVENT R1 KEPT guided=true",
-                // 능동로 적색 우회전: 깜빡이는 미리 켬(R1 안내 없이 지킴), 정지 안내 → 정지선에서 멈춤 → 지킴
+                // 능동로 적색 우회전: 깜빡이 안내 → 켬, 이어서 적색이 되어 정지 안내 → 정지선에서 멈춤 → 둘 다 지킴
+                "GUIDE R1",
                 "GUIDE R3",
-                "EVENT R1 KEPT guided=false",
+                "EVENT R1 KEPT guided=true",
                 "EVENT R3 KEPT guided=true",
                 // 자동차전용도로 비 구간: 와이퍼 안내 → 켬 → 지킴, 이어서 김서림 안내 → 성에 제거 켬 → 지킴
                 "GUIDE R6",
@@ -137,12 +140,40 @@ class RouteDemoTest {
     }
 
     @Test
+    fun `적색 우회전은 깜빡이 안내와 정지 안내를 다른 프레임에서 차례로 낸다 - 사이에 깜빡이를 켠다`() {
+        val red = route.cues.single { it.redLight }
+        assertEquals(RouteDemo.Driver.AFTER_GUIDE, red.driver)
+        val r3 = outputs.single { it.second is Guide && it.second.rule == RuleId.R3 }.first
+        val r1BeforeRed = outputs.last { it.second is Guide && it.second.rule == RuleId.R1 && it.first < r3 }.first
+        assertEquals(TurnType.RIGHT, run.frames.single { it.t == r1BeforeRed }.tbt?.turn)
+        // 깜빡이 안내를 3초 이상 읽고, 켠 뒤 "좋아요"도 보인 다음에 정지 안내가 나온다 (음성이 서로 끊지 않는다)
+        assertTrue(r3 - r1BeforeRed >= 5_000, "R1 ${r1BeforeRed / 1000}s, R3 ${r3 / 1000}s")
+        val signalOn = run.frames.first { it.t > r1BeforeRed && it.turnSignal == TurnSignal.RIGHT }.t
+        assertTrue(signalOn - r1BeforeRed >= 3_000 && signalOn < r3, "깜빡이 ${signalOn / 1000}s")
+        assertEquals(null, run.frames.single { it.t == signalOn }.light, "깜빡이를 켤 때는 아직 적색이 아니다")
+    }
+
+    @Test
+    fun `도착 장면은 짧다 - 마지막 판정에서 기어 P까지 15초 안`() {
+        val lastEvent = outputs.last { it.second is Event }.first
+        val parked = run.frames.first { it.gear == Gear.P && it.t > run.arriveAt }.t
+        assertTrue(parked - lastEvent <= 15_000, "마지막 판정 ${lastEvent / 1000}s → 기어 P ${parked / 1000}s")
+        // 멈추기 전 마지막 몇 m를 5 km/h로 기어가지 않는다
+        val crawl = run.frames.filter { it.t in lastEvent..run.arriveAt && it.speedKph in 0.1..RouteDemo.MIN_KPH }
+        assertTrue(crawl.size <= 1, "기어가는 프레임 ${crawl.size}개")
+    }
+
+    @Test
     fun `차선 변경은 팝업만 - 오른쪽 깜빡이를 잠깐 켜고 판정은 없다`() {
         // 팝업이 떠 있는 동안은 실제 속도 (빨리 감기에서 팝업이 스쳐 지나가지 않는다)
         run.laneCues.forEach { cue -> assertTrue((cue.showAt until cue.hideAt step RouteDemo.FRAME_MS).none { it in run.fastForward }) }
         assertEquals(1, run.laneCues.size)
         val cue = run.laneCues.single()
         assertTrue(cue.showAt < cue.okAt && cue.okAt < cue.hideAt)
+        // 어느 쪽 차로로 옮기는지 팝업 제목과 음성이 말한다
+        assertTrue(cue.toRight)
+        assertEquals("오른쪽 차로로", laneChangePopup(run.laneCues, cue.showAt)?.turnLabel)
+        assertEquals("오른쪽 차로로 옮겨요, 오른쪽 깜빡이 켜세요", laneChangeSpeech(cue.toRight))
         val during = run.frames.filter { it.t >= cue.okAt && it.t < cue.okAt + RouteDemo.LANE_SIGNAL_MS }
         assertTrue(during.isNotEmpty() && during.all { it.turnSignal == TurnSignal.RIGHT && it.speedKph > 30.0 })
         assertTrue(outputs.none { (t, _) -> t in cue.showAt..cue.hideAt })

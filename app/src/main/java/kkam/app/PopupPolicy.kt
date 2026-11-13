@@ -8,8 +8,8 @@ import kkam.engine.model.Result
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnType
 
-/** 내비 위 팝업 카드 색. 주황 = 켜세요, 파랑 = 좋아요. */
-enum class PopupTone { WARN, OK }
+/** 내비 위 팝업 카드 색. 주황 = 켜세요, 파랑 = 좋아요, 빨강 = 판정 지점을 꺼진 채 지남 ("다음엔 미리 켜요"). */
+enum class PopupTone { WARN, OK, MISS }
 
 /** 내비 위에 띄울 작은 안내 카드. 값은 모두 [CoachState]에서 온다. */
 data class Popup(
@@ -41,7 +41,7 @@ data class Popup(
  * | 와이퍼·김서림 카드가 파랑 | 그대로 둔다. 판정 뒤 카드는 내비 안내로 돌아가 대기가 되지만, "좋아요"는 몇 초 보여준다 |
  * | 내비 안내가 띄울 때와 다름 | 숨김 (재탐색이나 지나감) |
  * | 카드가 대기 상태 | 숨김 |
- * | 그 밖 | 띄움. 안내를 따랐으면 파랑, 아니면 주황 |
+ * | 그 밖 | 띄움. 안내를 따랐으면 파랑, 판정 지점을 꺼진 채 지났으면 빨강 "다음엔 미리 켜요", 아니면 주황 |
  *
  * 파랑으로 바뀐 뒤 몇 초 지나 숨기는 것은 [CoachSession]이 시간을 재서 한다.
  */
@@ -66,7 +66,12 @@ fun nextPopup(current: Popup?, state: CoachState, outputs: List<EngineOutput>, f
 }
 
 private fun CoachState.toPopup(turn: TurnType?) = Popup(
-    tone = if (tone == Tone.OK) PopupTone.OK else PopupTone.WARN,
+    tone = when {
+        tone == Tone.OK -> PopupTone.OK
+        // 판정 지점을 주황인 채로 지나 색이 고정됐으면 놓침. 주행 화면 카드의 MISS와 같은 빨강 (CoachLook)
+        checkedTone == Tone.WARN -> PopupTone.MISS
+        else -> PopupTone.WARN
+    },
     kind = guideKind,
     right = right,
     turnLabel = turnLabel,
@@ -78,11 +83,16 @@ private fun CoachState.toPopup(turn: TurnType?) = Popup(
 /** 내비 안내와 상관없이 뜨는 안내 종류인가. */
 private fun GuideKind.notTiedToNavi(): Boolean = this == GuideKind.WIPER || this == GuideKind.DEFOG
 
-/** 차선 변경 팝업 제목과 문구. 엔진 룰이 없어서 경로 데모 각본([RouteDemo.LaneCue])으로만 띄운다. */
-const val LANE_CHANGE_TITLE = "차선 변경"
+/**
+ * 차선 변경 팝업 제목과 문구. 엔진 룰이 없어서 경로 데모 각본([RouteDemo.LaneCue])으로만 띄운다.
+ * 제목에 옮겨 갈 쪽을 적는다 ("오른쪽 차로로"). 안내 종류 미리보기와 같은 모양이다.
+ */
+fun laneChangeTitle(toRight: Boolean): String = if (toRight) "오른쪽 차로로" else "왼쪽 차로로"
 const val LANE_CHANGE_HEADLINE = "깜빡이 켜고 옮기세요"
-/** 차선 변경 팝업을 띄울 때 읽는 문장. */
-const val LANE_CHANGE_SPEECH = "차선 바꿀 때 깜빡이 켜세요"
+
+/** 차선 변경 팝업을 띄울 때 읽는 문장. 어느 쪽으로 옮기는지, 어느 깜빡이를 켜는지 말한다. */
+fun laneChangeSpeech(toRight: Boolean): String =
+    if (toRight) "오른쪽 차로로 옮겨요, 오른쪽 깜빡이 켜세요" else "왼쪽 차로로 옮겨요, 왼쪽 깜빡이 켜세요"
 
 /**
  * 경로 데모의 차선 변경 팝업. 이 시각에 띄울 팝업, 각본 밖이면 null.
@@ -100,8 +110,8 @@ fun laneChangePopup(cues: List<RouteDemo.LaneCue>, t: Long): Popup? {
     return Popup(
         tone = if (ok) PopupTone.OK else PopupTone.WARN,
         kind = GuideKind.LANE_CHANGE,
-        right = true,
-        turnLabel = LANE_CHANGE_TITLE,
+        right = cue.toRight,
+        turnLabel = laneChangeTitle(cue.toRight),
         distanceLabel = "",
         headline = if (ok) "좋아요" else LANE_CHANGE_HEADLINE,
     )

@@ -5,6 +5,7 @@ import kkam.engine.model.Gear
 import kkam.engine.model.Result
 import kkam.engine.model.RuleId
 import kkam.engine.model.TurnType
+import java.time.LocalTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -20,14 +21,28 @@ class RouteCoachTest {
     )
 
     @Test
-    fun `미리보기는 코치할 지점만 세고 종류별로 묶는다`() {
+    fun `미리보기는 내비처럼 거리와 예상 시간을 주고, 코치할 지점만 센다`() {
         val preview = buildRoutePreview(plan, emptyList(), diagnosis = null)
 
         assertEquals(4, preview.coachPoints) // 직진, 유턴은 코치하지 않는다
-        assertEquals(listOf("좌회전 2", "우회전 1", "나들목 1"), preview.counts)
-        assertEquals(listOf("좌회전", "우회전", "좌회전", "나들목"), preview.sequence)
         assertEquals("4.2 km", preview.distanceLabel)
+        // 소요 시간을 모르면 거리 ÷ 도심 평균 30 km/h, 올림: 4.2 km → 8.4분 → 9분
+        assertEquals(9, preview.minutes)
         assertNull(preview.weakSpot)
+        // 내비·데모가 준 소요 시간이 있으면 그 값
+        assertEquals(35, buildRoutePreview(plan.copy(durationMin = 35), emptyList(), null).minutes)
+        assertNull(buildRoutePreview(plan.copy(distanceM = 0), emptyList(), null).minutes)
+    }
+
+    @Test
+    fun `소요 시간과 도착 시각 표시`() {
+        assertEquals("35분", durationLabel(35))
+        assertEquals("1시간", durationLabel(60))
+        assertEquals("1시간 35분", durationLabel(95))
+        assertEquals("오후 1:35 도착", arrivalLabel(LocalTime.of(13, 0), 35))
+        assertEquals("오전 12:05 도착", arrivalLabel(LocalTime.of(23, 50), 15))
+        assertEquals("오후 12:00 도착", arrivalLabel(LocalTime.of(11, 30), 30))
+        assertEquals("오전 9:07 도착", arrivalLabel(LocalTime.of(8, 59), 8))
     }
 
     @Test

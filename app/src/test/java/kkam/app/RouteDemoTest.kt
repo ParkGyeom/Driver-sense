@@ -25,7 +25,7 @@ class RouteDemoTest {
     }
 
     @Test
-    fun `경로는 세종대학교에서 포티투닷 판교까지 약 32km, 코치 지점은 좌·적색 우·차선·비·터널·나들목·우·유턴·회전교차로 순서다`() {
+    fun `경로는 세종대학교에서 포티투닷 판교까지 약 32km, 코치 지점과 각본 장면이 주행 순서대로 있다`() {
         assertEquals("세종대학교", route.start)
         assertEquals("포티투닷 (42dot)", route.destination)
         assertTrue(run.plan.distanceM in 30000..34000, "${run.plan.distanceM}")
@@ -34,21 +34,29 @@ class RouteDemoTest {
                 RouteDemo.CueKind.LEFT,
                 RouteDemo.CueKind.RIGHT,
                 RouteDemo.CueKind.LANE_CHANGE,
+                RouteDemo.CueKind.SUDDEN_STOP,
                 RouteDemo.CueKind.RAIN,
+                RouteDemo.CueKind.LANE_KEEP,
+                RouteDemo.CueKind.LANE_WAIT,
+                RouteDemo.CueKind.CURVE,
                 RouteDemo.CueKind.TUNNEL,
                 RouteDemo.CueKind.RAMP_RIGHT,
+                RouteDemo.CueKind.EXIT_SLOW,
+                RouteDemo.CueKind.PRE_LANE,
                 RouteDemo.CueKind.RIGHT,
+                RouteDemo.CueKind.BRAKE_EARLY,
+                RouteDemo.CueKind.LEFT,
                 RouteDemo.CueKind.UTURN,
                 RouteDemo.CueKind.ROUNDABOUT_ENTER,
                 RouteDemo.CueKind.ROUNDABOUT_EXIT,
             ),
             route.cues.map { it.kind },
         )
-        // 차선 변경과 비는 내비 안내가 아니라서 경로 안내 순서(미리보기 칩)에 없다
+        // 차선 변경, 비, 각본 장면은 내비 안내가 아니라서 경로 안내 순서(미리보기 칩)에 없다
         assertEquals(
             listOf(
                 TurnType.LEFT, TurnType.RIGHT, TurnType.TUNNEL, TurnType.RAMP_RIGHT, TurnType.RIGHT,
-                TurnType.UTURN, TurnType.ROUNDABOUT_ENTER, TurnType.ROUNDABOUT_EXIT,
+                TurnType.LEFT, TurnType.UTURN, TurnType.ROUNDABOUT_ENTER, TurnType.ROUNDABOUT_EXIT,
             ),
             run.plan.turns,
         )
@@ -90,6 +98,9 @@ class RouteDemoTest {
                 // 서현로 우회전: 안내했지만 안 켬 → 놓침 (리포트의 놓침 1건)
                 "GUIDE R1",
                 "EVENT R1 MISSED guided=true",
+                // 청계산로 좌회전: 안내를 듣고도 판정 지점(30m)을 지난 뒤에야 켬 → 놓침 (깜빡이 타이밍 장면)
+                "GUIDE R1",
+                "EVENT R1 MISSED guided=true",
                 // 청계산로 유턴: 안내 듣고 왼쪽 깜빡이 → 지킴
                 "GUIDE R1",
                 "EVENT R1 KEPT guided=true",
@@ -114,10 +125,10 @@ class RouteDemoTest {
     }
 
     @Test
-    fun `4분 안에 끝난다 - 미리보기, 주행, 도착 뒤 기어 P까지`() {
+    fun `5분 30초 안에 끝난다 - 미리보기, 주행, 도착 뒤 기어 P까지`() {
         val total = run.frames.last().t + RouteDemo.FRAME_MS
-        // 안내 카드를 영상에서 읽을 수 있게 주황·파랑을 몇 초씩 보여주고, 유턴·회전교차로까지 지나서 4분 가까이 된다
-        assertTrue(total <= 240_000, "총 ${total / 1000}초")
+        // 안내 카드를 영상에서 읽을 수 있게 주황·파랑을 몇 초씩 보여주고, 유턴·회전교차로와 각본 장면 8개까지 지나서 5분 남짓이다
+        assertTrue(total <= 330_000, "총 ${total / 1000}초")
         assertTrue(run.fastForward.isNotEmpty())
         // 빨리 감는 프레임은 30 km/h보다 빨라서 R2가 회전으로 세지 않는다
         run.frames.filter { it.t in run.fastForward }.forEach { assertTrue(it.speedKph > 30.0, "${it.t}") }
@@ -194,17 +205,61 @@ class RouteDemoTest {
     }
 
     @Test
+    fun `각본 장면 8개(차선 변경 포함)가 주행 순서대로 뜨고, 서로·엔진 안내와 겹치지 않고, 빨리 감기 중이 아니다`() {
+        assertEquals(
+            listOf(
+                RouteDemo.CueKind.LANE_CHANGE, RouteDemo.CueKind.SUDDEN_STOP, RouteDemo.CueKind.LANE_KEEP, RouteDemo.CueKind.LANE_WAIT,
+                RouteDemo.CueKind.CURVE, RouteDemo.CueKind.EXIT_SLOW, RouteDemo.CueKind.PRE_LANE, RouteDemo.CueKind.BRAKE_EARLY,
+            ),
+            run.scriptCues.map { it.kind },
+        )
+        run.scriptCues.zipWithNext().forEach { (a, b) -> assertTrue(a.hideAt <= b.showAt, "${a.kind}와 ${b.kind}가 겹친다") }
+        run.scriptCues.forEach { cue ->
+            val shown = cue.showAt until cue.hideAt step RouteDemo.FRAME_MS
+            assertTrue(shown.none { it in run.fastForward }, "${cue.kind} 카드가 빨리 감기 중에 뜬다")
+            assertTrue(cue.hideAt - cue.showAt >= 5_000, "${cue.kind} 카드가 너무 짧다")
+            assertTrue(outputs.none { (t, out) -> out is Guide && t in cue.showAt until cue.hideAt }, "${cue.kind} 카드와 엔진 안내가 겹친다")
+            assertTrue(scriptSpeech(run.scriptCues, cue.showAt) != null && scriptPopup(run.scriptCues, cue.showAt)?.tone == PopupTone.WARN)
+        }
+    }
+
+    @Test
+    fun `각본 장면의 차 동작 - 급정거, 커브·진출로·회전 앞 감속, 깜빡이 3초 뒤 이동`() {
+        fun at(t: Long) = run.frames.single { it.t == t }
+        fun cue(kind: RouteDemo.CueKind) = run.scriptCues.single { it.kind == kind }
+        // 급정거: 멈춘 프레임에 카드, 직전 1초 사이 15 km/h 넘게 줄었고 브레이크
+        val stop = cue(RouteDemo.CueKind.SUDDEN_STOP)
+        assertTrue(at(stop.showAt).brake && at(stop.showAt).speedKph <= 5.0)
+        assertTrue(at(stop.showAt - RouteDemo.FRAME_MS - RouteDemo.FRAME_MS).speedKph - at(stop.showAt - RouteDemo.FRAME_MS).speedKph >= 15.0)
+        // 커브: "좋아요" 때 60 이하, 카드 동안 속도가 늘지 않는다
+        val curve = cue(RouteDemo.CueKind.CURVE)
+        assertTrue(at(curve.okAt!!).speedKph <= RouteDemo.CURVE_KPH)
+        assertTrue((curve.showAt until curve.okAt!! step RouteDemo.FRAME_MS).zipWithNext().all { (a, b) -> at(b).speedKph <= at(a).speedKph })
+        // 진출로·회전 앞: 카드 동안 속도가 늘지 않는다 ("줄이세요" → 실제로 줄어든다)
+        listOf(RouteDemo.CueKind.EXIT_SLOW, RouteDemo.CueKind.BRAKE_EARLY).map(::cue).forEach { c ->
+            val ts = (c.showAt until c.hideAt step RouteDemo.FRAME_MS).toList()
+            assertTrue(ts.zipWithNext().all { (a, b) -> at(b).speedKph <= at(a).speedKph }, "${c.kind}")
+            assertTrue(at(ts.last()).speedKph < at(ts.first()).speedKph, "${c.kind}")
+        }
+        // 깜빡이 뒤 3초: 카드가 뜰 때 오른쪽 깜빡이를 켜고, 3초 넘게 기다린 뒤 "좋아요"(옮김)
+        val wait = cue(RouteDemo.CueKind.LANE_WAIT)
+        assertEquals(TurnSignal.RIGHT, at(wait.showAt).turnSignal)
+        assertTrue(wait.okAt!! - wait.showAt >= 3_000)
+        // 1차로·급정거는 "좋아요"가 없다
+        assertEquals(null, cue(RouteDemo.CueKind.LANE_KEEP).okAt)
+        assertEquals(null, stop.okAt)
+    }
+
+    @Test
     fun `차선 변경은 팝업만 - 오른쪽 깜빡이를 잠깐 켜고 판정은 없다`() {
-        // 팝업이 떠 있는 동안은 실제 속도 (빨리 감기에서 팝업이 스쳐 지나가지 않는다)
-        run.laneCues.forEach { cue -> assertTrue((cue.showAt until cue.hideAt step RouteDemo.FRAME_MS).none { it in run.fastForward }) }
-        assertEquals(1, run.laneCues.size)
-        val cue = run.laneCues.single()
-        assertTrue(cue.showAt < cue.okAt && cue.okAt < cue.hideAt)
+        val cue = run.scriptCues.single { it.kind == RouteDemo.CueKind.LANE_CHANGE }
+        val okAt = cue.okAt!!
+        assertTrue(cue.showAt < okAt && okAt < cue.hideAt)
         // 어느 쪽 차로로 옮기는지 팝업 제목과 음성이 말한다
         assertTrue(cue.toRight)
-        assertEquals("오른쪽 차로로", laneChangePopup(run.laneCues, cue.showAt)?.turnLabel)
-        assertEquals("오른쪽 차로로 옮겨요, 오른쪽 깜빡이 켜세요", laneChangeSpeech(cue.toRight))
-        val during = run.frames.filter { it.t >= cue.okAt && it.t < cue.okAt + RouteDemo.LANE_SIGNAL_MS }
+        assertEquals("오른쪽 차로로", scriptPopup(run.scriptCues, cue.showAt)?.turnLabel)
+        assertEquals("오른쪽 차로로 옮겨요, 오른쪽 깜빡이 켜세요", scriptSpeech(run.scriptCues, cue.showAt))
+        val during = run.frames.filter { it.t >= okAt && it.t < okAt + RouteDemo.LANE_SIGNAL_MS }
         assertTrue(during.isNotEmpty() && during.all { it.turnSignal == TurnSignal.RIGHT && it.speedKph > 30.0 })
         assertTrue(outputs.none { (t, _) -> t in cue.showAt..cue.hideAt })
     }
@@ -235,7 +290,7 @@ class RouteDemoTest {
     fun `이벤트 순서표 출력`() {
         val byT = run.frames.associateBy { it.t }
         println("총 ${(run.frames.last().t + RouteDemo.FRAME_MS) / 1000}초, 빨리 감기 ${run.fastForward.size}프레임, 거리 ${run.plan.distanceM} m")
-        run.laneCues.forEach { println("t=${it.showAt / 1000}s LANE_CHANGE 팝업 (깜빡이 ${it.okAt / 1000}s)") }
+        run.scriptCues.forEach { println("t=${it.showAt / 1000}s 각본 ${it.kind} (좋아요 ${it.okAt?.div(1000)}s, 숨김 ${it.hideAt / 1000}s)") }
         outputs.forEach { (t, out) ->
             val f = byT.getValue(t)
             val what = when (out) {

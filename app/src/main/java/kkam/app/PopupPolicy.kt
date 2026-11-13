@@ -84,7 +84,7 @@ private fun CoachState.toPopup(turn: TurnType?) = Popup(
 private fun GuideKind.notTiedToNavi(): Boolean = this == GuideKind.WIPER || this == GuideKind.DEFOG
 
 /**
- * 차선 변경 팝업 제목과 문구. 엔진 룰이 없어서 경로 데모 각본([RouteDemo.LaneCue])으로만 띄운다.
+ * 차선 변경 팝업 제목과 문구. 엔진 룰이 없어서 경로 데모 각본([RouteDemo.ScriptCue])으로만 띄운다.
  * 제목에 옮겨 갈 쪽을 적는다 ("오른쪽 차로로"). 안내 종류 미리보기와 같은 모양이다.
  */
 fun laneChangeTitle(toRight: Boolean): String = if (toRight) "오른쪽 차로로" else "왼쪽 차로로"
@@ -94,28 +94,76 @@ const val LANE_CHANGE_HEADLINE = "깜빡이 켜고 옮기세요"
 fun laneChangeSpeech(toRight: Boolean): String =
     if (toRight) "오른쪽 차로로 옮겨요, 오른쪽 깜빡이 켜세요" else "왼쪽 차로로 옮겨요, 왼쪽 깜빡이 켜세요"
 
+/** 각본 카드 한 종류의 모습: 그림 종류, 제목, 주황 알약 문구, 음성. 파랑일 때 알약은 "좋아요". */
+data class ScriptLook(val kind: GuideKind, val title: String, val headline: String, val speech: String)
+
 /**
- * 경로 데모의 차선 변경 팝업. 이 시각에 띄울 팝업, 각본 밖이면 null.
- * 판정·리포트에는 넣지 않는다 (엔진에 차선 변경 룰이 없다). 그림은 미리보기와 같은 차선 변경 레버 그림이다.
+ * 경로 데모 각본 카드의 문구 (영상용, 엔진 판정 없음). 시각표는 [RouteDemo.scriptFor].
+ *
+ * | 종류 | 제목 · 주황 알약 | 음성 |
+ * | --- | --- | --- |
+ * | 차선 변경 | 오른쪽 차로로 · 깜빡이 켜고 옮기세요 | 오른쪽 차로로 옮겨요, 오른쪽 깜빡이 켜세요 |
+ * | 급정거 | 급정거 · 앞차와 거리를 두세요 | 방금 급하게 멈췄어요, 앞차와 거리를 넉넉히 두세요 |
+ * | 1차로 정속 주행 | 1차로 정속 주행 · 오른쪽 차로로 옮기세요 | 1차로는 추월할 때만 써요, 오른쪽 차로로 옮기세요 |
+ * | 깜빡이 뒤 3초 | 오른쪽 차로로 · 3초 뒤에 옮기세요 | 깜빡이를 켜고 3초쯤 기다렸다 옮기세요 |
+ * | 커브 | 커브길 · 60까지 줄이세요 | 커브길이에요, 속도를 60까지 줄이세요 |
+ * | 진출로 | 진출로 · 40까지 줄이세요 | 진출로예요, 속도를 천천히 40까지 줄이세요 |
+ * | 진출 직후 회전 차로 | 곧 우회전 · 오른쪽 끝 차로로 미리 | 나가자마자 우회전이에요, 오른쪽 끝 차로로 미리 옮기세요 |
+ * | 브레이크 타이밍 | 회전 앞 · 미리 속도를 줄이세요 | 회전이 가까워요, 지금부터 천천히 속도를 줄이세요 |
+ */
+fun scriptLook(kind: RouteDemo.CueKind, toRight: Boolean): ScriptLook? {
+    val side = if (toRight) "오른쪽" else "왼쪽"
+    return when (kind) {
+        RouteDemo.CueKind.LANE_CHANGE ->
+            ScriptLook(GuideKind.LANE_CHANGE, laneChangeTitle(toRight), LANE_CHANGE_HEADLINE, laneChangeSpeech(toRight))
+        RouteDemo.CueKind.SUDDEN_STOP ->
+            ScriptLook(GuideKind.BRAKE, "급정거", "앞차와 거리를 두세요", "방금 급하게 멈췄어요, 앞차와 거리를 넉넉히 두세요")
+        RouteDemo.CueKind.LANE_KEEP ->
+            ScriptLook(GuideKind.LANE_CHANGE, "1차로 정속 주행", "${side} 차로로 옮기세요", "1차로는 추월할 때만 써요, ${side} 차로로 옮기세요")
+        RouteDemo.CueKind.LANE_WAIT ->
+            ScriptLook(GuideKind.LANE_CHANGE, laneChangeTitle(toRight), "3초 뒤에 옮기세요", "깜빡이를 켜고 3초쯤 기다렸다 옮기세요")
+        RouteDemo.CueKind.CURVE ->
+            ScriptLook(GuideKind.SPEED, "커브길", "${RouteDemo.CURVE_KPH.toInt()}까지 줄이세요", "커브길이에요, 속도를 ${RouteDemo.CURVE_KPH.toInt()}까지 줄이세요")
+        RouteDemo.CueKind.EXIT_SLOW ->
+            ScriptLook(GuideKind.SPEED, "진출로", "${RouteDemo.CITY_KPH.toInt()}까지 줄이세요", "진출로예요, 속도를 천천히 ${RouteDemo.CITY_KPH.toInt()}까지 줄이세요")
+        RouteDemo.CueKind.PRE_LANE ->
+            ScriptLook(
+                GuideKind.LANE_CHANGE, if (toRight) "곧 우회전" else "곧 좌회전", "${side} 끝 차로로 미리",
+                "나가자마자 ${if (toRight) "우회전" else "좌회전"}이에요, ${side} 끝 차로로 미리 옮기세요",
+            )
+        RouteDemo.CueKind.BRAKE_EARLY ->
+            ScriptLook(GuideKind.BRAKE, "회전 앞", "미리 속도를 줄이세요", "회전이 가까워요, 지금부터 천천히 속도를 줄이세요")
+        else -> null
+    }
+}
+
+/**
+ * 경로 데모의 각본 카드 팝업. 이 시각에 띄울 팝업, 각본 밖이면 null.
+ * 판정·리포트에는 넣지 않는다 (엔진 룰이 없다).
  *
  * | 시각 | 팝업 |
  * | --- | --- |
- * | showAt ~ okAt 전 | 주황 "깜빡이 켜고 옮기세요" + 레버 그림 |
- * | okAt ~ hideAt 전 | 파랑 "좋아요" (깜빡이를 켰다) |
+ * | showAt ~ okAt 전 (okAt이 없으면 hideAt 전) | 주황 안내 |
+ * | okAt ~ hideAt 전 | 파랑 "좋아요" |
  * | 그 밖 | 없음 |
  */
-fun laneChangePopup(cues: List<RouteDemo.LaneCue>, t: Long): Popup? {
+fun scriptPopup(cues: List<RouteDemo.ScriptCue>, t: Long): Popup? {
     val cue = cues.firstOrNull { t >= it.showAt && t < it.hideAt } ?: return null
-    val ok = t >= cue.okAt
+    val look = scriptLook(cue.kind, cue.toRight) ?: return null
+    val ok = cue.okAt != null && t >= cue.okAt
     return Popup(
         tone = if (ok) PopupTone.OK else PopupTone.WARN,
-        kind = GuideKind.LANE_CHANGE,
+        kind = look.kind,
         right = cue.toRight,
-        turnLabel = laneChangeTitle(cue.toRight),
+        turnLabel = look.title,
         distanceLabel = "",
-        headline = if (ok) "좋아요" else LANE_CHANGE_HEADLINE,
+        headline = if (ok) "좋아요" else look.headline,
     )
 }
+
+/** 각본 카드를 띄우는 프레임에 읽을 문장. 그 프레임이 아니면 null. */
+fun scriptSpeech(cues: List<RouteDemo.ScriptCue>, t: Long): String? =
+    cues.firstOrNull { it.showAt == t }?.let { scriptLook(it.kind, it.toRight)?.speech }
 
 /**
  * 기어 P에서 출발해 처음 D가 됐을 때 차량 내비를 앞으로 띄울지 ([CoachService]).

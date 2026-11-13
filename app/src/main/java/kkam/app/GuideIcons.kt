@@ -7,6 +7,8 @@ fun guideIconRes(kind: GuideKind, right: Boolean): Int = when (kind) {
     GuideKind.TURN_SIGNAL -> if (right) R.drawable.ic_turn_right else R.drawable.ic_turn_left
     GuideKind.UTURN -> R.drawable.ic_uturn
     GuideKind.ROUNDABOUT -> R.drawable.ic_roundabout
+    GuideKind.SPEED -> R.drawable.ic_speed
+    GuideKind.BRAKE -> R.drawable.ic_brake
     GuideKind.LANE_CHANGE -> R.drawable.ic_lane_change
     GuideKind.HEADLIGHT -> R.drawable.ic_headlight
     GuideKind.WIPER -> R.drawable.ic_wiper

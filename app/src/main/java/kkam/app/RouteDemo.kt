@@ -52,6 +52,9 @@ object RouteDemo {
 
         /** 끝까지 안 켠다 → 안내 후 놓침 */
         NEVER,
+
+        /** 안내를 듣고도 늦게, 판정 지점(30 m)을 지난 [LATE_ON_M]에서야 켠다 → 안내 후 놓침 (깜빡이 타이밍 장면) */
+        LATE,
     }
 
     /**
@@ -73,6 +76,22 @@ object RouteDemo {
         /** 회전교차로 진입·진출 (R8). 진출 지점은 진입 지점 바로 뒤(원을 도는 거리)에 둔다. */
         ROUNDABOUT_ENTER(TurnType.ROUNDABOUT_ENTER),
         ROUNDABOUT_EXIT(TurnType.ROUNDABOUT_EXIT),
+
+        // 아래는 영상용 각본 안내다. 엔진 판정이 없고 앱이 카드와 음성만 낸다 (차선 변경과 같다). 시각표는 [scriptFor].
+        /** 급정거: 이 지점에서 앞차 때문에 급하게 멈추고, 멈춘 뒤 "앞차와 거리를 두세요". */
+        SUDDEN_STOP(null),
+        /** 1차로 정속 주행: "1차로는 추월할 때만, 오른쪽 차로로". */
+        LANE_KEEP(null),
+        /** 깜빡이 뒤 이동 타이밍: 오른쪽 깜빡이를 켜고 3초 기다렸다 옮긴다. */
+        LANE_WAIT(null),
+        /** 곡선 구간: 커브 앞에서 [CURVE_KPH]까지 줄인다. */
+        CURVE(null),
+        /** 고속도로 진출로: 나들목(자동차전용도로 끝)부터 [EXIT_SLOW_M]에 걸쳐 시내 속도까지 천천히 줄인다. 카드는 이 지점에서 띄운다. */
+        EXIT_SLOW(null),
+        /** 진출 직후 회전: 바로 회전하니 그쪽 끝 차로로 미리 옮긴다. */
+        PRE_LANE(null),
+        /** 브레이크 타이밍: 회전 앞에서 미리 속도를 줄인다. */
+        BRAKE_EARLY(null),
     }
 
     /** 경로 데모 파일의 코치 지점 하나. [point]는 [DemoRoute.points]의 번호. */
@@ -97,18 +116,27 @@ object RouteDemo {
     )
 
     /**
-     * 차선 변경 팝업 시각. [showAt]에 주황 안내, [okAt]에 깜빡이를 켜 파랑 "좋아요", [hideAt]에 숨김.
-     * [toRight]는 옮겨 갈 차로 방향이다. 팝업 제목("오른쪽 차로로")과 음성, 켜는 깜빡이 방향이 이 값을 따른다.
+     * 각본 카드 하나 (엔진 판정 없음). [showAt]에 주황 안내, [okAt]에 파랑 "좋아요"(null이면 주황만), [hideAt]에 숨김.
+     * [toRight]는 차로 관련 카드의 방향이다. [signalFrom]~[signalUntil] 동안 그쪽 깜빡이를 켠다 (없으면 null).
+     * 문구와 음성은 앱이 [kind]로 고른다 (PopupPolicy.scriptPopup).
      */
-    data class LaneCue(val showAt: Long, val okAt: Long, val hideAt: Long, val toRight: Boolean = true)
+    data class ScriptCue(
+        val kind: CueKind,
+        val showAt: Long,
+        val okAt: Long?,
+        val hideAt: Long,
+        val toRight: Boolean = true,
+        val signalFrom: Long? = null,
+        val signalUntil: Long? = null,
+    )
 
-    /** 데모 한 번: 경로 정보, 재생할 프레임, 도착 시각, 빨리 감는 프레임 시각, 차선 변경 팝업 시각. */
+    /** 데모 한 번: 경로 정보, 재생할 프레임, 도착 시각, 빨리 감는 프레임 시각, 각본 카드 시각. */
     data class Run(
         val plan: RoutePlan,
         val frames: List<SignalFrame>,
         val arriveAt: Long,
         val fastForward: Set<Long>,
-        val laneCues: List<LaneCue>,
+        val scriptCues: List<ScriptCue>,
     )
 
     /** 출발 전 미리보기 프레임의 길이. 앱은 첫 프레임만 띄우고 "출발"을 누르면 이 시각의 프레임부터 재생한다. */
@@ -186,6 +214,47 @@ object RouteDemo {
     const val LANE_SIGNAL_AFTER_MS = 4000L
     const val LANE_SIGNAL_MS = 3000L
     const val LANE_OK_MS = 3000L
+    /** [Driver.LATE]가 회전 깜빡이를 켜는 거리. 판정 지점(30 m)을 지난 뒤라 놓침이다. */
+    const val LATE_ON_M = 20
+    /** 급정거 각본: 앞차 때문에 이 속도들로 1초씩 급하게 줄여 멈춘다 (40 → 18 → 4 km/h, 약 3 m/s²). */
+    val SUDDEN_STOP_KPH = listOf(18.0, 4.0)
+    /** 커브 각본: 커브 앞 지점부터 [CURVE_SLOW_M]에 걸쳐 [CURVE_KPH]까지 줄이고, 지점부터 [CURVE_HOLD_M]까지 그 속도를 지킨다. */
+    const val CURVE_KPH = 60.0
+    const val CURVE_SLOW_M = 80.0
+    const val CURVE_HOLD_M = 400.0
+    /** 진출로 각본: 나들목을 지난 뒤 이 거리에 걸쳐 자동차전용도로 속도에서 시내 속도로 천천히 줄인다 (원래는 바로 40이 됐다). */
+    const val EXIT_SLOW_M = 150.0
+    /** 각본 카드 지점 뒤로 실제 속도로 가는 거리. 80 km/h에서 카드가 다 보이는 7초가 약 160 m다. */
+    const val SCRIPT_AFTER_M = 170.0
+
+    /**
+     * 각본 카드 시각표. [t]는 카드를 띄우는 프레임 시각이다 (급정거는 멈춘 프레임, 그 밖은 지점을 지나는 프레임).
+     *
+     * | 종류 | 주황 | 파랑 "좋아요" | 숨김 | 깜빡이 |
+     * | --- | --- | --- | --- | --- |
+     * | 차선 변경 | 0초 | 4초 | 10초 | 4~7초 |
+     * | 급정거 | 0초 | 없음 | 5초 | 없음 |
+     * | 1차로 정속 주행 | 0초 | 없음 | 5초 | 없음 |
+     * | 깜빡이 뒤 3초 | 0초 | 3.5초 (3초 기다렸다 옮김) | 7초 | 0~5초 |
+     * | 커브 | 0초 | 4초 (60까지 줄임) | 7초 | 없음 |
+     * | 진출로 | 0초 | 3.5초 | 5.5초 | 없음 |
+     * | 진출 직후 회전 차로 | 0초 | 3초 | 6초 | 2~4.5초 |
+     * | 브레이크 타이밍 | 0초 | 3초 | 5.5초 (R1 안내보다 먼저 숨긴다) | 없음 |
+     */
+    fun scriptFor(kind: CueKind, t: Long, toRight: Boolean): ScriptCue? = when (kind) {
+        CueKind.LANE_CHANGE -> ScriptCue(
+            kind, t, t + LANE_SIGNAL_AFTER_MS, t + LANE_SIGNAL_AFTER_MS + LANE_SIGNAL_MS + LANE_OK_MS, toRight,
+            t + LANE_SIGNAL_AFTER_MS, t + LANE_SIGNAL_AFTER_MS + LANE_SIGNAL_MS,
+        )
+        CueKind.SUDDEN_STOP -> ScriptCue(kind, t, null, t + 5000)
+        CueKind.LANE_KEEP -> ScriptCue(kind, t, null, t + 5000, toRight)
+        CueKind.LANE_WAIT -> ScriptCue(kind, t, t + 3500, t + 7000, toRight, t, t + 5000)
+        CueKind.CURVE -> ScriptCue(kind, t, t + 4000, t + 7000)
+        CueKind.EXIT_SLOW -> ScriptCue(kind, t, t + 3500, t + 5500)
+        CueKind.PRE_LANE -> ScriptCue(kind, t, t + 3000, t + 6000, toRight, t + 2000, t + 4500)
+        CueKind.BRAKE_EARLY -> ScriptCue(kind, t, t + 3000, t + 5500)
+        else -> null
+    }
     /**
      * 비 구간 각본. 비가 오기 시작한 프레임부터 잰 시각이다. 와이퍼·내기 순환·성에 제거는 비 오기 전부터 꺼짐·켬·꺼짐이다.
      *
@@ -224,6 +293,9 @@ object RouteDemo {
         CueKind.ROUNDABOUT_ENTER -> 120.0 to 10.0
         CueKind.ROUNDABOUT_EXIT -> 0.0 to 25.0
         CueKind.LANE_CHANGE -> 20.0 to 130.0
+        CueKind.SUDDEN_STOP -> 60.0 to 60.0
+        CueKind.LANE_KEEP, CueKind.LANE_WAIT, CueKind.CURVE, CueKind.EXIT_SLOW, CueKind.PRE_LANE -> 20.0 to SCRIPT_AFTER_M
+        CueKind.BRAKE_EARLY -> 20.0 to 20.0
         CueKind.TUNNEL -> 260.0 to 30.0
         CueKind.RAMP_RIGHT -> 320.0 to 20.0
         CueKind.RAIN -> 0.0 to RAIN_WINDOW_M
@@ -266,11 +338,24 @@ object RouteDemo {
         val windows = realTimeWindows(cues, path.length)
         val frames = mutableListOf<SignalFrame>()
         val fast = mutableSetOf<Long>()
-        val laneCues = mutableListOf<LaneCue>()
+        val scriptCues = mutableListOf<ScriptCue>()
         var rainStartAt: Long? = null
         var t = 0L
+        val exitSlow = cues.firstOrNull { it.cue.kind == CueKind.EXIT_SLOW }
 
-        fun cruise(s: Double) = if (s in express) EXPRESS_KPH else CITY_KPH
+        /**
+         * 순항 속도. 자동차전용도로 80, 시내 40.
+         * 진출로 각본이 있으면 자동차전용도로가 끝난 곳(나들목)부터 [EXIT_SLOW_M]에 걸쳐 80에서 40으로 줄인다 (원래는 바로 40이었다).
+         */
+        fun cruise(s: Double): Double {
+            val exitFrom = express.endInclusive
+            return when {
+                s in express -> EXPRESS_KPH
+                exitSlow != null && s >= exitFrom && s < exitFrom + EXIT_SLOW_M ->
+                    EXPRESS_KPH - (EXPRESS_KPH - CITY_KPH) * (s - exitFrom) / EXIT_SLOW_M
+                else -> CITY_KPH
+            }
+        }
         fun emit(s: Double, kph: Double, gear: Gear, brake: Boolean, tbt: Tbt?) {
             frames += SignalFrame(
                 t = t,
@@ -298,7 +383,7 @@ object RouteDemo {
         var s = 0.0
         var kph = 0.0
         val stopped = mutableSetOf<Placed>()
-        val laneShown = mutableSetOf<Placed>()
+        val scriptShown = mutableSetOf<Placed>()
         while (s < path.length) {
             val realTime = windows.any { s >= it.start && s < it.endInclusive }
             if (!realTime) {
@@ -324,9 +409,24 @@ object RouteDemo {
                 continue
             }
 
-            cues.firstOrNull { it.cue.kind == CueKind.LANE_CHANGE && it !in laneShown && s >= it.atM }?.let {
-                laneShown += it
-                laneCues += LaneCue(t, t + LANE_SIGNAL_AFTER_MS, t + LANE_SIGNAL_AFTER_MS + LANE_SIGNAL_MS + LANE_OK_MS, it.cue.toRight)
+            // 급정거: 지점에 닿으면 앞차 때문에 [SUDDEN_STOP_KPH]로 1초씩 급하게 줄여 멈추고, 멈춘 프레임에 카드를 띄운다
+            val suddenStop = cues.firstOrNull { it.cue.kind == CueKind.SUDDEN_STOP && it !in scriptShown && s >= it.atM }
+            if (suddenStop != null) {
+                scriptShown += suddenStop
+                SUDDEN_STOP_KPH.forEach { v ->
+                    emit(s, v, Gear.D, brake = true, tbt = tbtAt(navi, path, s))
+                    s += stepM(v)
+                    if (v == SUDDEN_STOP_KPH.last()) scriptFor(CueKind.SUDDEN_STOP, t, true)?.let { scriptCues += it }
+                    t += FRAME_MS
+                }
+                kph = SUDDEN_STOP_KPH.last()
+                continue
+            }
+
+            // 그 밖의 각본 카드: 지점을 지나는 프레임에 띄운다 (시각표는 [scriptFor])
+            cues.firstOrNull { it.cue.kind != CueKind.SUDDEN_STOP && it !in scriptShown && s >= it.atM && scriptFor(it.cue.kind, 0, true) != null }?.let {
+                scriptShown += it
+                scriptFor(it.cue.kind, t, it.cue.toRight)?.let { cue -> scriptCues += cue }
             }
             if (rainStartAt == null && cues.any { it.cue.kind == CueKind.RAIN && s >= it.atM }) rainStartAt = t
 
@@ -347,13 +447,16 @@ object RouteDemo {
             emit(end, 0.0, Gear.P, brake = true, tbt = null)
         }
 
-        // 차선 변경 깜빡이: 팝업 뒤 [LANE_SIGNAL_AFTER_MS]부터 [LANE_SIGNAL_MS] 동안 옮겨 갈 쪽 깜빡이를 켠다.
+        // 각본 카드 깜빡이 (차선 변경, 깜빡이 뒤 3초, 진출 직후 회전 차로): [ScriptCue.signalFrom]~[ScriptCue.signalUntil] 동안 그쪽 깜빡이를 켠다.
         // 엔진에는 차선 변경 룰이 없고, 이 동안 속도가 30 km/h보다 높아 R2도 회전으로 세지 않는다.
         // 나들목 깜빡이: 차로를 옮긴 뒤(R4 판정 100m 지점을 지난 뒤) 끈다.
         // 켜 둔 채로 나들목까지 가면 R4가 같은 나들목을 다시 지킴으로 센다 (판정 뒤 대기로 돌아가 300m 안이면 다시 감시한다).
         val rampChecked = frames.firstOrNull { it.tbt?.turn == TurnType.RAMP_RIGHT && (it.tbt?.distanceM ?: Int.MAX_VALUE) <= RAMP_CHECK_M }?.t
         val withLaneSignal = frames.map { f ->
-            val lane = laneCues.firstOrNull { f.t >= it.okAt && f.t < it.okAt + LANE_SIGNAL_MS }
+            val lane = scriptCues.firstOrNull { cue ->
+                val from = cue.signalFrom ?: return@firstOrNull false
+                f.t >= from && f.t < (cue.signalUntil ?: from)
+            }
             val rampDone = rampChecked != null && f.t > rampChecked && f.tbt?.turn == TurnType.RAMP_RIGHT
             val signal = when {
                 lane != null -> if (lane.toRight) TurnSignal.RIGHT else TurnSignal.LEFT
@@ -370,7 +473,7 @@ object RouteDemo {
             path = route.points,
             durationMin = expectedMinutes(path.length, express.endInclusive - express.start),
         )
-        return Run(plan, withLaneSignal, arriveAt, fast, laneCues)
+        return Run(plan, withLaneSignal, arriveAt, fast, scriptCues)
     }
 
     /**
@@ -380,6 +483,15 @@ object RouteDemo {
     fun expectedMinutes(totalM: Double, expressM: Double): Int {
         val hours = expressM / 1000.0 / EXPRESS_AVG_KPH + (totalM - expressM) / 1000.0 / CITY_AVG_KPH
         return ceil(hours * 60).toInt()
+    }
+
+    /**
+     * 회전 앞 몇 m부터 줄일지. 보통 [SLOW_FROM_M]이고, 회전 앞에 브레이크 타이밍 각본([CueKind.BRAKE_EARLY])이 있으면
+     * 그 카드가 뜨는 지점부터 줄인다 ("미리 속도를 줄이세요" → 실제로 줄어든다).
+     */
+    private fun slowFrom(cues: List<Placed>, turn: Placed): Double {
+        val brake = cues.lastOrNull { it.cue.kind == CueKind.BRAKE_EARLY && it.atM < turn.atM && turn.atM - it.atM < 300.0 }
+        return brake?.let { turn.atM - it.atM } ?: SLOW_FROM_M
     }
 
     /** 앞에서 속도를 줄이는 코치 지점: 회전, 유턴, 회전교차로. */
@@ -443,15 +555,22 @@ object RouteDemo {
                 if (creeping) min(slowing, RED_CREEP_KPH) else slowing
             }
             turn.cue.kind == CueKind.ROUNDABOUT_EXIT -> ROUNDABOUT_KPH
-            turn.atM - s < SLOW_FROM_M -> {
+            turn.atM - s < slowFrom(cues, turn) -> {
                 val slowest = if (turn.cue.kind in ROUNDABOUT) ROUNDABOUT_KPH else TURN_KPH
-                slowest + (cruise - slowest) * (turn.atM - s) / SLOW_FROM_M
+                slowest + (cruise - slowest) * (turn.atM - s) / slowFrom(cues, turn)
             }
             else -> cruise
         }
         val toEnd = length - s
         val forStop = if (toEnd < STOP_FROM_M) cruise * sqrt(toEnd / STOP_FROM_M) else cruise
-        return maxOf(MIN_KPH, minOf(forTurn, forStop))
+        // 커브 각본: 지점부터 [CURVE_SLOW_M]에 걸쳐 [CURVE_KPH]까지 줄이고 [CURVE_HOLD_M]까지 지킨다
+        val curve = cues.firstOrNull { it.cue.kind == CueKind.CURVE && s >= it.atM && s < it.atM + CURVE_HOLD_M }
+        val forCurve = when {
+            curve == null || cruise <= CURVE_KPH -> cruise
+            s < curve.atM + CURVE_SLOW_M -> cruise - (cruise - CURVE_KPH) * (s - curve.atM) / CURVE_SLOW_M
+            else -> CURVE_KPH
+        }
+        return maxOf(MIN_KPH, minOf(forTurn, forStop, forCurve))
     }
 
     /** 다음 내비 안내와 남은 거리. 마지막 안내 뒤에는 목적지까지 직진. */
@@ -474,7 +593,8 @@ object RouteDemo {
                 CueKind.RIGHT, CueKind.RAMP_RIGHT, CueKind.ROUNDABOUT_EXIT -> TurnSignal.RIGHT
                 // 유턴과 회전교차로 진입은 왼쪽 (시행령 별표 2 1호·7호)
                 CueKind.UTURN, CueKind.ROUNDABOUT_ENTER -> TurnSignal.LEFT
-                CueKind.TUNNEL, CueKind.LANE_CHANGE, CueKind.RAIN -> continue
+                CueKind.TUNNEL, CueKind.LANE_CHANGE, CueKind.RAIN, CueKind.SUDDEN_STOP, CueKind.LANE_KEEP, CueKind.LANE_WAIT,
+                CueKind.CURVE, CueKind.EXIT_SLOW, CueKind.PRE_LANE, CueKind.BRAKE_EARLY -> continue
             }
             val onAt = when (placed.cue.driver) {
                 Driver.EARLY -> EARLY_ON_M
@@ -484,6 +604,7 @@ object RouteDemo {
                     placed.cue.kind == CueKind.ROUNDABOUT_EXIT -> ROUNDABOUT_EXIT_ON_M
                     else -> AFTER_GUIDE_ON_M
                 }
+                Driver.LATE -> LATE_ON_M
                 Driver.NEVER, null -> return TurnSignal.OFF
             }
             return if (ahead <= onAt) signal else TurnSignal.OFF

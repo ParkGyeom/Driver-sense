@@ -73,12 +73,44 @@ class GuideKindTest {
         assertTrue(GuideKind.entries.indexOf(GuideKind.UTURN) == GuideKind.entries.indexOf(GuideKind.TURN_SIGNAL) + 1)
     }
 
+    /** 시나리오 하나를 엔진 → 카드 상태 → 팝업 순서로 재생한 팝업들. */
+    private fun popupsOf(scenario: String): List<Popup?> {
+        val frames = Json { ignoreUnknownKeys = true }
+            .decodeFromString(Scenario.serializer(), File("../scenarios/$scenario.json").readText()).frames
+        val engine = Engine()
+        var state = CoachState()
+        var popup: Popup? = null
+        return frames.map { f ->
+            val out = engine.onFrame(f)
+            state = state.next(f, out)
+            popup = nextPopup(popup, state, out, f)
+            popup
+        }
+    }
+
     @Test
-    fun `회전교차로는 미리보기에만 있다 - 나갈 때 오른쪽 깜빡이, 엔진 룰과 연결되지 않는다`() {
+    fun `회전교차로(S30)는 들어갈 때 왼쪽, 나갈 때 오른쪽 깜빡이 카드를 띄우고 켜면 좋아요`() {
+        assertEquals(GuideKind.ROUNDABOUT, RuleId.R8.guideKind())
+        val shown = popupsOf("S30_회전교차로_안내후_켬").filterNotNull()
+        val enter = shown.first()
+        assertEquals(Popup(PopupTone.WARN, GuideKind.ROUNDABOUT, false, "회전교차로 진입", enter.distanceLabel, "왼쪽 깜빡이 켜세요", TurnType.ROUNDABOUT_ENTER), enter)
+        val exit = shown.first { it.forTurn == TurnType.ROUNDABOUT_EXIT && it.tone == PopupTone.WARN }
+        assertEquals(Popup(PopupTone.WARN, GuideKind.ROUNDABOUT, true, "회전교차로 진출", exit.distanceLabel, "오른쪽 깜빡이 켜세요", TurnType.ROUNDABOUT_EXIT), exit)
+        assertTrue(shown.any { it.forTurn == TurnType.ROUNDABOUT_EXIT && it.tone == PopupTone.OK })
+        assertEquals(LeverMotion.LEFT_UP, leverMotion(GuideKind.ROUNDABOUT, right = true))
+    }
+
+    @Test
+    fun `회전교차로(S32)에서 판정 지점을 꺼진 채 지나면 빨강`() {
+        val shown = popupsOf("S32_회전교차로_깜빡이_안켬").filterNotNull()
+        assertTrue(shown.any { it.forTurn == TurnType.ROUNDABOUT_ENTER && it.tone == PopupTone.MISS })
+        assertTrue(shown.any { it.forTurn == TurnType.ROUNDABOUT_EXIT && it.tone == PopupTone.MISS })
+    }
+
+    @Test
+    fun `미리보기에도 회전교차로가 있다 - 나갈 때 오른쪽 깜빡이`() {
         val state = CoachState().preview(GuideKind.ROUNDABOUT)
         assertEquals(Popup(PopupTone.WARN, GuideKind.ROUNDABOUT, true, "회전교차로 나갈 때", "40 m", "오른쪽 깜빡이 켜세요"), state.previewPopup())
-        assertEquals(LeverMotion.LEFT_UP, leverMotion(GuideKind.ROUNDABOUT, right = true))
-        assertTrue(RuleId.entries.none { it.guideKind() == GuideKind.ROUNDABOUT })
     }
 
     @Test

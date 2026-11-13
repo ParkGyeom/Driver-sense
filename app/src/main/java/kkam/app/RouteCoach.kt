@@ -53,11 +53,16 @@ data class RouteTrip(
 fun RouteTrip.events(todayEvents: List<Event>): List<Event> = todayEvents.drop(firstEventIndex)
 
 /** 코치가 안내하는 회전 종류 (엔진 룰 R1·R4·R5가 보는 내비 안내). 직진·유턴 등은 세지 않는다. */
-val COACHED_TURNS = listOf(TurnType.LEFT, TurnType.RIGHT, TurnType.RAMP_LEFT, TurnType.RAMP_RIGHT, TurnType.TUNNEL)
+val COACHED_TURNS = listOf(
+    TurnType.LEFT, TurnType.RIGHT, TurnType.RAMP_LEFT, TurnType.RAMP_RIGHT, TurnType.TUNNEL,
+    // 회전교차로는 진입·진출 두 번 판정하지만 지점은 하나로 센다 (진입 안내만 센다)
+    TurnType.ROUNDABOUT_ENTER,
+)
 
 /** 미리보기 칩에 쓰는 이름. 나들목은 방향을 합쳐서 센다. */
 private fun TurnType.groupLabel(): String = when (this) {
     TurnType.RAMP_LEFT, TurnType.RAMP_RIGHT -> "나들목"
+    TurnType.ROUNDABOUT_ENTER -> "회전교차로"
     else -> label()
 }
 
@@ -90,7 +95,7 @@ fun weakSpotOf(todayEvents: List<Event>, diagnosis: Diagnosis?): WeakSpot? {
 
 /** 판정이 경로 위에서 어떤 회전에서 나오는지. R3(적색 우회전)는 우회전에서 나온다. */
 private fun Event.routeTurns(): Set<TurnType> = when (rule) {
-    RuleId.R1, RuleId.R2 -> setOfNotNull(turn)
+    RuleId.R1, RuleId.R2, RuleId.R8 -> setOfNotNull(turn)
     RuleId.R3 -> setOf(TurnType.RIGHT)
     RuleId.R4 -> setOf(TurnType.RAMP_LEFT, TurnType.RAMP_RIGHT)
     RuleId.R5 -> setOf(TurnType.TUNNEL)

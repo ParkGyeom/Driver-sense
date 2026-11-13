@@ -6,7 +6,7 @@
 
 차량 신호를 한 프레임씩 받아 안내 요청(GUIDE)과 판정 이벤트(EVENT)를 돌려주는 순수 Kotlin 라이브러리입니다. Android에 의존하지 않아서 에뮬레이터 없이 테스트할 수 있습니다.
 
-**현재 범위 (spec v0.3.2)**: R1(회전·유턴 전 깜빡이), R2(깜빡이 없이 회전, 기록만), R3(적색 신호 우회전 일시정지), R4(나들목 진출입 전 깜빡이), R5(터널 진입 전 전조등), R6(비 올 때 와이퍼), R7(앞유리 김서림)이 동작합니다. 회전교차로(R8)는 제안 단계입니다([docs/proposals/spec-new-rules.md](../docs/proposals/spec-new-rules.md)). 엔진 입력에 모드는 아직 없고, 안내 켬/끔은 앱이 GUIDE 출력을 거르는 방식으로 처리합니다. 입출력 형식의 기준은 [docs/spec.md](../docs/spec.md)입니다.
+**현재 범위 (spec v0.3.3)**: R1(회전·유턴 전 깜빡이), R2(깜빡이 없이 회전, 기록만), R3(적색 신호 우회전 일시정지), R4(나들목 진출입 전 깜빡이), R5(터널 진입 전 전조등), R6(비 올 때 와이퍼), R7(앞유리 김서림), R8(회전교차로 진입·진출 깜빡이)이 동작합니다. 엔진 입력에 모드는 아직 없고, 안내 켬/끔은 앱이 GUIDE 출력을 거르는 방식으로 처리합니다. 입출력 형식의 기준은 [docs/spec.md](../docs/spec.md)입니다.
 
 ## 앱에서 쓰기
 
@@ -129,6 +129,9 @@ suspend fun replay(context: Context, fileName: String) {
 | S27 | 좌회전 뒤 여유 있게 우회전 (R1 연속 회전) | KEPT, GUIDE, KEPT |
 | S28 | 좌회전 뒤 바로 우회전 (R1 연속 회전, 30m 안에서 처음 본 회전) | KEPT, KEPT |
 | S29 | 같은 방향 연속 회전, 두 번째는 30m에서 놓침 (R1) | GUIDE, GUIDE, MISSED |
+| S30 | 회전교차로, 진입·진출 모두 안내 듣고 켬 (R8) | GUIDE, KEPT, GUIDE, KEPT |
+| S31 | 회전교차로, 진입은 켜고 진출 때 안 켬 (R8) | KEPT, GUIDE, MISSED |
+| S32 | 회전교차로, 끝까지 안 켬. R2는 나오지 않음 (R8) | GUIDE, MISSED, GUIDE, MISSED |
 
 ## 개발
 

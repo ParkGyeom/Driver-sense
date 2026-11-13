@@ -13,8 +13,8 @@
 [![Pleos Connect](https://img.shields.io/badge/Pleos_Connect-Emulator_2.1.0-1F5FD1?labelColor=0E2A5E&style=for-the-badge)](#실행-환경)
 [![JDK](https://img.shields.io/badge/JDK-17-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=openjdk&logoColor=white)](#실행-환경)
 <br>
-[![Rules](https://img.shields.io/badge/판정_룰-R1~R7-1F5FD1?labelColor=0E2A5E&style=flat-square)](#하는-일)
-[![Scenarios](https://img.shields.io/badge/시나리오-S1~S24-1F5FD1?labelColor=0E2A5E&style=flat-square)](#데모로-보기)
+[![Rules](https://img.shields.io/badge/판정_룰-R1~R8-1F5FD1?labelColor=0E2A5E&style=flat-square)](#하는-일)
+[![Scenarios](https://img.shields.io/badge/시나리오-S1~S32-1F5FD1?labelColor=0E2A5E&style=flat-square)](#데모로-보기)
 [![Naver Map](https://img.shields.io/badge/Naver_Map_SDK-3.24.1-1F5FD1?labelColor=0E2A5E&style=flat-square)](#실행-환경)
 [![JUnit 5](https://img.shields.io/badge/JUnit-5-1F5FD1?labelColor=0E2A5E&style=flat-square&logo=junit5&logoColor=white)](#소스에서-빌드)
 
@@ -88,6 +88,7 @@
 | R5 | 터널 진입 전 전조등 | 터널이 곧 나와요, 전조등 켜세요 | 도로교통법 제37조 |
 | R6 | 비 올 때 와이퍼 | 비가 와요, 와이퍼 켜세요 | 없음 (안전 안내) |
 | R7 | 앞유리 김서림 | 앞유리가 뿌예질 수 있어요, 성에 제거를 켜고 외기로 바꾸세요 | 없음 (안전 안내) |
+| R8 | 회전교차로 진입(왼쪽)·진출(오른쪽) 깜빡이 | 회전교차로에 들어가요, 왼쪽 깜빡이 켜세요 / 회전교차로에서 나가요, 오른쪽 깜빡이 켜세요 | 도로교통법 제38조, 시행령 별표 2 7·8호 |
 
 - 상태 머신, 파라미터, 전이표는 [docs/spec.md](docs/spec.md)에 있다. 조항·처분의 출처와 원문 대조 결과는 [docs/law_table.md](docs/law_table.md)에 있다.
 - R4·R5는 놓침을 기록하지 않고 안내 후 따랐을 때만 지킴을 기록한다. R6·R7은 법규 근거가 없어 준수율과 범칙금에서 뺀다.
@@ -114,7 +115,7 @@
 .
 ├── app/                 차량 앱 (Android Automotive, 패키지 kkam.app) · 앱 담당
 ├── engine/              판정 엔진. Android에 의존하지 않는 순수 Kotlin 라이브러리 (패키지 kkam.engine) · AI 담당
-├── scenarios/           주행 시나리오 JSON S1~S24. 엔진 테스트와 앱 데모가 같은 파일을 쓴다
+├── scenarios/           주행 시나리오 JSON S1~S32. 엔진 테스트와 앱 데모가 같은 파일을 쓴다
 ├── data/                법규 룰 테이블 law_table.json (15개 항목). 앱 리포트·Q&A와 엔진 테스트가 같이 쓴다
 ├── server/              Spring 서버 (판정 이벤트 저장, 리포트 API) · 서버 담당
 ├── docs/                기획서, 엔진 명세, 법규 룰 테이블 설명, 작업 순서
@@ -187,7 +188,7 @@
 ./gradlew test :app:testDebugUnitTest
 ```
 
-→ 엔진 단위 테스트, 시나리오 테스트(S1~S24), 앱 JVM 테스트가 돈다. 엔진만 보려면 `./gradlew :engine:test`.
+→ 엔진 단위 테스트, 시나리오 테스트(S1~S32), 앱 JVM 테스트가 돈다. 엔진만 보려면 `./gradlew :engine:test`.
 
 ```bash
 ./gradlew :app:installDebug
@@ -209,7 +210,7 @@ debug 앱의 오른쪽 위 "데모" 버튼으로 데모 패널을 연다. releas
 | S11 터널 전조등 | 터널 187m 앞 "터널이 곧 나와요, 전조등 켜세요" → 켜면 지킴 기록 |
 | S12 나들목 안내후 켬 | 오른쪽 나들목 167m 앞 깜빡이 안내와 레버 그림 → 100m 지점에서 지킴 기록 |
 
-- 전체 목록(S1~S24)과 기대 출력은 [docs/spec.md](docs/spec.md) 4장과 [engine/README.md](engine/README.md)에 있다.
+- 전체 목록(S1~S32)과 기대 출력은 [docs/spec.md](docs/spec.md) 4장과 [engine/README.md](engine/README.md)에 있다.
 - "재생하면 내비 띄우기"를 켜면 내비를 앞에 둔 채 내비 위 팝업을 볼 수 있다.
 
 **경로 데모**: "경로 데모 (목적지 검색 → 도착)"는 목적지 경로 코치를 처음부터 끝까지 3분 남짓에 보여준다. 시연용 경로 데이터를 재생하며, 앱 안 지도가 내비 역할을 한다.

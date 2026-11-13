@@ -68,6 +68,11 @@ object RouteDemo {
         TUNNEL(TurnType.TUNNEL),
         LANE_CHANGE(null),
         RAIN(null),
+        /** 유턴 (R1, 왼쪽 깜빡이). */
+        UTURN(TurnType.UTURN),
+        /** 회전교차로 진입·진출 (R8). 진출 지점은 진입 지점 바로 뒤(원을 도는 거리)에 둔다. */
+        ROUNDABOUT_ENTER(TurnType.ROUNDABOUT_ENTER),
+        ROUNDABOUT_EXIT(TurnType.ROUNDABOUT_EXIT),
     }
 
     /** 경로 데모 파일의 코치 지점 하나. [point]는 [DemoRoute.points]의 번호. */
@@ -117,6 +122,16 @@ object RouteDemo {
     const val CITY_AVG_KPH = 25.0
     const val EXPRESS_AVG_KPH = 60.0
     const val TURN_KPH = 15.0
+    /**
+     * 회전교차로 안을 도는 속도. 진입~진출이 30 m 안팎이라 진출 안내 → 깜빡이 → 판정이 차례로 보이게 회전보다 느리게 돈다.
+     * 회전교차로 안(다음 지점이 진출)에서는 이 속도를 그대로 지킨다.
+     */
+    const val ROUNDABOUT_KPH = 10.0
+    /**
+     * [Driver.AFTER_GUIDE]가 회전교차로 진출 오른쪽 깜빡이를 켜는 거리 (진출 안내 뒤, 판정 10 m 바로 앞. R8 `RB_EXIT_CHECK_M` 이상).
+     * 진입 깜빡이는 진입 지점을 [SIGNAL_OFF_PAST_M] 지나야 끄므로, 실제로는 그때 오른쪽으로 바뀐다.
+     */
+    const val ROUNDABOUT_EXIT_ON_M = 18
     /**
      * 회전 지점 이 거리 앞부터 [TURN_KPH]까지 줄인다. 일찍 줄여서 회전 앞을 천천히 지나므로
      * 주황 "지금 켜세요" 카드가 영상에서 읽을 수 있을 만큼(약 4초) 보인다.
@@ -205,7 +220,9 @@ object RouteDemo {
      */
     fun window(kind: CueKind): Pair<Double, Double> = when (kind) {
         // 회전 뒤는 판정(회전을 마친 직후)이 나올 만큼만. 길면 마지막 회전에서 도착까지가 늘어진다.
-        CueKind.LEFT, CueKind.RIGHT -> 120.0 to 25.0
+        CueKind.LEFT, CueKind.RIGHT, CueKind.UTURN -> 120.0 to 25.0
+        CueKind.ROUNDABOUT_ENTER -> 120.0 to 10.0
+        CueKind.ROUNDABOUT_EXIT -> 0.0 to 25.0
         CueKind.LANE_CHANGE -> 20.0 to 130.0
         CueKind.TUNNEL -> 260.0 to 30.0
         CueKind.RAMP_RIGHT -> 320.0 to 20.0
@@ -365,6 +382,10 @@ object RouteDemo {
         return ceil(hours * 60).toInt()
     }
 
+    /** 앞에서 속도를 줄이는 코치 지점: 회전, 유턴, 회전교차로. */
+    private val SLOW_TURNS = setOf(CueKind.LEFT, CueKind.RIGHT, CueKind.UTURN, CueKind.ROUNDABOUT_ENTER, CueKind.ROUNDABOUT_EXIT)
+    private val ROUNDABOUT = setOf(CueKind.ROUNDABOUT_ENTER, CueKind.ROUNDABOUT_EXIT)
+
     /** 데모 파일의 코치 지점과 경로 위 거리. */
     private data class Placed(val cue: Cue, val atM: Double)
 
@@ -412,7 +433,7 @@ object RouteDemo {
      * 적색 우회전은 두 안내를 차례로 보여주려고 [RED_CREEP_FROM_M]~30m를 [RED_CREEP_KPH]로 지난다 ([RED_SIGNAL_ON_M] 표).
      */
     private fun targetKph(cues: List<Placed>, stopped: Set<Placed>, length: Double, s: Double, cruise: Double): Double {
-        val turn = cues.firstOrNull { it.atM > s && (it.cue.kind == CueKind.LEFT || it.cue.kind == CueKind.RIGHT) }
+        val turn = cues.firstOrNull { it.atM > s && it.cue.kind in SLOW_TURNS }
         val forTurn = when {
             turn == null -> cruise
             turn.cue.redLight && turn !in stopped -> {
@@ -421,7 +442,11 @@ object RouteDemo {
                 val creeping = turn.atM - s in CHECK_AT_M.toDouble()..RED_CREEP_FROM_M
                 if (creeping) min(slowing, RED_CREEP_KPH) else slowing
             }
-            turn.atM - s < SLOW_FROM_M -> TURN_KPH + (cruise - TURN_KPH) * (turn.atM - s) / SLOW_FROM_M
+            turn.cue.kind == CueKind.ROUNDABOUT_EXIT -> ROUNDABOUT_KPH
+            turn.atM - s < SLOW_FROM_M -> {
+                val slowest = if (turn.cue.kind in ROUNDABOUT) ROUNDABOUT_KPH else TURN_KPH
+                slowest + (cruise - slowest) * (turn.atM - s) / SLOW_FROM_M
+            }
             else -> cruise
         }
         val toEnd = length - s
@@ -446,7 +471,9 @@ object RouteDemo {
             if (ahead < -SIGNAL_OFF_PAST_M) continue
             val signal = when (placed.cue.kind) {
                 CueKind.LEFT -> TurnSignal.LEFT
-                CueKind.RIGHT, CueKind.RAMP_RIGHT -> TurnSignal.RIGHT
+                CueKind.RIGHT, CueKind.RAMP_RIGHT, CueKind.ROUNDABOUT_EXIT -> TurnSignal.RIGHT
+                // 유턴과 회전교차로 진입은 왼쪽 (시행령 별표 2 1호·7호)
+                CueKind.UTURN, CueKind.ROUNDABOUT_ENTER -> TurnSignal.LEFT
                 CueKind.TUNNEL, CueKind.LANE_CHANGE, CueKind.RAIN -> continue
             }
             val onAt = when (placed.cue.driver) {
@@ -454,6 +481,7 @@ object RouteDemo {
                 Driver.AFTER_GUIDE -> when {
                     placed.cue.kind == CueKind.RAMP_RIGHT -> RAMP_ON_M
                     placed.cue.redLight -> RED_SIGNAL_ON_M
+                    placed.cue.kind == CueKind.ROUNDABOUT_EXIT -> ROUNDABOUT_EXIT_ON_M
                     else -> AFTER_GUIDE_ON_M
                 }
                 Driver.NEVER, null -> return TurnSignal.OFF

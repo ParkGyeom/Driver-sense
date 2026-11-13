@@ -52,9 +52,10 @@ data class RouteTrip(
 /** 이 경로에서 나온 판정. */
 fun RouteTrip.events(todayEvents: List<Event>): List<Event> = todayEvents.drop(firstEventIndex)
 
-/** 코치가 안내하는 회전 종류 (엔진 룰 R1·R4·R5가 보는 내비 안내). 직진·유턴 등은 세지 않는다. */
+/** 코치가 안내하는 회전 종류 (엔진 룰 R1·R4·R5·R8이 보는 내비 안내). 직진 등은 세지 않는다. */
 val COACHED_TURNS = listOf(
     TurnType.LEFT, TurnType.RIGHT, TurnType.RAMP_LEFT, TurnType.RAMP_RIGHT, TurnType.TUNNEL,
+    TurnType.UTURN,
     // 회전교차로는 진입·진출 두 번 판정하지만 지점은 하나로 센다 (진입 안내만 센다)
     TurnType.ROUNDABOUT_ENTER,
 )

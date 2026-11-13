@@ -24,7 +24,7 @@ class RouteCoachTest {
     fun `미리보기는 내비처럼 거리와 예상 시간을 주고, 코치할 지점만 센다`() {
         val preview = buildRoutePreview(plan, emptyList(), diagnosis = null)
 
-        assertEquals(4, preview.coachPoints) // 직진, 유턴은 코치하지 않는다
+        assertEquals(5, preview.coachPoints) // 좌·우·좌회전, 나들목, 유턴. 직진은 코치하지 않는다
         assertEquals("4.2 km", preview.distanceLabel)
         // 소요 시간을 모르면 거리 ÷ 도심 평균 30 km/h, 올림: 4.2 km → 8.4분 → 9분
         assertEquals(9, preview.minutes)
@@ -94,7 +94,7 @@ class RouteCoachTest {
 
     @Test
     fun `경로 시작 문장은 목적지와 코치할 지점을 말한다`() {
-        assertEquals("판교역까지 안내를 시작해요. 좌회전 2곳, 우회전 1곳, 나들목 1곳에서 챙길게요.", routeStartMessage(plan))
+        assertEquals("판교역까지 안내를 시작해요. 좌회전 2곳, 우회전 1곳, 나들목 1곳, 유턴 1곳에서 챙길게요.", routeStartMessage(plan))
         assertEquals("집까지 안내를 시작해요.", routeStartMessage(RoutePlan("집", 0, listOf(TurnType.STRAIGHT))))
     }
 
@@ -139,7 +139,7 @@ class RouteCoachTest {
     @Test
     fun `도착하면 한 번만 끝내고 요약 문구를 보여준다`() {
         val started = CoachState().startRoute(plan)
-        assertEquals("판교역까지 안내를 시작해요. 좌회전 2곳, 우회전 1곳, 나들목 1곳에서 챙길게요.", started.message)
+        assertEquals("판교역까지 안내를 시작해요. 좌회전 2곳, 우회전 1곳, 나들목 1곳, 유턴 1곳에서 챙길게요.", started.message)
 
         val arrived = started.copy(todayEvents = listOf(event("e1", Result.KEPT))).endRoute(RouteStatus.ARRIVED)
         assertEquals(RouteStatus.ARRIVED, arrived.route?.status)

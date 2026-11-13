@@ -25,10 +25,10 @@ class RouteDemoTest {
     }
 
     @Test
-    fun `경로는 세종대학교에서 포티투닷 판교까지 약 25km, 코치 지점은 좌·적색 우·차선·비·터널·나들목·우 순서다`() {
+    fun `경로는 세종대학교에서 포티투닷 판교까지 약 32km, 코치 지점은 좌·적색 우·차선·비·터널·나들목·우·유턴·회전교차로 순서다`() {
         assertEquals("세종대학교", route.start)
         assertEquals("포티투닷 (42dot)", route.destination)
-        assertTrue(run.plan.distanceM in 24000..27000, "${run.plan.distanceM}")
+        assertTrue(run.plan.distanceM in 30000..34000, "${run.plan.distanceM}")
         assertEquals(
             listOf(
                 RouteDemo.CueKind.LEFT,
@@ -38,14 +38,23 @@ class RouteDemoTest {
                 RouteDemo.CueKind.TUNNEL,
                 RouteDemo.CueKind.RAMP_RIGHT,
                 RouteDemo.CueKind.RIGHT,
+                RouteDemo.CueKind.UTURN,
+                RouteDemo.CueKind.ROUNDABOUT_ENTER,
+                RouteDemo.CueKind.ROUNDABOUT_EXIT,
             ),
             route.cues.map { it.kind },
         )
         // 차선 변경과 비는 내비 안내가 아니라서 경로 안내 순서(미리보기 칩)에 없다
-        assertEquals(listOf(TurnType.LEFT, TurnType.RIGHT, TurnType.TUNNEL, TurnType.RAMP_RIGHT, TurnType.RIGHT), run.plan.turns)
+        assertEquals(
+            listOf(
+                TurnType.LEFT, TurnType.RIGHT, TurnType.TUNNEL, TurnType.RAMP_RIGHT, TurnType.RIGHT,
+                TurnType.UTURN, TurnType.ROUNDABOUT_ENTER, TurnType.ROUNDABOUT_EXIT,
+            ),
+            run.plan.turns,
+        )
         assertEquals(route.points, run.plan.path)
         // 미리보기의 예상 소요 시간: 자동차전용도로 60 km/h, 시내 25 km/h로 어림한 실제 주행 시간 (재생 시간이 아니다)
-        assertTrue(run.plan.durationMin!! in 30..50, "${run.plan.durationMin}분")
+        assertTrue(run.plan.durationMin!! in 40..60, "${run.plan.durationMin}분")
         assertTrue(route.cues.zipWithNext().all { (a, b) -> a.point < b.point })
     }
 
@@ -81,6 +90,14 @@ class RouteDemoTest {
                 // 서현로 우회전: 안내했지만 안 켬 → 놓침 (리포트의 놓침 1건)
                 "GUIDE R1",
                 "EVENT R1 MISSED guided=true",
+                // 청계산로 유턴: 안내 듣고 왼쪽 깜빡이 → 지킴
+                "GUIDE R1",
+                "EVENT R1 KEPT guided=true",
+                // 청계산로 회전교차로: 들어갈 때 왼쪽, 나갈 때 오른쪽. 둘 다 안내 듣고 켬 → 지킴
+                "GUIDE R8",
+                "EVENT R8 KEPT guided=true",
+                "GUIDE R8",
+                "EVENT R8 KEPT guided=true",
             ),
             shown,
         )
@@ -97,10 +114,10 @@ class RouteDemoTest {
     }
 
     @Test
-    fun `3분 30초 안에 끝난다 - 미리보기, 주행, 도착 뒤 기어 P까지`() {
+    fun `4분 안에 끝난다 - 미리보기, 주행, 도착 뒤 기어 P까지`() {
         val total = run.frames.last().t + RouteDemo.FRAME_MS
-        // 안내 카드를 영상에서 읽을 수 있게 주황·파랑을 몇 초씩 보여주느라 3분을 조금 넘는다
-        assertTrue(total <= 210_000, "총 ${total / 1000}초")
+        // 안내 카드를 영상에서 읽을 수 있게 주황·파랑을 몇 초씩 보여주고, 유턴·회전교차로까지 지나서 4분 가까이 된다
+        assertTrue(total <= 240_000, "총 ${total / 1000}초")
         assertTrue(run.fastForward.isNotEmpty())
         // 빨리 감는 프레임은 30 km/h보다 빨라서 R2가 회전으로 세지 않는다
         run.frames.filter { it.t in run.fastForward }.forEach { assertTrue(it.speedKph > 30.0, "${it.t}") }
@@ -161,6 +178,19 @@ class RouteDemoTest {
         // 멈추기 전 마지막 몇 m를 5 km/h로 기어가지 않는다
         val crawl = run.frames.filter { it.t in lastEvent..run.arriveAt && it.speedKph in 0.1..RouteDemo.MIN_KPH }
         assertTrue(crawl.size <= 1, "기어가는 프레임 ${crawl.size}개")
+    }
+
+    @Test
+    fun `회전교차로 안은 일정한 속도로 돌고, 진출 안내 뒤 몇 초 지나 오른쪽 깜빡이를 켠다`() {
+        val exitGuide = outputs.last { it.second is Guide && it.second.rule == RuleId.R8 }.first
+        val inside = run.frames.filter { it.tbt?.turn == TurnType.ROUNDABOUT_EXIT }
+        assertTrue(inside.isNotEmpty() && inside.all { it.speedKph == RouteDemo.ROUNDABOUT_KPH }, inside.map { it.speedKph }.toString())
+        val rightOn = inside.first { it.turnSignal == TurnSignal.RIGHT }.t
+        assertTrue(rightOn - exitGuide >= 3_000, "진출 안내 ${exitGuide / 1000}s, 오른쪽 깜빡이 ${rightOn / 1000}s")
+        // 유턴은 진행 방향이 거의 반대로 바뀐다 (R1이 회전을 마친 것으로 본다)
+        val uturn = run.frames.filter { it.tbt?.turn == TurnType.UTURN && it.t !in run.fastForward }
+        val after = run.frames.first { it.t > uturn.last().t }
+        assertTrue(kkam.engine.rules.headingDiff(uturn.last().headingDeg, after.headingDeg) > 150)
     }
 
     @Test

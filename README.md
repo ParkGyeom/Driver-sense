@@ -8,20 +8,19 @@
 차량 신호로 운전 법규 습관을 진단하고, 단속되기 전에 미리 알려주는 **Pleos Connect 차량용 앱**이다.<br>
 판정은 차 안에서 규칙(상태 머신)으로 하고, 결과는 음성 한 문장과 카드, 리포트로 보여준다.
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.4-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](#실행-환경)
-[![Android Automotive](https://img.shields.io/badge/Android_Automotive-minSdk_28-3DDC84?style=for-the-badge&logo=android&logoColor=white)](#실행-환경)
-[![Pleos Connect](https://img.shields.io/badge/Pleos_Connect-Emulator_2.1.0-002C5F?style=for-the-badge)](#실행-환경)
-[![JDK](https://img.shields.io/badge/JDK-17-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](#실행-환경)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.4-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=kotlin&logoColor=white)](#실행-환경)
+[![Android Automotive](https://img.shields.io/badge/Android_Automotive-minSdk_28-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=android&logoColor=white)](#실행-환경)
+[![Pleos Connect](https://img.shields.io/badge/Pleos_Connect-Emulator_2.1.0-1F5FD1?labelColor=0E2A5E&style=for-the-badge)](#실행-환경)
+[![JDK](https://img.shields.io/badge/JDK-17-1F5FD1?labelColor=0E2A5E&style=for-the-badge&logo=openjdk&logoColor=white)](#실행-환경)
 <br>
-[![Rules](https://img.shields.io/badge/판정_룰-R1~R7-FFC04D?style=flat-square)](#하는-일)
-[![Scenarios](https://img.shields.io/badge/시나리오-S1~S24-4C8DFF?style=flat-square)](#데모로-보기)
-[![Naver Map](https://img.shields.io/badge/Naver_Map_SDK-3.24.1-03C75A?style=flat-square)](#실행-환경)
-[![JUnit 5](https://img.shields.io/badge/JUnit-5-25A162?style=flat-square&logo=junit5&logoColor=white)](#소스에서-빌드)
+[![Rules](https://img.shields.io/badge/판정_룰-R1~R8-1F5FD1?labelColor=0E2A5E&style=flat-square)](#하는-일)
+[![Scenarios](https://img.shields.io/badge/시나리오-S1~S32-1F5FD1?labelColor=0E2A5E&style=flat-square)](#데모로-보기)
+[![Naver Map](https://img.shields.io/badge/Naver_Map_SDK-3.24.1-1F5FD1?labelColor=0E2A5E&style=flat-square)](#실행-환경)
+[![JUnit 5](https://img.shields.io/badge/JUnit-5-1F5FD1?labelColor=0E2A5E&style=flat-square&logo=junit5&logoColor=white)](#소스에서-빌드)
 
 </div>
 
 > [!NOTE]
-> 현대자동차그룹 차량용 앱 개발 공모전(Pleos Playground) 출품작이다.
 > - Pleos Connect Emulator의 내비는 경로를 정해도 위치가 움직이지 않는다. 그래서 주행 장면은 녹화된 차량 신호를 재생해서 보여준다([데모로 보기](#데모로-보기)). 판정 엔진은 실제 신호와 재생 신호를 똑같이 처리한다.
 > - 아직 완성되지 않은 부분은 [현재 한계](#현재-한계)에 모아 두었다.
 
@@ -58,23 +57,23 @@
     <td width="50%"><img src="docs/images/coach-card-ok.png" alt="주행 화면 코치 카드: 좌회전 28 m, 파랑 '좋아요'"></td>
   </tr>
   <tr>
-    <td><b>🟡 지금 켜세요</b><br>좌회전 60 m 앞인데 깜빡이가 꺼져 있다. 노랑 카드와 음성 한 문장 "좌회전 곧이에요, 깜빡이 켜세요", 어느 레버를 어떻게 움직이는지 그림으로 알려준다.</td>
-    <td><b>🔵 좋아요</b><br>깜빡이를 켜면 카드가 파랑으로 바뀐다. 30 m 판정 지점과 회전 완료를 지나면 지킴으로 기록하고, 아래 오늘 성적에 더한다.</td>
+    <td><b>지금 켜세요</b><br>좌회전 60 m 앞인데 깜빡이가 꺼져 있다. 노랑 카드와 음성 한 문장 "좌회전 곧이에요, 깜빡이 켜세요", 어느 레버를 어떻게 움직이는지 그림으로 알려준다.</td>
+    <td><b>좋아요</b><br>깜빡이를 켜면 카드가 파랑으로 바뀐다. 30 m 판정 지점과 회전 완료를 지나면 지킴으로 기록하고, 아래 오늘 성적에 더한다.</td>
   </tr>
   <tr>
     <td><img src="docs/images/navi-popup-warn.png" alt="내비 위 팝업: 좌회전 48 m, 노랑 '지금 켜세요'"></td>
     <td><img src="docs/images/navi-popup-ok.png" alt="내비 위 팝업: 좌회전 28 m, 파랑 '좋아요'"></td>
   </tr>
   <tr>
-    <td colspan="2"><b>🧭 내비 위 팝업</b><br>주행 중에는 내비가 화면을 차지한다. 앱은 뒤에서 판정하다가 안내가 필요한 순간에만 내비 위쪽에 작은 카드를 띄우고, 켜면 "좋아요"로 바꾼 뒤 3초 뒤 지운다.</td>
+    <td colspan="2"><b>내비 위 팝업</b><br>주행 중에는 내비가 화면을 차지한다. 앱은 뒤에서 판정하다가 안내가 필요한 순간에만 내비 위쪽에 작은 카드를 띄우고, 켜면 "좋아요"로 바꾼 뒤 3초 뒤 지운다.</td>
   </tr>
   <tr>
     <td><img src="docs/images/report.png" alt="오늘 주행 리포트: 지킴, 놓침, 아낀 범칙금, 판정 기록과 조항·처분"></td>
     <td><img src="docs/images/qna.png" alt="법규 Q&A: 적색 우회전 질문에 대한 답과 근거 카드"></td>
   </tr>
   <tr>
-    <td><b>📋 오늘 주행 리포트</b><br>기어를 P로 두면 열린다. 지킴·놓침·아낀 범칙금을 숫자로, 판정마다 법 조항과 "단속됐다면" 받을 처분을 보여준다.</td>
-    <td><b>💬 법규 Q&A</b><br>룰 테이블에서 근거를 찾아 답하고, 조항·처분·출처를 근거 카드로 붙인다. 근거가 없으면 "확인된 근거가 없어요"라고 답한다.</td>
+    <td><b>오늘 주행 리포트</b><br>기어를 P로 두면 열린다. 지킴·놓침·아낀 범칙금을 숫자로, 판정마다 법 조항과 "단속됐다면" 받을 처분을 보여준다.</td>
+    <td><b>법규 Q&A</b><br>룰 테이블에서 근거를 찾아 답하고, 조항·처분·출처를 근거 카드로 붙인다. 근거가 없으면 "확인된 근거가 없어요"라고 답한다.</td>
   </tr>
 </table>
 
@@ -89,6 +88,7 @@
 | R5 | 터널 진입 전 전조등 | 터널이 곧 나와요, 전조등 켜세요 | 도로교통법 제37조 |
 | R6 | 비 올 때 와이퍼 | 비가 와요, 와이퍼 켜세요 | 없음 (안전 안내) |
 | R7 | 앞유리 김서림 | 앞유리가 뿌예질 수 있어요, 성에 제거를 켜고 외기로 바꾸세요 | 없음 (안전 안내) |
+| R8 | 회전교차로 진입(왼쪽)·진출(오른쪽) 깜빡이 | 회전교차로에 들어가요, 왼쪽 깜빡이 켜세요 / 회전교차로에서 나가요, 오른쪽 깜빡이 켜세요 | 도로교통법 제38조, 시행령 별표 2 7·8호 |
 
 - 상태 머신, 파라미터, 전이표는 [docs/spec.md](docs/spec.md)에 있다. 조항·처분의 출처와 원문 대조 결과는 [docs/law_table.md](docs/law_table.md)에 있다.
 - R4·R5는 놓침을 기록하지 않고 안내 후 따랐을 때만 지킴을 기록한다. R6·R7은 법규 근거가 없어 준수율과 범칙금에서 뺀다.
@@ -100,7 +100,7 @@
 | 주행 화면 코치 카드 | 흰 바탕 카드에 상태 색(노랑 켜세요, 파랑 좋아요, 빨강 놓침)을 테두리·그림·알약에 쓴다. 켜는 방법은 레버·공조 버튼 그림으로 보여준다 |
 | 내비 위 팝업 | 내비가 앞에 있을 때 안내가 필요한 순간에만 작은 카드를 띄웠다가 지운다. 권한이 없으면 상단 알림으로 대신한다 |
 | 오늘 리포트 | 지킴·놓침, 조항·처분, 아낀 범칙금, 판정 기록 |
-| 목적지 경로 코치 | 내비에서 목적지를 정하면 그 경로를 따라 코치한다. 출발 전 경로 미리보기(코치할 곳, 경로 순서, 자주 놓친 유형), 도착 후 그 경로만 묶은 경로 리포트 |
+| 목적지 경로 코치 | 내비에서 목적지를 정하면 그 경로를 따라 코치한다. 출발 전 경로 미리보기(내비처럼 예상 소요 시간·거리·도착 시각, 아래 한 줄로 코치할 곳과 자주 놓친 유형), 도착 후 그 경로만 묶은 경로 리포트 |
 | 법규 Q&A | 질문 입력과 추천 질문, 답변과 근거 카드(조항·처분·출처) |
 | 진단 리포트 | 상황별 준수율 막대와 전국 평균선 |
 | 교정 진행 | 습관별 졸업 진행, 7일 준수율, 자주 놓친 곳 |
@@ -115,11 +115,11 @@
 .
 ├── app/                 차량 앱 (Android Automotive, 패키지 kkam.app) · 앱 담당
 ├── engine/              판정 엔진. Android에 의존하지 않는 순수 Kotlin 라이브러리 (패키지 kkam.engine) · AI 담당
-├── scenarios/           주행 시나리오 JSON S1~S24. 엔진 테스트와 앱 데모가 같은 파일을 쓴다
-├── data/                법규 룰 테이블 law_table.json (16개 항목). 앱 리포트·Q&A와 엔진 테스트가 같이 쓴다
+├── scenarios/           주행 시나리오 JSON S1~S32. 엔진 테스트와 앱 데모가 같은 파일을 쓴다
+├── data/                법규 룰 테이블 law_table.json (19개 항목). 앱 리포트·Q&A와 엔진 테스트가 같이 쓴다
 ├── server/              Spring 서버 (판정 이벤트 저장, 리포트 API) · 서버 담당
 ├── docs/                기획서, 엔진 명세, 법규 룰 테이블 설명, 작업 순서
-├── apk/                 제출용 release APK
+├── apk/                 실행용 release APK
 ├── settings.gradle.kts  루트 빌드. :engine, :app 두 모듈
 └── CLAUDE.md            엔진 작업 지침 (개발용)
 ```
@@ -158,7 +158,7 @@
 
 ### APK로 실행
 
-제출용 release APK는 [apk/](apk/README.md)에 둔다. 파일 이름은 `팀명_앱이름_release.apk`다.
+실행용 release APK는 [apk/](apk/README.md)에 둔다. 파일 이름은 `팀명_앱이름_release.apk`다.
 
 1. Pleos Connect Emulator를 켠다.
 2. 설치하고 실행한다.
@@ -188,7 +188,7 @@
 ./gradlew test :app:testDebugUnitTest
 ```
 
-→ 엔진 단위 테스트, 시나리오 테스트(S1~S24), 앱 JVM 테스트가 돈다. 엔진만 보려면 `./gradlew :engine:test`.
+→ 엔진 단위 테스트, 시나리오 테스트(S1~S32), 앱 JVM 테스트가 돈다. 엔진만 보려면 `./gradlew :engine:test`.
 
 ```bash
 ./gradlew :app:installDebug
@@ -210,13 +210,13 @@ debug 앱의 오른쪽 위 "데모" 버튼으로 데모 패널을 연다. releas
 | S11 터널 전조등 | 터널 187m 앞 "터널이 곧 나와요, 전조등 켜세요" → 켜면 지킴 기록 |
 | S12 나들목 안내후 켬 | 오른쪽 나들목 167m 앞 깜빡이 안내와 레버 그림 → 100m 지점에서 지킴 기록 |
 
-- 전체 목록(S1~S24)과 기대 출력은 [docs/spec.md](docs/spec.md) 4장과 [engine/README.md](engine/README.md)에 있다.
+- 전체 목록(S1~S32)과 기대 출력은 [docs/spec.md](docs/spec.md) 4장과 [engine/README.md](engine/README.md)에 있다.
 - "재생하면 내비 띄우기"를 켜면 내비를 앞에 둔 채 내비 위 팝업을 볼 수 있다.
 
-**경로 데모**: "경로 데모 (목적지 검색 → 도착)"는 목적지 경로 코치를 처음부터 끝까지 약 3분에 보여준다. 시연용 경로 데이터를 재생하며, 앱 안 지도가 내비 역할을 한다.
+**경로 데모**: "경로 데모 (목적지 검색 → 도착)"는 목적지 경로 코치를 처음부터 끝까지 5분 남짓에 보여준다. 시연용 경로 데이터를 재생하며, 앱 안 지도가 내비 역할을 한다.
 
 1. 목적지를 검색해 고르면 경로 미리보기가 나오고, "출발"을 누를 때까지 기다린다.
-2. 출발하면 좌회전, 적색 우회전, 차선 변경, 터널, 나들목, 우회전 순서로 안내와 판정이 나온다. 코치 지점 밖은 빨리 감는다.
+2. 출발하면 좌회전, 적색 우회전, 차선 변경, 비 구간(와이퍼·김서림), 터널, 나들목, 우회전, 유턴, 회전교차로(진입·진출) 순서로 안내와 판정이 나온다. 사이사이 영상용 각본 장면(급정거, 1차로 정속 주행, 깜빡이 뒤 3초, 커브·진출로 감속, 진출 직후 차로, 브레이크 타이밍)이 카드와 음성으로만 나온다(판정 없음). 코치 지점 밖은 빨리 감는다.
 3. 도착하면 경로 리포트가 나오고, "AI에게 묻기"로 법규 Q&A에 바로 묻는다.
 
 자세한 내용은 [app/README.md의 경로 데모](app/README.md#경로-데모)에 있다.
@@ -234,7 +234,7 @@ debug 앱의 오른쪽 위 "데모" 버튼으로 데모 패널을 연다. releas
 ## 고치고 반영하는 법
 
 > [!IMPORTANT]
-> 이 저장소의 파일은 그대로 공모전 제출본이 된다. 코드, 주석, TODO, 문서, 앱 화면 문구에 팀원 실명, GitHub 계정 이름, 개인 이메일, 개인 폴더 경로를 쓰지 않는다. 대신 역할명(AI 담당, 앱 담당, 서버 담당, PM)을 쓴다.
+> 코드, 주석, TODO, 문서, 앱 화면 문구에 팀원 실명, GitHub 계정 이름, 개인 이메일, 개인 폴더 경로를 쓰지 않는다. 대신 역할명(AI 담당, 앱 담당, 서버 담당, PM)을 쓴다.
 
 1. 작업 브랜치에서 고친다. 브랜치 이름은 `engine/r2`, `app/coach-card`, `server/event-api`처럼 폴더 이름으로 시작한다.
 2. 다른 담당자의 폴더를 고칠 때는 담당자에게 먼저 알린다.
@@ -242,8 +242,6 @@ debug 앱의 오른쪽 위 "데모" 버튼으로 데모 패널을 연다. releas
 4. `./gradlew test :app:testDebugUnitTest`가 통과하는지 본 뒤 작은 PR로 `main`에 합친다. `main`은 늘 빌드되는 상태로 두고 직접 푸시하지 않는다.
 
 - 시연 영상과 화면 캡처에도 이름, 계정, 개인 폴더 경로, 메신저 알림이 보이지 않게 한다.
-- 제출용 저장소는 제출 직전에 이 저장소의 `main`을 복사해 따로 올린다. 제출용 저장소에는 각자 커밋하지 않는다. 커밋하면 개인 계정 이름이 기록에 남는다.
-- 커밋 메시지와 PR 본문은 제출본에 복사되지 않으므로 이름을 써도 된다.
 
 ## 변경 이력
 
@@ -256,6 +254,8 @@ debug 앱의 오른쪽 위 "데모" 버튼으로 데모 패널을 연다. releas
 - 서비스 이름을 Driver Sense로 정하고 문서를 다시 썼다.
 - 진단 리포트의 "고칠 습관 고르기"와 습관 선택 화면을 뺐다. 고른 값이 안내에 반영되지 않아 화면만 남아 있었다.
 - 교정 진행의 아낀 범칙금을 오늘 리포트처럼 숫자만 크게 표시한다.
+- 경로 데모에 비 구간을 넣어 와이퍼·김서림 안내까지 안내 카드 여섯 종류가 모두 나오게 했다.
+- 경로 데모의 주황 "지금 켜세요" 카드를 약 4초, 파랑 "좋아요" 팝업을 4초 보여준다. 영상에서 카드가 너무 빨리 지나가서 늘렸다.
 
 ### 2026-11-11 · 룰 R2·R3·R6·R7과 경로 코치
 
@@ -274,7 +274,7 @@ debug 앱의 오른쪽 위 "데모" 버튼으로 데모 패널을 연다. releas
 
 - 엔진: R4(나들목 깜빡이), R5(터널 전조등). spec v0.2.
 - 앱: 주행 리포트, 진단·습관 선택, 내비 위 팝업, 레버 그림.
-- 제출 규정에 맞춰 문서와 주석의 실명을 역할명으로 바꿨다.
+- 문서와 주석의 팀원 실명을 역할명으로 바꿨다.
 
 ### 그 전
 
@@ -292,9 +292,9 @@ debug 앱의 오른쪽 위 "데모" 버튼으로 데모 패널을 연다. releas
 | [engine/README.md](engine/README.md) | 판정 엔진 사용법과 시나리오 목록 |
 | [app/README.md](app/README.md) | 차량 앱의 화면, 데모 패널, SDK 연동, 코드 구조 |
 | [server/README.md](server/README.md) | 서버 계획 |
-| [apk/README.md](apk/README.md) | 제출용 APK |
+| [apk/README.md](apk/README.md) | 실행용 APK |
 | [docs/tasks.md](docs/tasks.md) | 판정 엔진 개발 단계 기록 (팀 내부용) |
 
 <div align="center">
-<sub>Driver Sense · 현대자동차그룹 Pleos Playground 출품작 · 2026</sub>
+<sub>Driver Sense · Pleos Connect 차량용 앱 · 2026</sub>
 </div>

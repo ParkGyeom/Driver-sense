@@ -163,5 +163,16 @@
     "sourceUrl": "https://www.reportera.co.kr/car/left-turn-signal-legal-requirement-traffic-safety/",
     "disputed": false,
     "note": "기사에 판례 번호가 없어 근거 확인 필요. 과실 비율을 숫자로 답하지 않음."
+  },
+  {
+    "id": "LAW-16",
+    "topic": "터널 안 전조등",
+    "situation": "터널 안을 지나갈 때 전조등을 켜야 하는지",
+    "article": "도로교통법 제37조제1항",
+    "summary": "터널 안을 운행할 때는 전조등, 차폭등, 미등과 그 밖의 등화를 켜야 해요. 터널에 들어가기 전에 미리 켜는 게 안전해요.",
+    "penalty": "승용차 범칙금 2만 원",
+    "sourceUrl": "https://www.law.go.kr/법령/도로교통법시행령",
+    "disputed": false,
+    "note": "2026-11-13 정부 생활법령정보(easylaw.go.kr '차의 등화 및 차의 신호', 2026-10-15 기준)로 확인. 근거는 시행령 별표 8 제61호(등화 점등·조작 불이행). 법령 원문(별표 8)은 직접 대조하지 못함. 범칙금 표의 '안개가 끼거나 비 또는 눈이 올 때는 제외함' 단서가 터널 위반에도 적용되는지, 벌점, 2026-12-03 시행 개정 반영 여부는 확인 필요."
   }
 ]

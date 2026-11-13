@@ -116,7 +116,7 @@
 ├── app/                 차량 앱 (Android Automotive, 패키지 kkam.app) · 앱 담당
 ├── engine/              판정 엔진. Android에 의존하지 않는 순수 Kotlin 라이브러리 (패키지 kkam.engine) · AI 담당
 ├── scenarios/           주행 시나리오 JSON S1~S24. 엔진 테스트와 앱 데모가 같은 파일을 쓴다
-├── data/                법규 룰 테이블 law_table.json (15개 항목). 앱 리포트·Q&A와 엔진 테스트가 같이 쓴다
+├── data/                법규 룰 테이블 law_table.json (16개 항목). 앱 리포트·Q&A와 엔진 테스트가 같이 쓴다
 ├── server/              Spring 서버 (판정 이벤트 저장, 리포트 API) · 서버 담당
 ├── docs/                기획서, 엔진 명세, 법규 룰 테이블 설명, 작업 순서
 ├── apk/                 제출용 release APK

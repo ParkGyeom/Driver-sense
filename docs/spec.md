@@ -1,6 +1,6 @@
 # Driver Sense 판정 엔진 명세
 
-v0.3.3 · 2026-11-13 R8 회전교차로 진입·진출 깜빡이 추가 · 담당 AI
+v0.3.4 · 2026-11-13 R9 급정거, R10 회전 앞 감속, R11 제한속도 추가 · 담당 AI
 
 | 버전 | 바뀐 것 |
 | --- | --- |
@@ -10,6 +10,7 @@ v0.3.3 · 2026-11-13 R8 회전교차로 진입·진출 깜빡이 추가 · 담�
 | v0.3.1 (11-11) | R7 앞유리 김서림 추가(13장), 입력 `defroster`·`recirc`·`fogReported`, action `DEFOG`, S22~S24 |
 | v0.3.2 (11-11) | R1이 유턴(`UTURN`)도 감시, EVENT의 `turn`에 `UTURN`. R1 연속 회전 보완(전이표 #1a·#2a, `TBT_JUMP_M`). S25~S29 |
 | v0.3.3 (11-13) | R8 회전교차로 진입·진출 깜빡이 추가(14장). tbt.turn·EVENT turn에 `ROUNDABOUT_ENTER`·`ROUNDABOUT_EXIT`, 법규표 LAW-17·18·19. R2가 회전교차로를 회전으로 세지 않음. S30~S32 |
+| v0.3.4 (11-13) | 경로 데모 운전 습관 장면을 실제 판정으로: R9 급정거(15장, 12장 보조 지표의 급정거를 룰로), R10 회전 앞 감속(16장), R11 제한속도(17장). 입력 `speedLimitKph`, action `KEEP_DISTANCE`·`SLOW_DOWN`, 법규표 LAW-20. S33~S41. 조사·결정 기록은 `docs/proposals/spec-habit-rules.md` |
 
 이 문서가 기준이다. 코드와 다르면 이 문서를 먼저 고친다.
 
@@ -32,8 +33,11 @@ v0.3.3 · 2026-11-13 R8 회전교차로 진입·진출 깜빡이 추가 · 담�
 | R6 | 비 올 때 와이퍼 (안내 중심, 법규 근거 없음) | v0.3 (10장) |
 | R7 | 앞유리 김서림 (안내 중심, 법규 근거 없음) | v0.3.1 (13장) |
 | R8 | 회전교차로 진입·진출 깜빡이 | v0.3.3 (14장) |
+| R9 | 급정거 (사후 안내, MISSED만) | v0.3.4 (15장) |
+| R10 | 회전 앞 감속 (브레이크 타이밍) | v0.3.4 (16장) |
+| R11 | 제한속도 (진출로·커브 포함) | v0.3.4 (17장) |
 
-급정거·급출발은 룰이 아니라 보조 지표다. 지킴·놓침, 범칙금, 음성 안내 없이 정차 리포트에 횟수만 보여준다(12장).
+급정거는 v0.3.4부터 R9 룰로 판정한다(15장). 급출발은 아직 보조 지표 자리만 있다(12장).
 
 R4·R5는 PT 시연용 최소 범위다. 놓침(MISSED)은 내지 않고, 안내 후 운전자가 따르면 지킴(KEPT)만 기록한다. 이유는 각 룰의 "MVP 단순화"에 적는다.
 
@@ -83,8 +87,9 @@ R4·R5는 PT 시연용 최소 범위다. 놓침(MISSED)은 내지 않고, 안내
 | defroster | Boolean? | 앞유리 성에 제거가 켜져 있는가 | Vehicle SDK HVAC `getHvacDefrosterState`·`registerHvacDefrosterState` (앞 유리) | 직전 값 유지. 한 번도 값이 없으면 null. R7에서만 사용 |
 | recirc | Boolean? | 내기 순환이 켜져 있는가 (false면 외기) | Vehicle SDK HVAC `getHvacRecirculationState`·`registerHvacRecirculationState` (좌석 묶음 영역) | 직전 값 유지. 한 번도 값이 없으면 null. R7에서만 사용 |
 | fogReported | Boolean? | 운전자가 이 프레임에 "앞이 뿌옇다"고 말했는가 | 앱 음성 인식(STT). 말한 프레임 하나에만 true | 그 밖에는 null. R7에서만 사용 |
+| speedLimitKph | Int? | 지금 달리는 도로의 제한속도 (km/h) | NaviHelper `onCurrentRoadSpeedLimit(Int)` | 직전 값 유지. 0 이하이거나 한 번도 값이 없으면 null. R11에서만 사용 (v0.3.4) |
 
-- headlight, wiper, rain, defroster, recirc, fogReported는 Kotlin에서 기본값 `= null`을 준다. 이 필드가 없는 시나리오도 그대로 읽히게 하기 위해서다.
+- headlight, wiper, rain, defroster, recirc, fogReported, speedLimitKph는 Kotlin에서 기본값 `= null`을 준다. 이 필드가 없는 시나리오도 그대로 읽히게 하기 위해서다.
 - 앱은 이 값들이 없다는 이유로 프레임을 막지 않는다. null이면 그 값을 쓰는 룰만 아무것도 하지 않는다.
 
 **enum 값**
@@ -153,6 +158,8 @@ TrafficLight: `{ "phase": "RED", "remainSec": 12 }` (remainSec는 Int?, 모르�
 | `STOP` | R3 | speedKph ≤ STOP_KPH (9.1) |
 | `WIPER_ON` | R6 | wiper가 ON 또는 AUTO |
 | `DEFOG` | R7 | defroster == true, 또는 안내 때 켜져 있던 내기 순환이 꺼짐(외기) |
+| `KEEP_DISTANCE` | R9 | 없음 (지난 일을 알리는 사후 안내라 따랐는지 보지 않는다) |
+| `SLOW_DOWN` | R10, R11 | R10은 speedKph ≤ TURN_SLOW_KPH (16.1), R11은 speedKph ≤ speedLimitKph |
 
 - action이 있으면 앱은 재탐색으로 tbt가 바뀌어도 안내한 방향을 잃지 않는다.
 - 시나리오 비교 항목에는 넣지 않는다(4.1).
@@ -177,14 +184,15 @@ TrafficLight: `{ "phase": "RED", "remainSec": 12 }` (remainSec는 Int?, 모르�
 | --- | --- |
 | id | 엔진 인스턴스 안에서 순서대로 `evt-1`, `evt-2` … (테스트 재현성 때문에 UUID를 쓰지 않는다) |
 | t | 이벤트가 나온 프레임의 시각 |
-| rule | `R1` ~ `R8` |
-| result | `KEPT`(지킴), `MISSED`(놓침). R4·R5·R6·R7은 `KEPT`만 낸다 |
-| guided | 이 판정 전에 예방 안내(GUIDE)가 나갔는지. 앱의 "아낀 범칙금" 계산에 쓴다. R2는 안내가 없어 항상 false |
-| turn | `LEFT`, `RIGHT`, `UTURN`, `ROUNDABOUT_ENTER`, `ROUNDABOUT_EXIT`, 또는 null. R1은 `LEFT`·`RIGHT`·`UTURN`, R2·R4는 회전 방향, R3는 `RIGHT`, R8은 `ROUNDABOUT_ENTER`·`ROUNDABOUT_EXIT`, R5·R6·R7은 null |
+| rule | `R1` ~ `R11` |
+| result | `KEPT`(지킴), `MISSED`(놓침). R4·R5·R6·R7은 `KEPT`만, R9는 `MISSED`만 낸다 |
+| guided | 이 판정 전에 예방 안내(GUIDE)가 나갔는지. 앱의 "아낀 범칙금" 계산에 쓴다. R2는 안내가 없어 항상 false. R9의 안내는 사후 안내라 false |
+| turn | `LEFT`, `RIGHT`, `UTURN`, `ROUNDABOUT_ENTER`, `ROUNDABOUT_EXIT`, 또는 null. R1은 `LEFT`·`RIGHT`·`UTURN`, R2·R4는 회전 방향, R3는 `RIGHT`, R8은 `ROUNDABOUT_ENTER`·`ROUNDABOUT_EXIT`, R10은 `LEFT`·`RIGHT`·`UTURN`, R5·R6·R7·R9·R11은 null |
 | lat, lon | 이벤트가 나온 프레임의 위치 |
 
 - `turn`이 null일 수 있으므로 앱과 서버는 null을 처리해야 한다. R1의 유턴은 `UTURN`으로 온다(v0.3.2).
 - R6·R7은 법규 근거가 없어 리포트의 준수율과 아낀 범칙금에서는 뺀다. 기록은 남긴다.
+- R9·R10은 숫자로 정한 법규 기준이 없지만 준수율과 놓친 곳 수에는 넣는다(11/13 결정). 범칙금은 0원으로 센다. R11은 제17조 근거가 있어 준수율과 아낀 범칙금에 넣는다.
 
 ### 2.4 앱에서 쓰는 방법
 
@@ -202,7 +210,7 @@ for (out in outputs) {
 ```
 
 - 엔진은 한 스레드에서만 호출한다고 가정한다.
-- 한 프레임에서 출력이 0개, 1개, 여러 개 나올 수 있다. 여러 룰이 한 프레임에 출력하면 룰 번호 순서(R1, R2, R3, R4, R5, R6, R7, R8)로 담는다.
+- 한 프레임에서 출력이 0개, 1개, 여러 개 나올 수 있다. 여러 룰이 한 프레임에 출력하면 룰 번호 순서(R1, R2, …, R11)로 담는다.
 - 적색 우회전에서는 R1(깜빡이)과 R3(멈춤) 안내가 같은 회전에 나올 수 있다. 엔진은 둘 다 내고, 앱은 R3 문장을 먼저 읽는다.
 - R5는 안내 직후 운전자가 전조등을 켜면 그 프레임에 EVENT가 바로 나온다. 앱이 "EVENT가 오면 안내 표시를 숨김"으로 처리하면 따랐다는 표시가 보이지 않을 수 있다. 표시 유지 시간은 앱(앱 담당)이 정한다.
 
@@ -661,9 +669,13 @@ S29 (같은 방향 좌회전 두 번, 첫 회전의 30m 프레임 없음. #2a �
 - [ ] 회전교차로에서 내비 TBT 목록이 실제로 "진입(ENTER) → 진출(EXIT)" 순서로 오는가, 진출 안내의 남은 거리가 출구까지인가. 에뮬레이터 내비는 위치가 움직이지 않아 확인할 수 없다. 다르면 R8 판정 지점을 다시 정한다 (v0.3.3)
 - [ ] R8 진출 판정 지점 `RB_EXIT_CHECK_M`(10m)이 회전교차로 크기에 맞는가. 법령은 30m 전을 말하지만 회전교차로 안은 30m가 안 되는 경우가 많다 (v0.3.3)
 - [ ] 실제 주행의 `rain` 출처. 서버 날씨 API(서버 담당)가 붙기 전까지 R6은 시나리오에서만 동작한다 (v0.3)
-- [ ] 보조 지표(12장): 급정거·급출발 기준 가속도(m/s²). 근거 자료를 찾아 정한다
-- [ ] 보조 지표(12장): 한 번 센 뒤 다시 세지 않는 시간
-- [ ] 보조 지표(12장): 계산 위치. 엔진에 룰과 분리된 계산기를 둘지, 앱이나 습관 인사이트 라이브러리에서 할지. EVENT 형식과 시나리오 기대값은 바꾸지 않는다
+- [x] 급정거 기준 감속도: 3.0 m/s²로 정했다 (11/13, R9 15장). 근거 자료는 아직 찾지 못했다
+- [ ] 급출발 기준 가속도와 계산 위치 (12장)
+- [ ] R9 감속도는 1초 간격 속도 차이로 구한다. 실제 차량의 `PERF_VEHICLE_SPEED`가 1초보다 자주 오면 더 짧은 간격으로 볼지 (v0.3.4)
+- [ ] R10 판정 지점 속도 `TURN_SLOW_KPH`(30)와 안내 속도 `SLOW_GUIDE_KPH`(50)가 실제 교차로에서 맞는가 (v0.3.4)
+- [ ] 내비 `onCurrentRoadSpeedLimit`가 언제, 얼마나 자주 오는지, 제한속도를 모르는 도로에서 0이 오는지. 에뮬레이터 내비는 위치가 움직이지 않아 확인할 수 없다. 경로 데모는 구간별 값을 직접 넣는다 (v0.3.4)
+- [ ] R11 `OVER_MARGIN_KPH`(10)를 속도계 오차 여유로 두는 것. 법은 1 km/h 초과도 위반이다 (v0.3.4)
+- [ ] 법규표 LAW-20(속도위반) 범칙금·과태료 금액의 시행령 별표 8·별표 6 원문 확인 (v0.3.4)
 - [ ] 보조 지표(12장): R3 리포트에 "적색 신호 앞 급정거"를 함께 보여줄지
 - [ ] R7 FOG_HOLD_MS 10초는 시연용 초안이다. 실제로 김이 서리기 시작하는 시간과 맞는 근거가 없다 (v0.3.1)
 - [ ] R7 조건에 바깥 기온(겨울철)을 넣을지. AAOS 속성 `ENV_OUTSIDE_TEMPERATURE`는 에뮬레이터 차량 시스템에 있지만 앱에서 읽히는지 확인하지 않았다 (v0.3.1)
@@ -925,6 +937,8 @@ R2는 상태 대신 최근 프레임 기록을 갖는다.
 
 ## 12. 보조 지표: 급정거·급출발 (설계 미정)
 
+> v0.3.4: 급정거는 R9 룰로 옮겼다(15장). 아래는 급출발과 처음 설계 기록으로 남긴다.
+
 룰이 아니라 정차 리포트에 보여주는 참고 지표다. 지킴·놓침, 범칙금, 음성 안내가 없다.
 
 - **룰로 만들지 않는 이유**: 단독 범칙금이 없다(난폭운전 제46조의3은 여러 행위가 반복돼야 성립한다). 공모전 예시 "안전운전 점수 앱"과 겹친다. 속도가 1초에 한 번만 들어와 추정이 거칠다.
@@ -1044,3 +1058,168 @@ R2는 상태 대신 최근 프레임 기록을 갖는다.
 | S30_회전교차로_안내후_켬 | 진입 안내 뒤 45m부터 LEFT, 진출 안내 뒤 15m부터 RIGHT | GUIDE R8(진입), EVENT R8 KEPT guided=true (진입), GUIDE R8(진출), EVENT R8 KEPT guided=true (진출) |
 | S31_회전교차로_진출때_안켬 | 진입은 처음부터 LEFT, 진출 안내부터 끝까지 OFF | EVENT R8 KEPT guided=false (진입), GUIDE R8(진출), EVENT R8 MISSED guided=true (진출) |
 | S32_회전교차로_깜빡이_안켬 | 끝까지 OFF | GUIDE R8, EVENT R8 MISSED guided=true, GUIDE R8, EVENT R8 MISSED guided=true. R2는 나오지 않는다 |
+
+---
+
+## 15. 룰 R9: 급정거
+
+**근거**: 법규 조항으로 처분되는 행위가 아니다 (단독 범칙금 없음, 12장). 안전거리 확보(도로교통법 제19조)로 이어지는 안전 습관이다. 숫자 기준이 없지만 리포트의 준수율과 놓친 곳 수에는 넣는다 (11/13 결정, 2.3). 범칙금은 0원.
+
+**MVP 단순화**
+
+- SDK에 가속도 센서가 없다. 연속한 두 프레임의 속도 차이 ÷ 시간 차이로 감속도를 구한다.
+- 급정거는 지난 일을 알려주는 것이라 **예방 안내가 없다.** 감지한 프레임에 GUIDE(사후 안내)와 EVENT(MISSED, guided = false)를 함께 낸다. KEPT는 내지 않는다.
+- 한 번 센 뒤 `HARD_BRAKE_COOLDOWN_MS` 동안은 다시 세지 않는다. 한 번 멈추는 동안 여러 프레임이 기준을 넘어도 한 번만 센다.
+- 위험을 피하려고 급하게 멈춘 경우도 센다. 구별할 신호가 없다.
+
+### 15.1 파라미터
+
+| 이름 | 값 | 뜻 |
+| --- | --- | --- |
+| HARD_BRAKE_MPS2 | 3.0 | 감속도가 이 이상이면 급정거 (m/s², 약 0.3 g). 1초에 약 11 km/h 넘게 줄면 해당한다 (11/13 결정) |
+| HARD_BRAKE_FROM_KPH | 20 | 직전 속도가 이 이상일 때만 센다. 정차 직전 저속에서 꾹 밟는 것은 뺀다 |
+| HARD_BRAKE_COOLDOWN_MS | 10000 | 센 뒤 이만큼 다시 세지 않는다 |
+| MAX_FRAME_GAP_MS | 3000 | 두 프레임 간격이 이보다 길면 감속도를 계산하지 않는다 (신호가 끊긴 뒤 속도가 튀는 것 방지) |
+
+감속도: decel = (prevSpeedKph − speedKph) ÷ 3.6 ÷ ((t − prevT) ÷ 1000)
+
+### 15.2 상태
+
+| 상태 | 뜻 | 기억하는 값 |
+| --- | --- | --- |
+| READY | 감시 중 | 없음 |
+| COOLDOWN | 방금 셌음 | until |
+
+상태와 상관없이 직전 프레임의 t와 speedKph(prevT, prevSpeedKph)를 기억한다. 전이표를 적용한 뒤 프레임마다 이번 값으로 바꾼다.
+
+### 15.3 전이표
+
+| # | 현재 | 조건 | 다음 | 출력 |
+| --- | --- | --- | --- | --- |
+| 0 | 모든 상태 | gear가 P 또는 R | READY | 없음 |
+| 1 | READY | prevT가 있고, t − prevT ≤ MAX_FRAME_GAP_MS 이고, prevSpeedKph ≥ HARD_BRAKE_FROM_KPH 이고, decel ≥ HARD_BRAKE_MPS2 | COOLDOWN (until = t + HARD_BRAKE_COOLDOWN_MS) | GUIDE, EVENT (MISSED, guided = false, turn = null) |
+| 2 | COOLDOWN | t ≥ until | READY | 없음 |
+
+- GUIDE 문구: `방금 급하게 멈췄어요, 앞차와 거리를 넉넉히 두세요`. action: `KEEP_DISTANCE`.
+- t − prevT가 0 이하면(같은 시각 프레임) 감속도를 계산하지 않는다.
+
+### 15.4 시나리오
+
+| 이름 | 입력 | 기대 출력 |
+| --- | --- | --- |
+| S33_급정거 | 40 km/h로 달리다 1초마다 40 → 18 → 4 km/h (6.1, 3.9 m/s²) | GUIDE R9, EVENT R9 MISSED guided=false (한 번만) |
+| S34_천천히_정지 | 40 km/h에서 1초에 5 km/h씩 줄여 정지 (1.4 m/s²) | 출력 없음 |
+| S35_저속_급정지 | 15 km/h → 0 (4.2 m/s²이지만 직전 속도가 20 미만) | 출력 없음 |
+
+---
+
+## 16. 룰 R10: 회전 앞 감속 (브레이크 타이밍)
+
+**근거**: 도로교통법 제25조(교차로 통행방법)는 우회전·좌회전 때 "서행"을 요구한다. "서행"은 즉시 정지할 수 있는 느린 속도(제2조제28호)이고 숫자 기준이 없다. 그래서 R10의 속도 기준은 법 기준이 아니라 안전 습관 기준이다. 준수율과 놓친 곳 수에는 넣는다 (11/13 결정, 2.3). 범칙금은 0원.
+
+**MVP 단순화**
+
+- 내비 안내가 좌회전·우회전·유턴일 때만 본다 (R1과 같은 대상).
+- 회전 `SLOW_GUIDE_M` 안에서 `SLOW_GUIDE_KPH`보다 빠르면 "미리 줄이세요" 안내.
+- 판정 지점(R1과 같은 30 m) 안에 처음 들어온 프레임의 속도가 `TURN_SLOW_KPH` 이하면 KEPT, 넘으면 MISSED.
+- **천천히 다가간 회전은 기록하지 않는다.** 안내가 나갔거나 판정 지점에서 기준을 넘었을 때만 EVENT를 낸다. 모든 회전에 KEPT를 남기면 리포트가 R1과 같은 회전으로 두 번씩 채워지기 때문이다.
+- 브레이크 페달 값은 쓰지 않는다. 엔진 브레이크·회생 제동으로 줄여도 같은 결과여야 해서 속도만 본다.
+
+### 16.1 파라미터
+
+| 이름 | 값 | 뜻 |
+| --- | --- | --- |
+| SLOW_GUIDE_M | 150 | 이 거리 안에서 감시·안내한다. R1 안내(50~100 m)보다 먼저 나오게 길게 둔다 |
+| SLOW_GUIDE_KPH | 50 | 감시 중 이보다 빠르면 안내한다 |
+| CHECK_AT_M | 30 | R1과 같다. 판정 지점 |
+| TURN_SLOW_KPH | 30 | 판정 지점 속도가 이 이하면 KEPT (11/13 결정) |
+| TBT_JUMP_M | 20 | R1과 같다. 남은 거리가 이만큼 넘게 커지면 다음 회전으로 본다 |
+
+### 16.2 상태
+
+| 상태 | 뜻 | 기억하는 값 |
+| --- | --- | --- |
+| IDLE | 대기 | 없음 |
+| APPROACHING | 회전에 다가가는 중 | target, guided, lastDistanceM |
+| DONE | 이 회전은 판정 끝. 다음 안내로 넘어가길 기다린다 | target, lastDistanceM |
+
+### 16.3 전이표
+
+"회전 안내"는 tbt.turn이 LEFT, RIGHT, UTURN 중 하나인 것이다. "다른 안내"는 tbt가 null이거나, tbt.turn ≠ target 이거나, tbt.distanceM > lastDistanceM + TBT_JUMP_M 인 것이다.
+
+| # | 현재 | 조건 | 다음 | 출력 |
+| --- | --- | --- | --- | --- |
+| 0 | 모든 상태 | gear가 P 또는 R | IDLE | 없음 |
+| 1 | IDLE | 회전 안내이고 CHECK_AT_M < tbt.distanceM ≤ SLOW_GUIDE_M | APPROACHING (target = tbt.turn, guided = false, lastDistanceM = tbt.distanceM) | 없음 |
+| 2 | APPROACHING | 다른 안내 | IDLE | 없음 (재탐색·다음 회전) |
+| 3 | APPROACHING | tbt.distanceM ≤ CHECK_AT_M 이고 (guided 이거나 speedKph > TURN_SLOW_KPH) | DONE | EVENT (speedKph ≤ TURN_SLOW_KPH면 KEPT 아니면 MISSED, guided 그대로, turn = target) |
+| 4 | APPROACHING | tbt.distanceM ≤ CHECK_AT_M | DONE | 없음 (천천히 다가간 회전) |
+| 5 | APPROACHING | speedKph > SLOW_GUIDE_KPH 이고 guided == false | APPROACHING (guided = true) | GUIDE |
+| 6 | DONE | 다른 안내 | IDLE | 없음 |
+
+- APPROACHING·DONE에 머무는 모든 프레임에서 lastDistanceM = tbt.distanceM으로 바꾼다 (#2·#6이 아닐 때).
+- IDLE에서 회전이 이미 30 m 안이면(연속 회전) 감시하지 않는다. 다가오는 모습을 보지 못했기 때문이다.
+- GUIDE 문구: `회전이 가까워요, 지금부터 천천히 속도를 줄이세요`. action: `SLOW_DOWN`.
+
+### 16.4 시나리오
+
+| 이름 | 입력 | 기대 출력 |
+| --- | --- | --- |
+| S36_회전앞_미리감속 | 좌회전 150 m 앞을 60 km/h로, 안내 뒤 줄여 30 m 지점 25 km/h, 처음부터 왼쪽 깜빡이 | GUIDE R10, EVENT R10 KEPT guided=true, EVENT R1 KEPT guided=false |
+| S37_회전앞_늦은감속 | 60 km/h로 다가가 30 m 지점 45 km/h, 처음부터 왼쪽 깜빡이 | GUIDE R10, EVENT R10 MISSED guided=true, EVENT R1 KEPT guided=false |
+| S38_회전앞_천천히 | 40 km/h로 다가가 30 m 지점 20 km/h, 처음부터 왼쪽 깜빡이 | EVENT R1 KEPT guided=false (R10 출력 없음) |
+
+---
+
+## 17. 룰 R11: 제한속도
+
+**법 근거**: 도로교통법 제17조제3항 (최고속도 준수). 승용차 20 km/h 이하 초과는 범칙금 3만 원(현장 적발), 과태료 4만 원(무인 단속)으로 알고 있으며 시행령 별표 8·별표 6 원문 확인이 필요하다 (법규표 LAW-20, 5장).
+
+**MVP 단순화**
+
+- 엔진은 "진출로"나 "커브"를 모른다. 내비가 알려주는 지금 도로의 제한속도(`speedLimitKph`)보다 `OVER_MARGIN_KPH` 넘게 빠른 상태가 `OVER_HOLD_MS` 이어지면 안내한다. 진출로·커브 구간처럼 제한속도가 낮아지는 곳이 자연히 잡힌다.
+- 안내 뒤 `SLOW_GRACE_MS` 안에 제한속도 이하로 줄이면 KEPT, 못 줄이면 MISSED. 둘 다 guided = true다.
+- 안내 전에 스스로 줄이면 기록하지 않는다. 짧은 과속까지 모두 MISSED로 남기지 않기 위해서다.
+- 한 번 판정한 뒤에는 제한속도 이하로 내려갈 때까지 다시 안내하지 않는다.
+- speedLimitKph가 null이면 아무것도 하지 않는다.
+
+### 17.1 파라미터
+
+| 이름 | 값 | 뜻 |
+| --- | --- | --- |
+| OVER_MARGIN_KPH | 10 | 제한속도보다 이만큼 넘게 빠르면 안내 대상으로 본다. 속도계 오차를 감안한 여유다 (5장) |
+| OVER_HOLD_MS | 2000 | 과속이 이만큼 이어지면 안내한다. 제한속도가 바뀌는 경계에서 잠깐 튀는 값을 무시한다 |
+| SLOW_GRACE_MS | 10000 | 안내 뒤 이 안에 제한속도 이하로 줄이면 KEPT |
+
+### 17.2 상태
+
+| 상태 | 뜻 | 기억하는 값 |
+| --- | --- | --- |
+| IDLE | 대기 | 없음 |
+| OVER | 과속이 이어지는 중 | since |
+| WATCHING | 안내했고 줄이길 기다리는 중 | guidedAt |
+| DONE | 이번 과속은 판정 끝 | 없음 |
+
+### 17.3 전이표
+
+"과속"은 speedLimitKph ≠ null 이고 speedKph > speedLimitKph + OVER_MARGIN_KPH 인 프레임이다. "제한속도 이하"는 speedLimitKph == null 이거나 speedKph ≤ speedLimitKph 인 프레임이다.
+
+| # | 현재 | 조건 | 다음 | 출력 |
+| --- | --- | --- | --- | --- |
+| 0 | 모든 상태 | gear가 P 또는 R | IDLE | 없음 |
+| 1 | IDLE | 과속 | OVER (since = t) | 없음 |
+| 2 | OVER | 과속이 아님 | IDLE | 없음 |
+| 3 | OVER | t − since ≥ OVER_HOLD_MS | WATCHING (guidedAt = t) | GUIDE |
+| 4 | WATCHING | 제한속도 이하 | DONE | EVENT (KEPT, guided = true, turn = null) |
+| 5 | WATCHING | t − guidedAt ≥ SLOW_GRACE_MS | DONE | EVENT (MISSED, guided = true, turn = null) |
+| 6 | DONE | 제한속도 이하 | IDLE | 없음 |
+
+- GUIDE 문구: `제한속도 {speedLimitKph}이에요, 속도를 줄이세요` (예: `제한속도 40이에요, 속도를 줄이세요`). action: `SLOW_DOWN`.
+
+### 17.4 시나리오
+
+| 이름 | 입력 | 기대 출력 |
+| --- | --- | --- |
+| S39_진출로_안내후_감속 | 제한속도 80 → 40으로 바뀐 뒤 80 km/h 2초 유지, 안내 뒤 1초에 8 km/h씩 줄여 40 | GUIDE R11, EVENT R11 KEPT guided=true |
+| S40_커브_감속안함 | 제한속도 60 구간을 80 km/h로 15초 | GUIDE R11, EVENT R11 MISSED guided=true |
+| S41_제한속도_여유안 | 제한속도 50 구간을 58 km/h로 10초 | 출력 없음 |

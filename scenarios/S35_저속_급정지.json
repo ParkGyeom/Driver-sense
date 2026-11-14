@@ -1,0 +1,11 @@
+{
+  "name": "S35_저속_급정지",
+  "description": "15 km/h에서 1초 만에 멈춘다 (4.2 m/s²). 직전 속도가 20 km/h 미만이라 R9는 세지 않는다.",
+  "expect": [],
+  "frames": [
+    {"t": 0, "speedKph": 15.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.07, "headingDeg": 90.0, "tbt": null, "light": null},
+    {"t": 1000, "speedKph": 15.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0701, "headingDeg": 90.0, "tbt": null, "light": null},
+    {"t": 2000, "speedKph": 0.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": true, "lat": 37.55, "lon": 127.0702, "headingDeg": 90.0, "tbt": null, "light": null},
+    {"t": 3000, "speedKph": 0.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": true, "lat": 37.55, "lon": 127.0703, "headingDeg": 90.0, "tbt": null, "light": null}
+  ]
+}

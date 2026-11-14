@@ -6,6 +6,7 @@ import kkam.engine.model.Gear
 import kkam.engine.model.Guide
 import kkam.engine.model.GuideAction
 import kkam.engine.model.Result
+import kkam.engine.model.RuleId
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.Tbt
 import kkam.engine.model.TurnSignal
@@ -110,7 +111,8 @@ class R1RuleTest {
         )
 
         assertEquals(emptyList(), atLimit)
-        assertIs<Event>(finished.single())
+        // 30 → 0 km/h 정지는 R9(급정거)도 세므로 R1 출력만 본다
+        assertIs<Event>(finished.single { it.rule == RuleId.R1 })
     }
 
     private fun firstGuide(turn: TurnType): Guide {

@@ -1,0 +1,26 @@
+{
+  "name": "S40_커브_감속안함",
+  "description": "제한속도 60인 커브 구간을 80 km/h로 15초 달린다. 안내 뒤 10초가 지나도 줄이지 않아 R11 놓침.",
+  "expect": [
+    {"type": "GUIDE", "t": 2000, "rule": "R11"},
+    {"type": "EVENT", "t": 12000, "rule": "R11", "result": "MISSED", "guided": true}
+  ],
+  "frames": [
+    {"t": 0, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.07, "headingDeg": 90.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 1000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0701, "headingDeg": 91.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 2000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0702, "headingDeg": 92.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 3000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0703, "headingDeg": 93.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 4000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0704, "headingDeg": 94.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 5000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0705, "headingDeg": 95.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 6000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0706, "headingDeg": 96.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 7000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0707, "headingDeg": 97.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 8000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0708, "headingDeg": 98.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 9000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0709, "headingDeg": 99.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 10000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.071, "headingDeg": 100.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 11000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0711, "headingDeg": 101.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 12000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0712, "headingDeg": 102.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 13000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0713, "headingDeg": 103.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 14000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0714, "headingDeg": 104.0, "tbt": null, "light": null, "speedLimitKph": 60},
+    {"t": 15000, "speedKph": 80.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0715, "headingDeg": 105.0, "tbt": null, "light": null, "speedLimitKph": 60}
+  ]
+}

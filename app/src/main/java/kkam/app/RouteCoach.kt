@@ -96,11 +96,12 @@ fun weakSpotOf(todayEvents: List<Event>, diagnosis: Diagnosis?): WeakSpot? {
 
 /** 판정이 경로 위에서 어떤 회전에서 나오는지. R3(적색 우회전)는 우회전에서 나온다. */
 private fun Event.routeTurns(): Set<TurnType> = when (rule) {
-    RuleId.R1, RuleId.R2, RuleId.R8 -> setOfNotNull(turn)
+    RuleId.R1, RuleId.R2, RuleId.R8, RuleId.R10 -> setOfNotNull(turn)
     RuleId.R3 -> setOf(TurnType.RIGHT)
     RuleId.R4 -> setOf(TurnType.RAMP_LEFT, TurnType.RAMP_RIGHT)
     RuleId.R5 -> setOf(TurnType.TUNNEL)
     RuleId.R6, RuleId.R7 -> emptySet() // 와이퍼(비)·김서림은 날씨에 달려 있어 경로 위 지점이 없다
+    RuleId.R9, RuleId.R11 -> emptySet() // 급정거·제한속도는 내비 안내 지점이 아니다
 }
 
 private fun Habit.routeTurns(): Set<TurnType> = when (this) {

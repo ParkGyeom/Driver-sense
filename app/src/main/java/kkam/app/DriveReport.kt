@@ -70,13 +70,15 @@ private fun Event.toItem(law: LawEntry?): ReportItem {
  * R5(터널 전조등)는 처분 금액을 아직 확인하지 못해 0원으로 둔다 (spec 8장).
  */
 private fun RuleId.fineWon(): Int = when (this) {
-    RuleId.R1, RuleId.R2, RuleId.R4, RuleId.R8 -> 30_000
+    RuleId.R1, RuleId.R2, RuleId.R4, RuleId.R8, RuleId.R11 -> 30_000
     RuleId.R3 -> 60_000
-    RuleId.R5, RuleId.R6, RuleId.R7 -> 0
+    // R9(급정거)·R10(회전 앞 감속)은 숫자로 정한 법규 기준이 없어 범칙금이 없다 (spec 2.3)
+    RuleId.R5, RuleId.R6, RuleId.R7, RuleId.R9, RuleId.R10 -> 0
 }
 
 /**
  * 지킴률(준수율)에 세는 룰인가. R6(비 올 때 와이퍼)·R7(김서림)은 법규 근거가 없는 안전 안내라 기록만 남기고 세지 않는다 (spec 2.3).
+ * R9(급정거)·R10(회전 앞 감속)은 숫자 기준은 없지만 준수율과 놓친 곳 수에 넣는다 (11/13 결정, spec 2.3).
  * 리포트 카드 목록에는 그대로 나온다.
  */
 val RuleId.inRate: Boolean get() = this != RuleId.R6 && this != RuleId.R7
@@ -92,7 +94,8 @@ val RuleId.inRate: Boolean get() = this != RuleId.R6 && this != RuleId.R7
  * | R3 | LAW-12 적색 신호 우회전 일시정지 |
  * | R4 | LAW-04 차로 변경 |
  * | R8 진입·진출 | LAW-17 회전교차로 진입, LAW-18 회전교차로 진출 |
- * | R5·R6·R7 | 없음. R5(터널 전조등)는 룰 테이블에 행이 아직 없고, R6(와이퍼)·R7(김서림)은 법규 근거가 없다 |
+ * | R11 | LAW-20 제한속도 |
+ * | R5·R6·R7·R9·R10 | 없음. R5(터널 전조등)는 룰 테이블에 행이 아직 없고, 나머지는 숫자로 정한 법규 기준이 없다 |
  */
 private fun Event.lawId(): String? = when (rule) {
     RuleId.R1 -> if (turn == TurnType.UTURN) "LAW-03" else "LAW-01"
@@ -100,5 +103,6 @@ private fun Event.lawId(): String? = when (rule) {
     RuleId.R3 -> "LAW-12"
     RuleId.R4 -> "LAW-04"
     RuleId.R8 -> if (turn == TurnType.ROUNDABOUT_EXIT) "LAW-18" else "LAW-17"
-    RuleId.R5, RuleId.R6, RuleId.R7 -> null
+    RuleId.R11 -> "LAW-20"
+    RuleId.R5, RuleId.R6, RuleId.R7, RuleId.R9, RuleId.R10 -> null
 }

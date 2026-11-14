@@ -20,10 +20,10 @@ enum class GuideKind(
     /** 회전교차로에 들어갈 때 왼쪽, 나갈 때 오른쪽 깜빡이 (R8, spec 14장). 방향은 [right]로 나눈다. */
     ROUNDABOUT("회전교차로"),
 
-    /** 속도를 줄이라는 안내 (경로 데모 각본: 커브, 진출로). 엔진 룰 없음. */
+    /** 제한속도까지 줄이라는 안내 (R11, spec 17장). 경로 데모의 진출로·커브 장면. */
     SPEED("속도"),
 
-    /** 브레이크 안내 (경로 데모 각본: 급정거, 브레이크 타이밍). 엔진 룰 없음. */
+    /** 브레이크 안내: 급정거 사후 안내(R9, spec 15장)와 회전 앞 미리 감속(R10, spec 16장). */
     BRAKE("브레이크"),
     LANE_CHANGE("차선 변경"),
     HEADLIGHT("전조등"),
@@ -45,6 +45,8 @@ fun RuleId.guideKind(): GuideKind? = when (this) {
     RuleId.R6 -> GuideKind.WIPER
     RuleId.R7 -> GuideKind.DEFOG
     RuleId.R8 -> GuideKind.ROUNDABOUT
+    RuleId.R9, RuleId.R10 -> GuideKind.BRAKE
+    RuleId.R11 -> GuideKind.SPEED
 }
 
 /** 음성 안내 하나의 종류. R1은 내비 안내가 유턴이면 유턴 깜빡이, 그 밖은 [RuleId.guideKind]. */

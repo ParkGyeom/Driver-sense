@@ -10,6 +10,7 @@ import kkam.engine.model.TurnSignal
 import kkam.engine.model.TurnType
 import kkam.engine.model.WiperMode
 import kkam.engine.rules.CHECK_AT_M
+import kkam.engine.rules.SLOW_GUIDE_M
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
@@ -77,21 +78,25 @@ object RouteDemo {
         ROUNDABOUT_ENTER(TurnType.ROUNDABOUT_ENTER),
         ROUNDABOUT_EXIT(TurnType.ROUNDABOUT_EXIT),
 
-        // 아래는 영상용 각본 안내다. 엔진 판정이 없고 앱이 카드와 음성만 낸다 (차선 변경과 같다). 시각표는 [scriptFor].
-        /** 급정거: 이 지점에서 앞차 때문에 급하게 멈추고, 멈춘 뒤 "앞차와 거리를 두세요". */
+        // 아래 넷은 엔진이 판정하는 운전 습관 장면이다 (spec 15~17장). 지점은 데모 차의 운전 각본(속도, 구간 제한속도)만 정하고
+        // 카드와 음성은 엔진 GUIDE/EVENT로 나온다.
+        /** 급정거 (R9): 이 지점에서 앞차 때문에 [SUDDEN_STOP_KPH]로 급하게 멈춘다. */
         SUDDEN_STOP(null),
+        /** 커브 (R11): 이 지점부터 [CURVE_HOLD_M]까지 제한속도 [CURVE_KPH]. 운전자는 안내를 듣고 줄인다. */
+        CURVE(null),
+        /** 고속도로 진출로 (R11): 나들목(자동차전용도로 끝)부터 [EXIT_LIMIT_M]까지 제한속도 [CITY_KPH]. 운전자는 안내를 듣고 줄인다. */
+        EXIT_SLOW(null),
+        /** 브레이크 타이밍 (R10): 다음 회전 앞 구간을 [BRAKE_APPROACH_KPH]로 다가가 안내를 듣고 미리 줄인다. */
+        BRAKE_EARLY(null),
+
+        // 아래는 영상용 각본 안내다. 엔진 판정이 없고 앱이 카드와 음성만 낸다 (차선 변경과 같다). 시각표는 [scriptFor].
+        // SDK에 차로 번호·차로 변경 신호가 없어서 판정할 수 없다 (docs/proposals/spec-habit-rules.md 1장).
         /** 1차로 정속 주행: "1차로는 추월할 때만, 오른쪽 차로로". */
         LANE_KEEP(null),
         /** 깜빡이 뒤 이동 타이밍: 오른쪽 깜빡이를 켜고 3초 기다렸다 옮긴다. */
         LANE_WAIT(null),
-        /** 곡선 구간: 커브 앞에서 [CURVE_KPH]까지 줄인다. */
-        CURVE(null),
-        /** 고속도로 진출로: 나들목(자동차전용도로 끝)부터 [EXIT_SLOW_M]에 걸쳐 시내 속도까지 천천히 줄인다. 카드는 이 지점에서 띄운다. */
-        EXIT_SLOW(null),
         /** 진출 직후 회전: 바로 회전하니 그쪽 끝 차로로 미리 옮긴다. */
         PRE_LANE(null),
-        /** 브레이크 타이밍: 회전 앞에서 미리 속도를 줄인다. */
-        BRAKE_EARLY(null),
     }
 
     /** 경로 데모 파일의 코치 지점 하나. [point]는 [DemoRoute.points]의 번호. */
@@ -216,14 +221,47 @@ object RouteDemo {
     const val LANE_OK_MS = 3000L
     /** [Driver.LATE]가 회전 깜빡이를 켜는 거리. 판정 지점(30 m)을 지난 뒤라 놓침이다. */
     const val LATE_ON_M = 20
-    /** 급정거 각본: 앞차 때문에 이 속도들로 1초씩 급하게 줄여 멈춘다 (40 → 18 → 4 km/h, 약 3 m/s²). */
+    /** 급정거 각본: 앞차 때문에 이 속도들로 1초씩 급하게 줄여 멈춘다 (40 → 18 → 4 km/h, 6.1 m/s². R9 기준 3.0 m/s² 이상). */
     val SUDDEN_STOP_KPH = listOf(18.0, 4.0)
-    /** 커브 각본: 커브 앞 지점부터 [CURVE_SLOW_M]에 걸쳐 [CURVE_KPH]까지 줄이고, 지점부터 [CURVE_HOLD_M]까지 그 속도를 지킨다. */
+
+    /**
+     * 구간 제한속도 (데모 값, [limitAt]). 실제 주행은 내비 `onCurrentRoadSpeedLimit`가 준다.
+     * 순항 속도와 같거나 높아서 평소에는 R11이 나오지 않고, 커브·진출로 구간에서만 나온다.
+     */
+    const val CITY_LIMIT_KPH = 50
+
+    /**
+     * 커브 각본 (R11). 지점부터 [CURVE_HOLD_M]까지 제한속도 [CURVE_KPH]. 운전자는 [CURVE_REACT_M]까지 80을 유지하다가
+     * (R11은 2초 이어진 과속을 안내한다) [CURVE_SLOW_M]에 걸쳐 60으로 줄인다.
+     *
+     * | 지점부터 | 차 | 엔진 |
+     * | --- | --- | --- |
+     * | 0 m | 80, 제한속도 60 | R11 과속 시작 |
+     * | 약 44 m (2초) | 80 | R11 안내 "제한속도 60이에요" → 주황 카드 |
+     * | [CURVE_REACT_M] ~ +[CURVE_SLOW_M] | 80 → 60 | 60이 되면 R11 지킴 → 파랑 |
+     */
     const val CURVE_KPH = 60.0
+    const val CURVE_REACT_M = 50.0
     const val CURVE_SLOW_M = 80.0
-    const val CURVE_HOLD_M = 400.0
-    /** 진출로 각본: 나들목을 지난 뒤 이 거리에 걸쳐 자동차전용도로 속도에서 시내 속도로 천천히 줄인다 (원래는 바로 40이 됐다). */
-    const val EXIT_SLOW_M = 150.0
+    const val CURVE_HOLD_M = 160.0
+
+    /**
+     * 진출로 각본 (R11). 나들목(자동차전용도로 끝)부터 [EXIT_LIMIT_M]까지 제한속도 [CITY_KPH](40).
+     * 운전자는 [EXIT_HOLD_M]까지 80을 유지하다가 안내를 듣고 [EXIT_SLOW_M]에 걸쳐 40으로 줄인다 (1초에 약 7 km/h, R9 기준 아래).
+     */
+    const val EXIT_HOLD_M = 50.0
+    const val EXIT_SLOW_M = 100.0
+    const val EXIT_LIMIT_M = 200.0
+
+    /**
+     * 브레이크 타이밍 각본 (R10). 지점 [BRAKE_ZONE_BEFORE_M] 앞부터 다음 회전까지 [BRAKE_APPROACH_KPH]로 달리고 제한속도도 그 값이다.
+     * 회전 [SLOW_GUIDE_M](150 m) 안에 들면 R10 안내 → [BRAKE_SLOW_UNTIL_M]까지 [BRAKE_SLOW_TO_KPH]로 줄인다 (파랑 "좋아요") →
+     * 그 뒤 회전 속도까지. 30 m 판정 지점은 약 20 km/h라 R10 지킴이다.
+     */
+    const val BRAKE_APPROACH_KPH = 60.0
+    const val BRAKE_ZONE_BEFORE_M = 200.0
+    const val BRAKE_SLOW_TO_KPH = 25.0
+    const val BRAKE_SLOW_UNTIL_M = 90.0
     /** 각본 카드 지점 뒤로 실제 속도로 가는 거리. 80 km/h에서 카드가 다 보이는 7초가 약 160 m다. */
     const val SCRIPT_AFTER_M = 170.0
 
@@ -233,26 +271,20 @@ object RouteDemo {
      * | 종류 | 주황 | 파랑 "좋아요" | 숨김 | 깜빡이 |
      * | --- | --- | --- | --- | --- |
      * | 차선 변경 | 0초 | 4초 | 10초 | 4~7초 |
-     * | 급정거 | 0초 | 없음 | 5초 | 없음 |
      * | 1차로 정속 주행 | 0초 | 없음 | 5초 | 없음 |
      * | 깜빡이 뒤 3초 | 0초 | 3.5초 (3초 기다렸다 옮김) | 7초 | 0~5초 |
-     * | 커브 | 0초 | 4초 (60까지 줄임) | 7초 | 없음 |
-     * | 진출로 | 0초 | 3.5초 | 5.5초 | 없음 |
      * | 진출 직후 회전 차로 | 0초 | 3초 | 6초 | 2~4.5초 |
-     * | 브레이크 타이밍 | 0초 | 3초 | 5.5초 (R1 안내보다 먼저 숨긴다) | 없음 |
+     *
+     * 급정거·커브·진출로·브레이크 타이밍은 각본이 아니라 엔진 판정이라 null이다.
      */
     fun scriptFor(kind: CueKind, t: Long, toRight: Boolean): ScriptCue? = when (kind) {
         CueKind.LANE_CHANGE -> ScriptCue(
             kind, t, t + LANE_SIGNAL_AFTER_MS, t + LANE_SIGNAL_AFTER_MS + LANE_SIGNAL_MS + LANE_OK_MS, toRight,
             t + LANE_SIGNAL_AFTER_MS, t + LANE_SIGNAL_AFTER_MS + LANE_SIGNAL_MS,
         )
-        CueKind.SUDDEN_STOP -> ScriptCue(kind, t, null, t + 5000)
         CueKind.LANE_KEEP -> ScriptCue(kind, t, null, t + 5000, toRight)
         CueKind.LANE_WAIT -> ScriptCue(kind, t, t + 3500, t + 7000, toRight, t, t + 5000)
-        CueKind.CURVE -> ScriptCue(kind, t, t + 4000, t + 7000)
-        CueKind.EXIT_SLOW -> ScriptCue(kind, t, t + 3500, t + 5500)
         CueKind.PRE_LANE -> ScriptCue(kind, t, t + 3000, t + 6000, toRight, t + 2000, t + 4500)
-        CueKind.BRAKE_EARLY -> ScriptCue(kind, t, t + 3000, t + 5500)
         else -> null
     }
     /**
@@ -294,7 +326,10 @@ object RouteDemo {
         CueKind.ROUNDABOUT_EXIT -> 0.0 to 25.0
         CueKind.LANE_CHANGE -> 20.0 to 130.0
         CueKind.SUDDEN_STOP -> 60.0 to 60.0
-        CueKind.LANE_KEEP, CueKind.LANE_WAIT, CueKind.CURVE, CueKind.EXIT_SLOW, CueKind.PRE_LANE -> 20.0 to SCRIPT_AFTER_M
+        CueKind.LANE_KEEP, CueKind.LANE_WAIT, CueKind.PRE_LANE -> 20.0 to SCRIPT_AFTER_M
+        // 제한속도가 바뀌는 구간 전체를 실제 속도로 간다. 빨리 감는 프레임이 80으로 이 구간을 지나면 R11이 과속으로 본다
+        CueKind.CURVE -> 20.0 to CURVE_HOLD_M + 20.0
+        CueKind.EXIT_SLOW -> 20.0 to EXIT_LIMIT_M + 20.0
         CueKind.BRAKE_EARLY -> 20.0 to 20.0
         CueKind.TUNNEL -> 260.0 to 30.0
         CueKind.RAMP_RIGHT -> 320.0 to 20.0
@@ -342,18 +377,34 @@ object RouteDemo {
         var rainStartAt: Long? = null
         var t = 0L
         val exitSlow = cues.firstOrNull { it.cue.kind == CueKind.EXIT_SLOW }
+        val exitFrom = express.endInclusive
+        val brakeZone = brakeZone(cues)
 
         /**
-         * 순항 속도. 자동차전용도로 80, 시내 40.
-         * 진출로 각본이 있으면 자동차전용도로가 끝난 곳(나들목)부터 [EXIT_SLOW_M]에 걸쳐 80에서 40으로 줄인다 (원래는 바로 40이었다).
+         * 순항 속도. 자동차전용도로 80, 시내 40, 브레이크 타이밍 구간 60.
+         * 진출로 각본이 있으면 나들목부터 [EXIT_HOLD_M]까지 80을 유지하다가(R11 안내를 기다림) [EXIT_SLOW_M]에 걸쳐 40으로 줄인다.
          */
         fun cruise(s: Double): Double {
-            val exitFrom = express.endInclusive
+            val slowFrom = exitFrom + EXIT_HOLD_M
             return when {
                 s in express -> EXPRESS_KPH
-                exitSlow != null && s >= exitFrom && s < exitFrom + EXIT_SLOW_M ->
-                    EXPRESS_KPH - (EXPRESS_KPH - CITY_KPH) * (s - exitFrom) / EXIT_SLOW_M
+                exitSlow != null && s >= exitFrom && s < slowFrom -> EXPRESS_KPH
+                exitSlow != null && s >= slowFrom && s < slowFrom + EXIT_SLOW_M ->
+                    EXPRESS_KPH - (EXPRESS_KPH - CITY_KPH) * (s - slowFrom) / EXIT_SLOW_M
+                brakeZone != null && s in brakeZone -> BRAKE_APPROACH_KPH
                 else -> CITY_KPH
+            }
+        }
+
+        /** 구간 제한속도 (데모 값). 커브 60, 진출로 40, 브레이크 타이밍 구간 60, 자동차전용도로 80, 시내 50. */
+        fun limitAt(s: Double): Int {
+            val curve = cues.firstOrNull { it.cue.kind == CueKind.CURVE && s >= it.atM && s < it.atM + CURVE_HOLD_M }
+            return when {
+                curve != null -> CURVE_KPH.toInt()
+                s in express -> EXPRESS_KPH.toInt()
+                exitSlow != null && s >= exitFrom && s < exitFrom + EXIT_LIMIT_M -> CITY_KPH.toInt()
+                brakeZone != null && s in brakeZone -> BRAKE_APPROACH_KPH.toInt()
+                else -> CITY_LIMIT_KPH
             }
         }
         fun emit(s: Double, kph: Double, gear: Gear, brake: Boolean, tbt: Tbt?) {
@@ -370,6 +421,7 @@ object RouteDemo {
                 tbt = tbt,
                 light = lightAt(cues, s),
                 headlight = headlightAt(cues, s),
+                speedLimitKph = limitAt(s),
             )
         }
 
@@ -409,14 +461,13 @@ object RouteDemo {
                 continue
             }
 
-            // 급정거: 지점에 닿으면 앞차 때문에 [SUDDEN_STOP_KPH]로 1초씩 급하게 줄여 멈추고, 멈춘 프레임에 카드를 띄운다
+            // 급정거: 지점에 닿으면 앞차 때문에 [SUDDEN_STOP_KPH]로 1초씩 급하게 줄여 멈춘다. 카드와 음성은 엔진 R9가 낸다
             val suddenStop = cues.firstOrNull { it.cue.kind == CueKind.SUDDEN_STOP && it !in scriptShown && s >= it.atM }
             if (suddenStop != null) {
                 scriptShown += suddenStop
                 SUDDEN_STOP_KPH.forEach { v ->
                     emit(s, v, Gear.D, brake = true, tbt = tbtAt(navi, path, s))
                     s += stepM(v)
-                    if (v == SUDDEN_STOP_KPH.last()) scriptFor(CueKind.SUDDEN_STOP, t, true)?.let { scriptCues += it }
                     t += FRAME_MS
                 }
                 kph = SUDDEN_STOP_KPH.last()
@@ -485,13 +536,17 @@ object RouteDemo {
         return ceil(hours * 60).toInt()
     }
 
-    /**
-     * 회전 앞 몇 m부터 줄일지. 보통 [SLOW_FROM_M]이고, 회전 앞에 브레이크 타이밍 각본([CueKind.BRAKE_EARLY])이 있으면
-     * 그 카드가 뜨는 지점부터 줄인다 ("미리 속도를 줄이세요" → 실제로 줄어든다).
-     */
-    private fun slowFrom(cues: List<Placed>, turn: Placed): Double {
-        val brake = cues.lastOrNull { it.cue.kind == CueKind.BRAKE_EARLY && it.atM < turn.atM && turn.atM - it.atM < 300.0 }
-        return brake?.let { turn.atM - it.atM } ?: SLOW_FROM_M
+    /** 브레이크 타이밍 지점 바로 뒤의 회전. 없으면 null. */
+    private fun brakeTurn(cues: List<Placed>): Placed? {
+        val brake = cues.firstOrNull { it.cue.kind == CueKind.BRAKE_EARLY } ?: return null
+        return cues.firstOrNull { it.atM > brake.atM && it.cue.kind in SLOW_TURNS }
+    }
+
+    /** 브레이크 타이밍 구간: 지점 [BRAKE_ZONE_BEFORE_M] 앞부터 다음 회전까지. 이 구간은 [BRAKE_APPROACH_KPH]로 달린다. */
+    private fun brakeZone(cues: List<Placed>): ClosedFloatingPointRange<Double>? {
+        val brake = cues.firstOrNull { it.cue.kind == CueKind.BRAKE_EARLY } ?: return null
+        val turn = brakeTurn(cues) ?: return null
+        return (brake.atM - BRAKE_ZONE_BEFORE_M)..turn.atM
     }
 
     /** 앞에서 속도를 줄이는 코치 지점: 회전, 유턴, 회전교차로. */
@@ -555,19 +610,30 @@ object RouteDemo {
                 if (creeping) min(slowing, RED_CREEP_KPH) else slowing
             }
             turn.cue.kind == CueKind.ROUNDABOUT_EXIT -> ROUNDABOUT_KPH
-            turn.atM - s < slowFrom(cues, turn) -> {
+            // 브레이크 타이밍: R10 안내 거리(150 m)에서 줄이기 시작해 [BRAKE_SLOW_UNTIL_M]까지 [BRAKE_SLOW_TO_KPH], 그 뒤 회전 속도까지
+            turn == brakeTurn(cues) && turn.atM - s < SLOW_GUIDE_M -> {
+                val ahead = turn.atM - s
+                if (ahead >= BRAKE_SLOW_UNTIL_M) {
+                    BRAKE_SLOW_TO_KPH + (cruise - BRAKE_SLOW_TO_KPH) * (ahead - BRAKE_SLOW_UNTIL_M) / (SLOW_GUIDE_M - BRAKE_SLOW_UNTIL_M)
+                } else {
+                    TURN_KPH + (BRAKE_SLOW_TO_KPH - TURN_KPH) * ahead / BRAKE_SLOW_UNTIL_M
+                }
+            }
+            turn == brakeTurn(cues) -> cruise
+            turn.atM - s < SLOW_FROM_M -> {
                 val slowest = if (turn.cue.kind in ROUNDABOUT) ROUNDABOUT_KPH else TURN_KPH
-                slowest + (cruise - slowest) * (turn.atM - s) / slowFrom(cues, turn)
+                slowest + (cruise - slowest) * (turn.atM - s) / SLOW_FROM_M
             }
             else -> cruise
         }
         val toEnd = length - s
         val forStop = if (toEnd < STOP_FROM_M) cruise * sqrt(toEnd / STOP_FROM_M) else cruise
-        // 커브 각본: 지점부터 [CURVE_SLOW_M]에 걸쳐 [CURVE_KPH]까지 줄이고 [CURVE_HOLD_M]까지 지킨다
+        // 커브 각본: [CURVE_REACT_M]까지 그대로 가다가(R11 안내를 기다림) [CURVE_SLOW_M]에 걸쳐 [CURVE_KPH]까지 줄이고 [CURVE_HOLD_M]까지 지킨다
         val curve = cues.firstOrNull { it.cue.kind == CueKind.CURVE && s >= it.atM && s < it.atM + CURVE_HOLD_M }
+        val slowFrom = curve?.let { it.atM + CURVE_REACT_M }
         val forCurve = when {
-            curve == null || cruise <= CURVE_KPH -> cruise
-            s < curve.atM + CURVE_SLOW_M -> cruise - (cruise - CURVE_KPH) * (s - curve.atM) / CURVE_SLOW_M
+            curve == null || slowFrom == null || cruise <= CURVE_KPH || s < slowFrom -> cruise
+            s < slowFrom + CURVE_SLOW_M -> cruise - (cruise - CURVE_KPH) * (s - slowFrom) / CURVE_SLOW_M
             else -> CURVE_KPH
         }
         return maxOf(MIN_KPH, minOf(forTurn, forStop, forCurve))

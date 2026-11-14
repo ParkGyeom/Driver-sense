@@ -1,0 +1,18 @@
+{
+  "name": "S33_급정거",
+  "description": "40 km/h로 가다 앞차 때문에 1초마다 40 → 18 → 4 km/h로 급하게 멈춘다 (6.1, 3.9 m/s²). R9 사후 안내와 놓침이 한 번만 나온다.",
+  "expect": [
+    {"type": "GUIDE", "t": 3000, "rule": "R9"},
+    {"type": "EVENT", "t": 3000, "rule": "R9", "result": "MISSED", "guided": false}
+  ],
+  "frames": [
+    {"t": 0, "speedKph": 40.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.07, "headingDeg": 90.0, "tbt": null, "light": null},
+    {"t": 1000, "speedKph": 40.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0701, "headingDeg": 90.0, "tbt": null, "light": null},
+    {"t": 2000, "speedKph": 40.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": false, "lat": 37.55, "lon": 127.0702, "headingDeg": 90.0, "tbt": null, "light": null},
+    {"t": 3000, "speedKph": 18.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": true, "lat": 37.55, "lon": 127.0703, "headingDeg": 90.0, "tbt": null, "light": null},
+    {"t": 4000, "speedKph": 4.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": true, "lat": 37.55, "lon": 127.0704, "headingDeg": 90.0, "tbt": null, "light": null},
+    {"t": 5000, "speedKph": 0.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": true, "lat": 37.55, "lon": 127.0705, "headingDeg": 90.0, "tbt": null, "light": null},
+    {"t": 6000, "speedKph": 0.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": true, "lat": 37.55, "lon": 127.0706, "headingDeg": 90.0, "tbt": null, "light": null},
+    {"t": 7000, "speedKph": 0.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "OFF", "brake": true, "lat": 37.55, "lon": 127.0707, "headingDeg": 90.0, "tbt": null, "light": null}
+  ]
+}

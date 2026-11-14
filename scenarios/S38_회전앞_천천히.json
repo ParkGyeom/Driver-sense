@@ -1,0 +1,36 @@
+{
+  "name": "S38_회전앞_천천히",
+  "description": "좌회전에 40 km/h로 다가가 천천히 줄인다. R10은 안내도 기록도 하지 않는다. R1만 지킴.",
+  "expect": [
+    {"type": "EVENT", "t": 25000, "rule": "R1", "result": "KEPT", "guided": false}
+  ],
+  "frames": [
+    {"t": 0, "speedKph": 40.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.07, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 160}, "light": null},
+    {"t": 1000, "speedKph": 40.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0701, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 149}, "light": null},
+    {"t": 2000, "speedKph": 40.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0702, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 138}, "light": null},
+    {"t": 3000, "speedKph": 36.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0703, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 127}, "light": null},
+    {"t": 4000, "speedKph": 32.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0704, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 117}, "light": null},
+    {"t": 5000, "speedKph": 28.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0705, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 108}, "light": null},
+    {"t": 6000, "speedKph": 26.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0706, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 100}, "light": null},
+    {"t": 7000, "speedKph": 24.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0707, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 93}, "light": null},
+    {"t": 8000, "speedKph": 22.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0708, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 86}, "light": null},
+    {"t": 9000, "speedKph": 20.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0709, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 80}, "light": null},
+    {"t": 10000, "speedKph": 20.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.071, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 74}, "light": null},
+    {"t": 11000, "speedKph": 20.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0711, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 69}, "light": null},
+    {"t": 12000, "speedKph": 20.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0712, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 63}, "light": null},
+    {"t": 13000, "speedKph": 20.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0713, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 58}, "light": null},
+    {"t": 14000, "speedKph": 20.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0714, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 52}, "light": null},
+    {"t": 15000, "speedKph": 20.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0715, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 47}, "light": null},
+    {"t": 16000, "speedKph": 20.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0716, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 41}, "light": null},
+    {"t": 17000, "speedKph": 20.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0717, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 36}, "light": null},
+    {"t": 18000, "speedKph": 20.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0718, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 30}, "light": null},
+    {"t": 19000, "speedKph": 20.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0719, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 24}, "light": null},
+    {"t": 20000, "speedKph": 20.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.072, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 19}, "light": null},
+    {"t": 21000, "speedKph": 15.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0721, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 13}, "light": null},
+    {"t": 22000, "speedKph": 15.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0722, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 9}, "light": null},
+    {"t": 23000, "speedKph": 10.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0723, "headingDeg": 90.0, "tbt": {"turn": "LEFT", "distanceM": 5}, "light": null},
+    {"t": 24000, "speedKph": 15.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0724, "headingDeg": 60.0, "tbt": {"turn": "STRAIGHT", "distanceM": 300}, "light": null},
+    {"t": 25000, "speedKph": 15.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0725, "headingDeg": 30.0, "tbt": {"turn": "STRAIGHT", "distanceM": 300}, "light": null},
+    {"t": 26000, "speedKph": 15.0, "gear": "D", "steeringDeg": 0.0, "turnSignal": "LEFT", "brake": false, "lat": 37.55, "lon": 127.0726, "headingDeg": 0.0, "tbt": {"turn": "STRAIGHT", "distanceM": 300}, "light": null}
+  ]
+}

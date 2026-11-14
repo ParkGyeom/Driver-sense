@@ -4,7 +4,9 @@ import kkam.engine.model.EngineOutput
 import kkam.engine.model.Event
 import kkam.engine.model.Gear
 import kkam.engine.model.Guide
+import kkam.engine.model.GuideAction
 import kkam.engine.model.Result
+import kkam.engine.model.RuleId
 import kkam.engine.model.SignalFrame
 import kkam.engine.model.TurnType
 
@@ -35,10 +37,10 @@ data class Popup(
  * | --- | --- |
  * | 기어 P | 숨김 (정차 중에는 앱 화면이 리포트를 보여준다) |
  * | 이 프레임에 음성 안내(GUIDE)가 있음 | 띄움. 같은 프레임에 다른 판정이 있어도 새 안내가 먼저다 |
- * | 놓침(MISSED) 판정 | 숨김. 위반 직후 잔소리하지 않는다 (기획서 5.4) |
+ * | 놓침(MISSED) 판정 | 숨김. 위반 직후 잔소리하지 않는다 (기획서 5.4). R9~R11 판정은 같은 종류 카드일 때만 본다 ([touches]) |
  * | 지킴(KEPT) 판정이고 떠 있음 | 파랑 "좋아요". 안내 직후 바로 켜도(R5) 파랑이 보이게 한다 |
  * | 숨겨져 있음 | 계속 숨김. 안내 전에는 먼저 띄우지 않는다 |
- * | 와이퍼·김서림 카드가 파랑 | 그대로 둔다. 판정 뒤 카드는 내비 안내로 돌아가 대기가 되지만, "좋아요"는 몇 초 보여준다 |
+ * | 와이퍼·김서림·제한속도 카드가 파랑 | 그대로 둔다. 판정 뒤 카드는 내비 안내로 돌아가 대기가 되지만, "좋아요"는 몇 초 보여준다 |
  * | 내비 안내가 띄울 때와 다름 | 숨김 (재탐색이나 지나감) |
  * | 카드가 대기 상태 | 숨김 |
  * | 그 밖 | 띄움. 안내를 따랐으면 파랑, 판정 지점을 꺼진 채 지났으면 빨강 "다음엔 미리 켜요", 아니면 주황 |
@@ -47,12 +49,13 @@ data class Popup(
  */
 fun nextPopup(current: Popup?, state: CoachState, outputs: List<EngineOutput>, frame: SignalFrame): Popup? {
     val turn = frame.tbt?.turn
+    val events = outputs.filterIsInstance<Event>().filter { it.touches(current) }
     return when {
         frame.gear == Gear.P -> null
-        // 와이퍼·김서림 안내는 내비 안내와 상관없어서 내비 안내가 바뀌어도 숨기지 않는다
-        outputs.any { it is Guide } -> state.toPopup(if (state.guideKind.notTiedToNavi()) null else turn)
-        outputs.any { it is Event && it.result == Result.MISSED } -> null
-        outputs.any { it is Event } && current != null -> current.copy(
+        // 와이퍼·김서림·제한속도·급정거 안내는 내비 안내와 상관없어서 내비 안내가 바뀌어도 숨기지 않는다
+        outputs.any { it is Guide } -> state.toPopup(if (state.notTiedToNavi()) null else turn)
+        events.any { it.result == Result.MISSED } -> null
+        events.isNotEmpty() && current != null -> current.copy(
             tone = PopupTone.OK,
             headline = "좋아요",
             distanceLabel = state.distanceLabel.ifEmpty { current.distanceLabel },
@@ -80,8 +83,20 @@ private fun CoachState.toPopup(turn: TurnType?) = Popup(
     forTurn = turn,
 )
 
-/** 내비 안내와 상관없이 뜨는 안내 종류인가. */
-private fun GuideKind.notTiedToNavi(): Boolean = this == GuideKind.WIPER || this == GuideKind.DEFOG
+/** 내비 안내와 상관없이 뜨는 안내 종류인가. 제한속도(R11)는 도로 구간에 달려 있고 내비 안내와 상관없다. */
+private fun GuideKind.notTiedToNavi(): Boolean = this == GuideKind.WIPER || this == GuideKind.DEFOG || this == GuideKind.SPEED
+
+/** 지금 안내가 내비 안내와 상관없는가. R9 급정거(BRAKE)는 같은 그림을 쓰는 R10과 달리 회전과 상관없다. */
+private fun CoachState.notTiedToNavi(): Boolean = guideKind.notTiedToNavi() || guideAction == GuideAction.KEEP_DISTANCE
+
+/**
+ * 이 판정이 지금 팝업을 바꾸는가. 속도 습관 룰(R9·R10·R11)은 같은 종류 카드가 떠 있을 때만 바꾼다.
+ * 예: 회전 깜빡이(R1) 카드가 떠 있을 때 같은 회전의 R10 판정이 나와도 "좋아요"로 바꾸거나 숨기지 않는다.
+ */
+private fun Event.touches(current: Popup?): Boolean =
+    rule !in SPEED_HABIT_RULES || current?.kind == rule.guideKind()
+
+private val SPEED_HABIT_RULES = setOf(RuleId.R9, RuleId.R10, RuleId.R11)
 
 /**
  * 차선 변경 팝업 제목과 문구. 엔진 룰이 없어서 경로 데모 각본([RouteDemo.ScriptCue])으로만 띄운다.
@@ -99,40 +114,29 @@ data class ScriptLook(val kind: GuideKind, val title: String, val headline: Stri
 
 /**
  * 경로 데모 각본 카드의 문구 (영상용, 엔진 판정 없음). 시각표는 [RouteDemo.scriptFor].
+ * 차로 장면만 남았다. SDK에 차로 번호·차로 변경 신호가 없어서다. 급정거·브레이크 타이밍·진출로·커브는 엔진 R9·R10·R11이 판정한다 (spec 15~17장).
  *
  * | 종류 | 제목 · 주황 알약 | 음성 |
  * | --- | --- | --- |
  * | 차선 변경 | 오른쪽 차로로 · 깜빡이 켜고 옮기세요 | 오른쪽 차로로 옮겨요, 오른쪽 깜빡이 켜세요 |
- * | 급정거 | 급정거 · 앞차와 거리를 두세요 | 방금 급하게 멈췄어요, 앞차와 거리를 넉넉히 두세요 |
  * | 1차로 정속 주행 | 1차로 정속 주행 · 오른쪽 차로로 옮기세요 | 1차로는 추월할 때만 써요, 오른쪽 차로로 옮기세요 |
  * | 깜빡이 뒤 3초 | 오른쪽 차로로 · 3초 뒤에 옮기세요 | 깜빡이를 켜고 3초쯤 기다렸다 옮기세요 |
- * | 커브 | 커브길 · 60까지 줄이세요 | 커브길이에요, 속도를 60까지 줄이세요 |
- * | 진출로 | 진출로 · 40까지 줄이세요 | 진출로예요, 속도를 천천히 40까지 줄이세요 |
  * | 진출 직후 회전 차로 | 곧 우회전 · 오른쪽 끝 차로로 미리 | 나가자마자 우회전이에요, 오른쪽 끝 차로로 미리 옮기세요 |
- * | 브레이크 타이밍 | 회전 앞 · 미리 속도를 줄이세요 | 회전이 가까워요, 지금부터 천천히 속도를 줄이세요 |
  */
 fun scriptLook(kind: RouteDemo.CueKind, toRight: Boolean): ScriptLook? {
     val side = if (toRight) "오른쪽" else "왼쪽"
     return when (kind) {
         RouteDemo.CueKind.LANE_CHANGE ->
             ScriptLook(GuideKind.LANE_CHANGE, laneChangeTitle(toRight), LANE_CHANGE_HEADLINE, laneChangeSpeech(toRight))
-        RouteDemo.CueKind.SUDDEN_STOP ->
-            ScriptLook(GuideKind.BRAKE, "급정거", "앞차와 거리를 두세요", "방금 급하게 멈췄어요, 앞차와 거리를 넉넉히 두세요")
         RouteDemo.CueKind.LANE_KEEP ->
             ScriptLook(GuideKind.LANE_CHANGE, "1차로 정속 주행", "${side} 차로로 옮기세요", "1차로는 추월할 때만 써요, ${side} 차로로 옮기세요")
         RouteDemo.CueKind.LANE_WAIT ->
             ScriptLook(GuideKind.LANE_CHANGE, laneChangeTitle(toRight), "3초 뒤에 옮기세요", "깜빡이를 켜고 3초쯤 기다렸다 옮기세요")
-        RouteDemo.CueKind.CURVE ->
-            ScriptLook(GuideKind.SPEED, "커브길", "${RouteDemo.CURVE_KPH.toInt()}까지 줄이세요", "커브길이에요, 속도를 ${RouteDemo.CURVE_KPH.toInt()}까지 줄이세요")
-        RouteDemo.CueKind.EXIT_SLOW ->
-            ScriptLook(GuideKind.SPEED, "진출로", "${RouteDemo.CITY_KPH.toInt()}까지 줄이세요", "진출로예요, 속도를 천천히 ${RouteDemo.CITY_KPH.toInt()}까지 줄이세요")
         RouteDemo.CueKind.PRE_LANE ->
             ScriptLook(
                 GuideKind.LANE_CHANGE, if (toRight) "곧 우회전" else "곧 좌회전", "${side} 끝 차로로 미리",
                 "나가자마자 ${if (toRight) "우회전" else "좌회전"}이에요, ${side} 끝 차로로 미리 옮기세요",
             )
-        RouteDemo.CueKind.BRAKE_EARLY ->
-            ScriptLook(GuideKind.BRAKE, "회전 앞", "미리 속도를 줄이세요", "회전이 가까워요, 지금부터 천천히 속도를 줄이세요")
         else -> null
     }
 }

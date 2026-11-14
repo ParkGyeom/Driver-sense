@@ -19,9 +19,11 @@ import kkam.engine.rules.LANE_START_M
 import kkam.engine.rules.RB_EXIT_CHECK_M
 import kkam.engine.rules.STOP_KPH
 import kkam.engine.rules.TUNNEL_GUIDE_M
+import kkam.engine.rules.TURN_SLOW_KPH
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 /** 코치 카드 색. 주황은 켜세요, 파랑은 좋아요 (proposal UI-1). */
 enum class Tone { IDLE, WARN, OK }
@@ -44,6 +46,8 @@ data class CoachState(
     val guideAction: GuideAction? = null,
     /** 음성 안내의 종류 (예: R3 적색 우회전). 판정이 나오거나 안내 대상이 바뀌면 지운다. */
     val guidedKind: GuideKind? = null,
+    /** 마지막 음성 안내가 나온 프레임 시각. R9 급정거 카드를 [NOTICE_MS] 동안만 보여주는 데 쓴다. */
+    val guideAt: Long? = null,
     /**
      * 판정 지점(R1 30m, R4 100m)을 지난 안내 대상과 그때의 색. 엔진은 그 지점에서 지킴·놓침을 정하므로
      * 지난 뒤에 깜빡이를 켜도 "좋아요"로 바꾸지 않는다.
@@ -93,7 +97,66 @@ private data class Target(
 private fun CoachState.targetFor(frame: SignalFrame): Target? = when (guideAction) {
     GuideAction.WIPER_ON -> frame.wiperTarget() ?: frame.target()
     GuideAction.DEFOG -> frame.defogTarget() ?: frame.target()
+    // R9 급정거는 지난 일을 알리는 카드라 따를 것이 없다. 정해진 시간만 보여준다
+    GuideAction.KEEP_DISTANCE ->
+        if (frame.t - (guideAt ?: frame.t) < NOTICE_MS) frame.hardBrakeTarget() else frame.target()
+    // R11 제한속도(SPEED)와 R10 회전 앞 감속(BRAKE)은 안내 종류로 나눈다
+    GuideAction.SLOW_DOWN ->
+        (if (guidedKind == GuideKind.SPEED) frame.speedLimitTarget() else frame.turnSlowTarget()) ?: frame.target()
     else -> frame.target()
+}
+
+/** R9 급정거 사후 안내 카드. 늘 주황이다 (지킴이 없는 룰). */
+private fun SignalFrame.hardBrakeTarget() = Target(
+    turn = TurnType.OTHER,
+    kind = GuideKind.BRAKE,
+    right = false,
+    checkM = null,
+    ok = false,
+    okLabel = "",
+    offLabel = "${speedKph.roundToInt()} km/h",
+    warnBadge = "앞차와 거리를 두세요",
+    answered = "",
+    title = "급정거",
+    showDistance = false,
+)
+
+/** R11 안내 뒤의 제한속도 카드. 제한속도를 모르면 null. 엔진처럼 제한속도 이하면 따른 것으로 본다. */
+private fun SignalFrame.speedLimitTarget(): Target? {
+    val limit = speedLimitKph ?: return null
+    return Target(
+        turn = TurnType.OTHER,
+        kind = GuideKind.SPEED,
+        right = false,
+        checkM = null,
+        ok = speedKph <= limit,
+        okLabel = "${speedKph.roundToInt()} km/h",
+        offLabel = "${speedKph.roundToInt()} km/h",
+        warnBadge = "${limit}까지 줄이세요",
+        answered = "속도를 줄였어요",
+        title = "제한속도 $limit",
+        showDistance = false,
+    )
+}
+
+/**
+ * R10 안내 뒤의 회전 앞 감속 카드. 다음 안내가 회전이 아니면 null.
+ * 엔진처럼 [TURN_SLOW_KPH] 이하면 따른 것으로 본다. 판정 지점에서 색을 고정하지 않는다 (판정은 엔진 EVENT로 보여준다).
+ */
+private fun SignalFrame.turnSlowTarget(): Target? {
+    val tbt = tbt?.takeIf { it.turn == TurnType.LEFT || it.turn == TurnType.RIGHT || it.turn == TurnType.UTURN } ?: return null
+    return Target(
+        turn = tbt.turn,
+        kind = GuideKind.BRAKE,
+        right = false,
+        checkM = null,
+        ok = speedKph <= TURN_SLOW_KPH,
+        okLabel = "${speedKph.roundToInt()} km/h",
+        offLabel = "${speedKph.roundToInt()} km/h",
+        warnBadge = "미리 속도를 줄이세요",
+        answered = "회전 앞에서 미리 줄였어요",
+        title = "${tbt.turn.label()} 앞",
+    )
 }
 
 /** R7 안내 뒤의 김서림 카드. 성에 제거 값을 모르면 null. 엔진처럼 성에 제거를 켜거나 외기로 바꾸면 따른 것으로 본다. */
@@ -222,23 +285,26 @@ fun CoachState.next(frame: SignalFrame, outputs: List<EngineOutput>, quiet: Bool
             is Guide -> state.copy(
                 guideKind = output.guideKind(frame.tbt?.turn) ?: state.guideKind,
                 guidedKind = output.guideKind(frame.tbt?.turn),
+                guideAt = output.t,
                 guideAction = output.action,
                 right = output.action.isRight(),
                 message = output.text,
                 guideShowing = true,
                 logs = state.logs + state.logLine(output.t, "음성 안내"),
             )
-            is Event -> state.copy(
-                message = output.message(),
-                guideShowing = false,
-                guideAction = null,
-                guidedKind = null,
-                stopSeen = false,
-                kept = state.kept + if (output.rule.inRate && output.result == Result.KEPT) 1 else 0,
-                total = state.total + if (output.rule.inRate) 1 else 0,
-                logs = state.logs + state.logLine(output.t, "${output.title()} ${output.result.label()}"),
-                todayEvents = state.todayEvents + output,
-            )
+            is Event -> {
+                val recorded = state.copy(
+                    kept = state.kept + if (output.rule.inRate && output.result == Result.KEPT) 1 else 0,
+                    total = state.total + if (output.rule.inRate) 1 else 0,
+                    logs = state.logs + state.logLine(output.t, "${output.title()} ${output.result.label()}"),
+                    todayEvents = state.todayEvents + output,
+                )
+                if (state.endsGuideWith(output)) {
+                    recorded.copy(message = output.message(), guideShowing = false, guideAction = null, guidedKind = null, stopSeen = false)
+                } else {
+                    recorded
+                }
+            }
         }
     }
     // 이 프레임에 안내가 나왔으면 카드 색을 그 안내 기준으로 다시 정한다.
@@ -310,6 +376,17 @@ private fun LightPhase?.frontLabel(): String = when (this) {
     LightPhase.RED, LightPhase.UNKNOWN, null -> "전방 적색"
 }
 
+/**
+ * 이 판정이 지금 안내를 끝내는가.
+ * R9 급정거는 사후 안내와 판정이 한 프레임에 같이 나오므로 안내 카드를 [NOTICE_MS] 동안 그대로 둔다.
+ * R10·R11은 같은 종류 안내일 때만 끝낸다. 예: 회전 깜빡이(R1) 안내 중에 R10 판정이 나와도 R1 카드는 그대로다.
+ */
+private fun CoachState.endsGuideWith(event: Event): Boolean = when (event.rule) {
+    RuleId.R9 -> false
+    RuleId.R10, RuleId.R11 -> guidedKind == event.rule.guideKind()
+    else -> true
+}
+
 /** 오른쪽을 가리키는 안내인가. 적색 우회전(STOP)은 우회전이다. */
 private fun GuideAction.isRight(): Boolean = this == GuideAction.SIGNAL_RIGHT || this == GuideAction.STOP
 
@@ -322,6 +399,8 @@ private fun CoachState.guidedFor(target: Target): Boolean = when (guideAction) {
     GuideAction.STOP -> target.kind == GuideKind.TURN_SIGNAL && target.right
     GuideAction.WIPER_ON -> target.kind == GuideKind.WIPER
     GuideAction.DEFOG -> target.kind == GuideKind.DEFOG
+    GuideAction.KEEP_DISTANCE -> target.kind == GuideKind.BRAKE
+    GuideAction.SLOW_DOWN -> target.kind == GuideKind.SPEED || target.kind == GuideKind.BRAKE
 }
 
 /** 새 시나리오를 시작할 때 쓴다. 오늘 횟수와 기록은 남긴다. */
@@ -380,10 +459,18 @@ fun Event.title(): String {
         RuleId.R6 -> "비 올 때 와이퍼"
         RuleId.R7 -> "앞유리 김서림"
         RuleId.R8 -> "$direction 깜빡이"
+        RuleId.R9 -> "급정거"
+        RuleId.R10 -> "$direction 앞 감속"
+        RuleId.R11 -> "제한속도"
     }
 }
 
 private fun Event.message(): String = when {
+    rule == RuleId.R9 -> "방금 급하게 멈췄어요"
+    rule == RuleId.R10 && result == Result.MISSED -> "이번 ${turn?.label().orEmpty()} 앞에서 속도를 덜 줄였어요"
+    rule == RuleId.R10 -> "회전 앞에서 미리 줄였어요"
+    rule == RuleId.R11 && result == Result.MISSED -> "제한속도까지 줄이지 않았어요"
+    rule == RuleId.R11 -> "안내 듣고 속도를 줄였어요"
     result == Result.MISSED && rule == RuleId.R3 -> "이번 우회전은 멈추지 않았어요"
     result == Result.MISSED -> "이번 ${turn?.label().orEmpty()}은 깜빡이를 놓쳤어요"
     rule == RuleId.R3 -> "정지선에서 잘 멈췄어요"
@@ -403,6 +490,9 @@ private fun Long.timeLabel(): String =
     }
 
 private const val IDLE_LABEL = "다음 회전 대기"
+
+/** R9 급정거 사후 안내 카드를 보여주는 시간. */
+const val NOTICE_MS = 5000L
 
 /** 이보다 작은 t는 시나리오 시각(0부터 ms), 크면 실제 시각(epoch ms). 기록 줄과 리포트 시간이 같이 쓴다. */
 const val EPOCH_START_MS = 1_000_000_000_000L

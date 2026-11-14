@@ -36,6 +36,8 @@ data class SignalFrame(
     val recirc: Boolean? = null,
     /** 운전자가 이 프레임에 "앞이 뿌옇다"고 말했는가. 말한 프레임만 true. R7에서만 쓴다. */
     val fogReported: Boolean? = null,
+    /** 지금 달리는 도로의 제한속도 (km/h). 내비가 알려준다. 모르면 null. R11에서만 쓴다 (spec 2.1, v0.3.4). */
+    val speedLimitKph: Int? = null,
 )
 
 /** 내비의 다음 안내와 남은 거리. */

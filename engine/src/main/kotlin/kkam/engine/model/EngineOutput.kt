@@ -37,18 +37,18 @@ data class Event(
     val result: Result,
     /** 이 판정 전에 GUIDE가 나갔는가. */
     val guided: Boolean,
-    /** R1은 LEFT·RIGHT·UTURN, R2·R4는 LEFT 또는 RIGHT, R3는 RIGHT, R8은 ROUNDABOUT_ENTER·ROUNDABOUT_EXIT, R5·R6·R7은 null. */
+    /** R1·R10은 LEFT·RIGHT·UTURN, R2·R4는 LEFT 또는 RIGHT, R3는 RIGHT, R8은 ROUNDABOUT_ENTER·ROUNDABOUT_EXIT, R5·R6·R7·R9·R11은 null. */
     val turn: TurnType?,
     val lat: Double,
     val lon: Double,
 ) : EngineOutput
 
 @Serializable
-enum class RuleId { R1, R2, R3, R4, R5, R6, R7, R8 }
+enum class RuleId { R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11 }
 
 /** GUIDE가 바라는 동작 (spec 2.2). */
 @Serializable
-enum class GuideAction { SIGNAL_LEFT, SIGNAL_RIGHT, HEADLIGHT_ON, STOP, WIPER_ON, DEFOG }
+enum class GuideAction { SIGNAL_LEFT, SIGNAL_RIGHT, HEADLIGHT_ON, STOP, WIPER_ON, DEFOG, KEEP_DISTANCE, SLOW_DOWN }
 
 @Serializable
 enum class Result { KEPT, MISSED }

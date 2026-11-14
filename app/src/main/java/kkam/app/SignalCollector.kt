@@ -69,6 +69,8 @@ class SignalCollector(context: Context) {
     /** 앞유리 성에 제거와 내기 순환. R7에서만 쓴다. 없어도 프레임은 만든다. */
     private var defroster: Boolean? = null
     private var recirc: Boolean? = null
+    /** 지금 도로의 제한속도 (km/h). 내비가 알려준다. R11에서만 쓴다. 없어도 프레임은 만든다. */
+    private var speedLimitKph: Int? = null
 
     private var vehicle: Vehicle? = null
     private var navi: NaviHelper? = null
@@ -125,6 +127,7 @@ class SignalCollector(context: Context) {
         lastWiper = null
         defroster = null
         recirc = null
+        speedLimitKph = null
         propertyManager = null
         car = null
         navi = null
@@ -151,6 +154,7 @@ class SignalCollector(context: Context) {
             defroster = defroster,
             recirc = recirc,
             fogReported = null, // 음성 "앞이 뿌옇다"는 STT가 붙으면 채운다 (R7)
+            speedLimitKph = speedLimitKph,
         )
         return frame
     }
@@ -302,6 +306,9 @@ class SignalCollector(context: Context) {
 
     private val naviListener = object : NaviHelperEventListener {
         override fun onTBTInfo(tbtInfoList: List<TBTInfo>) = onMain { tbt = tbtInfoList.toEngineTbt() }
+
+        /** 0 이하는 모르는 값으로 보고 직전 값을 지운다 (spec 2.1). */
+        override fun onCurrentRoadSpeedLimit(speedLimit: Int) = onMain { speedLimitKph = speedLimit.takeIf { it > 0 } }
 
         override fun onError(errorCode: NaviErrorCode) {
             Log.w(TAG, "navi error $errorCode")
